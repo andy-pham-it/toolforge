@@ -1,5 +1,5 @@
 ---
-name: seo-niche-blog-generator
+name: niche-blog-generator
 description: Tạo blog post cho niche website tối ưu Google SEO + affiliate marketing. Nhận keyword/chủ đề, xuất bài viết hoàn chỉnh với title, meta description, content, image prompts, internal links. Dùng khi cần content cho site kiếm tiền qua affiliate + AdSense.
 ---
 

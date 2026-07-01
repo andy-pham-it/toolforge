@@ -1,5 +1,5 @@
 ---
-name: seo-video-podcast
+name: video-podcast
 description: Tối ưu SEO cho video podcast episode trên YouTube, TikTok, Facebook. Nhận tiêu đề + kịch bản, xuất title, description, tags, timestamps, hashtags theo từng platform. Dùng khi user upload podcast episode và cần metadata SEO cho từng nền tảng.
 ---
 

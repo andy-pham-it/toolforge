@@ -1,5 +1,5 @@
 ---
-name: seo-content-arbitrage
+name: content-arbitrage
 description: Biến 1 nội dung gốc thành nhiều format cho nhiều platform. Nhận 1 bài viết/kịch bản, xuất blog post + Twitter thread + TikTok script + Facebook/LinkedIn post. Dùng khi cần tối đa hoá reach từ 1 nội dung duy nhất.
 ---
 

@@ -25,7 +25,7 @@
 
 ### Skill files (3 files)
 
-#### 1. `seo-video-podcast.md`
+#### 1. `video-podcast.md`
 **Nguồn:** Từ project cũ, skill `video-podcast-seo` đã có.
 **Chức năng:** Optimize SEO cho video podcast khi đăng YouTube, TikTok, Facebook.
 
@@ -40,7 +40,7 @@ Output: Tiêu đề, mô tả, tags, timestamps, hashtag theo từng nền tản
 - Rules về keyword, hashtag, description length
 - Template output cho mỗi platform
 
-#### 2. `seo-content-arbitrage.md`
+#### 2. `content-arbitrage.md`
 **Nguồn:** Section 2.7 Content Arbitrage.
 **Chức năng:** Biến 1 nội dung gốc thành nhiều format cho nhiều nền tảng.
 
@@ -55,7 +55,7 @@ Output: Blog post (2000 từ) + Twitter thread + TikTok script + FB post
 - Format spec: blog (dài), thread (xâu chuỗi), short (kịch tính), post (ngắn gọn)
 - Template: mỗi format có prompt structure riêng
 
-#### 3. `seo-niche-blog-generator.md`
+#### 3. `niche-blog-generator.md`
 **Nguồn:** Section 3.6 Niche Websites + Affiliate.
 **Chức năng:** Tạo blog content tự động cho niche site, tối ưu Google SEO + affiliate.
 
@@ -134,9 +134,9 @@ packages/seo-generation/
 │   └── publisher.test.js     (new)
 ├── skills/
 │   ├── postinstall.js        (update — thêm logging, hiện đã tồn tại)
-│   ├── seo-video-podcast.md  (new)
-│   ├── seo-content-arbitrage.md (new)
-│   └── seo-niche-blog-generator.md (new)
+│   ├── video-podcast.md  (new)
+│   ├── content-arbitrage.md (new)
+│   └── niche-blog-generator.md (new)
 └── templates/
     ├── youtube-seo-template.md (new)
     ├── blog-post-template.md   (new)
@@ -423,7 +423,7 @@ packages/ba-support/
 ### Skill file quality standards
 - Mỗi skill file: 50-150 dòng (đủ để AI hiểu task mà không quá dài)
 - Có sections rõ ràng: Goal → Input → Output → Rules → Examples
-- Prefix tên file với domain name: `seo-video-podcast.md`
+- Prefix tên file với domain name: `video-podcast.md`
 - Code samples trong skill bằng javascript (thực tế được)
 - Tránh abstract — mỗi skill giải quyết 1 use case cụ thể
 
@@ -485,9 +485,9 @@ packages/ba-support/
 - [x] `packages/seo-generation/lib/publisher.test.js`
 - [x] `packages/seo-generation/lib/index.js` (update — thêm exports)
 - [x] `packages/seo-generation/skills/postinstall.js` (update — thêm logging)
-- [x] `packages/seo-generation/skills/seo-video-podcast.md`
-- [x] `packages/seo-generation/skills/seo-content-arbitrage.md`
-- [x] `packages/seo-generation/skills/seo-niche-blog-generator.md`
+- [x] `packages/seo-generation/skills/video-podcast.md`
+- [x] `packages/seo-generation/skills/content-arbitrage.md`
+- [x] `packages/seo-generation/skills/niche-blog-generator.md`
 - [x] `packages/seo-generation/templates/youtube-seo-template.md`
 - [x] `packages/seo-generation/templates/blog-post-template.md`
 - [x] `packages/seo-generation/templates/social-calendar.csv`
