@@ -9,6 +9,7 @@
     "packages/book-writing",
     "packages/pm-support",
     "packages/ba-support",
-    "packages/coding-support"
+    "packages/coding-support",
+    "packages/mcp"
   ]
 }
