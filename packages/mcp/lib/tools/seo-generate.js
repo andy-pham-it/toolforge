@@ -3,7 +3,7 @@
  */
 const definition = {
     name: 'toolforge_seo_generate',
-    description: 'Generate SEO metadata (title, description, tags, keywords, timestamps) for a video/audio script across YouTube, TikTok, and Facebook simultaneously',
+    description: 'Generate SEO metadata (title, description, formattedDescription, tags, keywords, hashtags, timestamps) for a video/audio script across YouTube, TikTok, and Facebook simultaneously',
     inputSchema: {
         type: 'object',
         properties: {
@@ -25,6 +25,7 @@ Return ONLY a valid JSON object with this exact structure:
   "youtube": {
     "suggestedTitle": "YouTube SEO title (max 60 chars, include main keyword)",
     "description": "YouTube SEO description (500-1000 chars, keyword-rich, include timestamps summary, CTAs, links mention)",
+    "formattedDescription": "Ready-to-paste YouTube description: 📌 Content summary, ⏱️ Timestamps per segment (MM:SS - Label), 🔗 Links/Social, then 3-5 hashtags",
     "tags": ["tag1", "tag2", ... 10-15 relevant tags sorted by relevance],
     "keywords": ["keyword1", "keyword2", ... 5-8 keywords],
     "hashtags": ["#Hashtag1", "#Hashtag2", ... 3-5 platform-specific hashtags],
@@ -40,6 +41,7 @@ Return ONLY a valid JSON object with this exact structure:
   "tiktok": {
     "suggestedTitle": "TikTok caption / hook (max 40 chars, high curiosity)",
     "description": "TikTok caption with narrative hook + hashtag block (200-400 chars)",
+    "formattedDescription": "Ready-to-paste TikTok caption: short narrative hook, line break, 5-8 hashtags",
     "tags": ["tag1", "tag2", ... 5-8 trending-style tags],
     "keywords": ["keyword1", "keyword2", ... 3-5 keywords],
     "hashtags": ["#Hashtag1", "#Hashtag2", ... 5-8 hashtags including trending ones],
@@ -51,6 +53,7 @@ Return ONLY a valid JSON object with this exact structure:
   "facebook": {
     "suggestedTitle": "Facebook title (max 60 chars, shareable, curiosity-driven)",
     "description": "Facebook post description (400-800 chars, engagement hook, question, CTAs)",
+    "formattedDescription": "Ready-to-paste Facebook description: engagement hook/question, 📌 key takeaways bullets, CTA, then 3-5 hashtags",
     "tags": ["tag1", "tag2", ... 8-12 relevant tags],
     "keywords": ["keyword1", "keyword2", ... 5-8 keywords],
     "hashtags": ["#Hashtag1", "#Hashtag2", ... 3-5 hashtags],
