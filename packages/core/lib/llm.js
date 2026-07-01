@@ -108,6 +108,29 @@ class LLMClient {
 
         throw lastError || new Error('LLM chat failed after max retries');
     }
+
+    /**
+     * Call chat() with jsonMode=true, strip markdown code fences if present,
+     * and parse the result as JSON.
+     *
+     * @param {string} systemPrompt
+     * @param {string} userPrompt
+     * @param {function} [fetchFn] - optional mock fetch for testing
+     * @returns {Promise<object>} parsed JSON object
+     * @throws {Error} if JSON parsing fails (includes raw response in message)
+     */
+    async chatJSON(systemPrompt, userPrompt, fetchFn) {
+        const raw = await this.chat(systemPrompt, userPrompt, true, fetchFn);
+        const cleaned = raw.replace(/^```(?:json)?\s*\n?/gm, '').replace(/\n?```\s*$/gm, '').trim();
+        if (!cleaned) {
+            throw new Error('chatJSON: empty response from LLM');
+        }
+        try {
+            return JSON.parse(cleaned);
+        } catch (err) {
+            throw new Error(`chatJSON: failed to parse LLM response as JSON: ${err.message}\nRaw: ${raw.slice(0, 500)}`);
+        }
+    }
 }
 
 module.exports = LLMClient;

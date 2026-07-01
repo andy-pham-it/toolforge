@@ -91,4 +91,71 @@ describe('LLMClient', async () => {
             );
         });
     });
+
+    describe('chatJSON', async () => {
+        function mockFetchSequence(responses) {
+            let idx = 0;
+            return () => {
+                const r = responses[idx++];
+                return Promise.resolve({
+                    ok: r.ok ?? true,
+                    status: r.status ?? 200,
+                    text: () => Promise.resolve(r.text ?? ''),
+                    json: () => Promise.resolve(r.json ?? { choices: [{ message: { content: r.content ?? '{}' } }] }),
+                });
+            };
+        }
+
+        await it('should parse valid JSON response', async () => {
+            const c = new LLMClient({ provider: 'groq', apiKey: 'x', model: 'x', maxRetries: 0 });
+            const result = await c.chatJSON('sys', 'user', mockFetchSequence([
+                { ok: true, content: '{"key": "value", "num": 42}' },
+            ]));
+            assert.deepStrictEqual(result, { key: 'value', num: 42 });
+        });
+
+        await it('should strip markdown code fences', async () => {
+            const c = new LLMClient({ provider: 'groq', apiKey: 'x', model: 'x', maxRetries: 0 });
+            const result = await c.chatJSON('sys', 'user', mockFetchSequence([
+                { ok: true, content: '```json\n{"a": 1}\n```' },
+            ]));
+            assert.deepStrictEqual(result, { a: 1 });
+        });
+
+        await it('should strip ``` fences without language tag', async () => {
+            const c = new LLMClient({ provider: 'groq', apiKey: 'x', model: 'x', maxRetries: 0 });
+            const result = await c.chatJSON('sys', 'user', mockFetchSequence([
+                { ok: true, content: '```\n{"b": 2}\n```' },
+            ]));
+            assert.deepStrictEqual(result, { b: 2 });
+        });
+
+        await it('should throw on empty response', async () => {
+            const c = new LLMClient({ provider: 'groq', apiKey: 'x', model: 'x', maxRetries: 0 });
+            await assert.rejects(
+                () => c.chatJSON('sys', 'user', mockFetchSequence([
+                    { ok: true, content: '' },
+                ])),
+                /chatJSON: empty response/
+            );
+        });
+
+        await it('should throw on invalid JSON', async () => {
+            const c = new LLMClient({ provider: 'groq', apiKey: 'x', model: 'x', maxRetries: 0 });
+            await assert.rejects(
+                () => c.chatJSON('sys', 'user', mockFetchSequence([
+                    { ok: true, content: 'not json at all' },
+                ])),
+                /chatJSON: failed to parse/
+            );
+        });
+
+        await it('should work with whitespace-only fences', async () => {
+            const c = new LLMClient({ provider: 'groq', apiKey: 'x', model: 'x', maxRetries: 0 });
+            const result = await c.chatJSON('sys', 'user', mockFetchSequence([
+                { ok: true, content: '```\n{"nested": {"arr": [1,2,3]}}\n```' },
+            ]));
+            assert.deepStrictEqual(result, { nested: { arr: [1, 2, 3] } });
+        });
+    });
 });
