@@ -3,8 +3,12 @@
   "version": "1.0.0",
   "description": "MCP server tools for media content generation — SEO, script analysis via Gemini",
   "main": "lib/index.js",
+  "bin": {
+    "toolforge-mcp": "./bin/cli.js"
+  },
   "files": [
-    "lib/"
+    "lib/",
+    "bin/"
   ],
   "scripts": {
     "test": "node --test lib/*.test.js"

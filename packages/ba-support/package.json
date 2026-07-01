@@ -3,9 +3,6 @@
   "version": "1.0.0",
   "description": "Toolforge domain: Business analysis support — competitor analysis, SWOT, pricing analysis, market trends, report generation",
   "main": "lib/index.js",
-  "publishConfig": {
-    "registry": "https://npm.pkg.github.com"
-  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/andy-pham-it/toolforge.git"

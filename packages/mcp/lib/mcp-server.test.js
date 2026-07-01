@@ -44,26 +44,42 @@ describe('MCPServer', () => {
             assert(tools.length >= 2);
 
             const names = tools.map(t => t.name);
-            assert(names.includes('seo_generate'));
+            assert(names.includes('toolforge_seo_generate'));
             assert(names.includes('analyze_script'));
 
             // Check schema
-            const seo = tools.find(t => t.name === 'seo_generate');
+            const seo = tools.find(t => t.name === 'toolforge_seo_generate');
             assert(seo.inputSchema);
             assert(seo.inputSchema.required.includes('script'));
             assert(seo.inputSchema.required.includes('title'));
         });
     });
 
-    describe('tools/call — seo_generate', () => {
-        it('returns SEO metadata for valid input', async () => {
+    describe('tools/call — toolforge_seo_generate', () => {
+        it('returns multi-platform SEO metadata for valid input', async () => {
             const server = createServer({ apiKey: 'test-key' });
             const mockReturn = {
-                suggestedTitle: 'SEO Test Title',
-                description: 'A test description',
-                tags: ['tag1', 'tag2'],
-                keywords: ['kw1'],
-                timestamps: [{ time: '00:00', label: 'Start' }],
+                youtube: {
+                    suggestedTitle: 'YT Title',
+                    description: 'YT desc',
+                    tags: ['yt1', 'yt2'],
+                    keywords: ['kw1'],
+                    timestamps: [{ time: '00:00', label: 'Start' }],
+                },
+                tiktok: {
+                    suggestedTitle: 'TT Title',
+                    description: 'TT desc',
+                    tags: ['tt1'],
+                    keywords: [],
+                    timestamps: [],
+                },
+                facebook: {
+                    suggestedTitle: 'FB Title',
+                    description: 'FB desc',
+                    tags: ['fb1', 'fb2'],
+                    keywords: ['kw2'],
+                    timestamps: [{ time: '00:00', label: 'Intro' }],
+                },
             };
             server.llm = mockLlm(mockReturn);
 
@@ -72,7 +88,7 @@ describe('MCPServer', () => {
                 id: 2,
                 method: 'tools/call',
                 params: {
-                    name: 'seo_generate',
+                    name: 'toolforge_seo_generate',
                     arguments: {
                         script: 'Hello world test script',
                         title: 'Test',
@@ -84,8 +100,10 @@ describe('MCPServer', () => {
             assert(resp.result);
             const text = resp.result.content[0].text;
             const data = JSON.parse(text);
-            assert.equal(data.suggestedTitle, 'SEO Test Title');
-            assert.deepEqual(data.tags, ['tag1', 'tag2']);
+            assert(data.youtube);
+            assert.equal(data.youtube.suggestedTitle, 'YT Title');
+            assert(data.tiktok);
+            assert(data.facebook);
         });
 
         it('returns error when args missing', async () => {
@@ -95,7 +113,7 @@ describe('MCPServer', () => {
                 id: 3,
                 method: 'tools/call',
                 params: {
-                    name: 'seo_generate',
+                    name: 'toolforge_seo_generate',
                     arguments: { script: 'test' }, // missing title
                 },
             });
@@ -106,14 +124,14 @@ describe('MCPServer', () => {
 
         it('returns error for incomplete LLM response', async () => {
             const server = createServer({ apiKey: 'test-key' });
-            server.llm = mockLlm({ incomplete: true }); // no suggestedTitle
+            server.llm = mockLlm({ incomplete: true }); // no platform data
 
             const resp = await server._handle({
                 jsonrpc: '2.0',
                 id: 4,
                 method: 'tools/call',
                 params: {
-                    name: 'seo_generate',
+                    name: 'toolforge_seo_generate',
                     arguments: { script: 'test', title: 'Test' },
                 },
             });

@@ -3,9 +3,6 @@
   "version": "1.0.0",
   "description": "Toolforge domain: Book writing engine — outline generation, chapter writing, consistency review, multi-format export",
   "main": "lib/index.js",
-  "publishConfig": {
-    "registry": "https://npm.pkg.github.com"
-  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/andy-pham-it/toolforge.git"

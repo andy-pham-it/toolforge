@@ -9,7 +9,7 @@ class MCPServer {
         this.model = config.model || 'gemini-2.0-flash';
         this._llm = null;
         this._tools = {
-            seo_generate: seoGenerate,
+            toolforge_seo_generate: seoGenerate,
             analyze_script: analyzeScript,
         };
     }
