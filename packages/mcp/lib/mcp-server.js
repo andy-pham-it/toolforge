@@ -48,7 +48,9 @@ class MCPServer {
             try {
                 const msg = JSON.parse(line);
                 const resp = await this._handle(msg);
-                process.stdout.write(JSON.stringify(resp) + '\n');
+                if (resp !== null) {
+                    process.stdout.write(JSON.stringify(resp) + '\n');
+                }
             } catch (err) {
                 process.stdout.write(JSON.stringify({
                     jsonrpc: '2.0',
@@ -61,14 +63,35 @@ class MCPServer {
 
     /** Handle a single JSON-RPC request */
     async _handle(msg) {
-        if (!msg || typeof msg !== 'object') {
+        if (!msg || typeof msg === 'string') {
             return { jsonrpc: '2.0', id: null, error: { code: -32600, message: 'Invalid Request' } };
         }
 
-        const { id, method, params } = msg;
+        const { id, method, params } = msg || {};
 
         if (!method) {
             return { jsonrpc: '2.0', id, error: { code: -32600, message: 'Invalid Request: method required' } };
+        }
+
+        // MCP protocol notifications — no response
+        if (method.startsWith('notifications/')) {
+            return null;
+        }
+
+        // MCP protocol initialize handshake
+        if (method === 'initialize') {
+            return {
+                jsonrpc: '2.0',
+                id,
+                result: {
+                    protocolVersion: params?.protocolVersion || '2024-11-05',
+                    capabilities: { tools: {} },
+                    serverInfo: {
+                        name: '@andy-toolforge/mcp',
+                        version: '1.0.0',
+                    },
+                },
+            };
         }
 
         if (method === 'tools/list') {

@@ -28,6 +28,34 @@ describe('MCPServer', () => {
         });
     });
 
+    describe('MCP protocol handshake', () => {
+        it('handles initialize request', async () => {
+            const server = createServer({ apiKey: 'test-key' });
+            const resp = await server._handle({
+                jsonrpc: '2.0',
+                id: 1,
+                method: 'initialize',
+                params: { protocolVersion: '2024-11-05', capabilities: {}, clientInfo: {} },
+            });
+
+            assert.equal(resp.id, 1);
+            assert(resp.result);
+            assert.equal(resp.result.protocolVersion, '2024-11-05');
+            assert(resp.result.capabilities.tools);
+            assert.equal(resp.result.serverInfo.name, '@andy-toolforge/mcp');
+        });
+
+        it('returns null for notifications (no response written)', async () => {
+            const server = createServer({ apiKey: 'test-key' });
+            const resp = await server._handle({
+                jsonrpc: '2.0',
+                method: 'notifications/initialized',
+            });
+
+            assert.equal(resp, null);
+        });
+    });
+
     describe('tools/list', () => {
         it('returns tool definitions', async () => {
             const server = createServer({ apiKey: 'test-key' });
