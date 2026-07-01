@@ -4,5 +4,23 @@ node_modules/
 *.log
 .DS_Store
 
+# npm
 .npmrc
-.env
+*.tgz
+
+# IDE
+.idea/
+.vscode/
+
+# Test / coverage
+coverage/
+
+# Tool caches
+.cache/
+
+# LSP/Symbol indexes (regenerated on demand)
+.serena/cache/
+.serena/project.local.yml
+
+# Tool runtime state
+.omo/
