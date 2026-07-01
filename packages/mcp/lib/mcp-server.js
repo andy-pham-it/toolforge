@@ -2,6 +2,9 @@ const { LLMClient } = require('@andy-toolforge/core');
 const readline = require('readline');
 const seoGenerate = require('./tools/seo-generate');
 const analyzeScript = require('./tools/analyze-script');
+const generatePrompts = require('./tools/generate-prompts');
+const generateMapping = require('./tools/generate-mapping');
+const suggestCover = require('./tools/suggest-cover');
 
 class MCPServer {
     constructor(config) {
@@ -12,6 +15,9 @@ class MCPServer {
         this._tools = {
             toolforge_seo_generate: seoGenerate,
             analyze_script: analyzeScript,
+            generate_prompts: generatePrompts,
+            generate_mapping: generateMapping,
+            suggest_cover: suggestCover,
         };
     }
 

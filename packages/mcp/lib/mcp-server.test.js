@@ -74,12 +74,19 @@ describe('MCPServer', () => {
             const names = tools.map(t => t.name);
             assert(names.includes('toolforge_seo_generate'));
             assert(names.includes('analyze_script'));
+            assert(names.includes('generate_prompts'));
+            assert(names.includes('generate_mapping'));
+            assert(names.includes('suggest_cover'));
 
-            // Check schema
+            // Check schemas
             const seo = tools.find(t => t.name === 'toolforge_seo_generate');
             assert(seo.inputSchema);
             assert(seo.inputSchema.required.includes('script'));
             assert(seo.inputSchema.required.includes('title'));
+
+            const cover = tools.find(t => t.name === 'suggest_cover');
+            assert(cover.inputSchema);
+            assert(cover.inputSchema.required.includes('description'));
         });
     });
 
@@ -234,6 +241,76 @@ describe('MCPServer', () => {
             assert(data.segments);
             assert(data.segments.length >= 1);
             assert.equal(data.segments[0].title, 'Intro');
+        });
+    });
+
+    describe('tools/call — generate_prompts', () => {
+        it('returns prompt segments for valid input', async () => {
+            const server = createServer({ apiKey: 'test-key' });
+            server.llm = mockLlm([
+                { id: 1, segmentTitle: 'Intro', summary: 'Opening', visualStyle: 'Typography', startTime: '00:00', endTime: '02:00', images: { a: { filename: '1_intro_a.png', prompt: 'Test prompt', editSuggestions: {} } } },
+            ]);
+
+            const resp = await server._handle({
+                jsonrpc: '2.0', id: 10, method: 'tools/call',
+                params: { name: 'generate_prompts', arguments: { script: 'Hello world', title: 'Test' } },
+            });
+
+            assert(resp.result);
+            const data = JSON.parse(resp.result.content[0].text);
+            assert(data.segments);
+            assert(data.segments.length >= 1);
+            assert(data.segments[0].images.a.prompt);
+        });
+
+        it('returns error for missing args', async () => {
+            const server = createServer({ apiKey: 'test-key' });
+            const resp = await server._handle({
+                jsonrpc: '2.0', id: 11, method: 'tools/call',
+                params: { name: 'generate_prompts', arguments: { script: 'test' } },
+            });
+            assert(resp.error);
+            assert(resp.error.message.includes('title'));
+        });
+    });
+
+    describe('tools/call — generate_mapping', () => {
+        it('returns music mapping for valid segments', async () => {
+            const server = createServer({ apiKey: 'test-key' });
+            server.llm = mockLlm({ overallVibe: 'Contemplative', tracks: [
+                { segmentId: 1, segmentTitle: 'Intro', startTime: '00:00', endTime: '02:00', genre: 'Ambient', energy: 'low', bpm: 70, instruments: ['piano'], moodKeywords: ['calm'], transition: 'fade_in', sfx: ['chime'] },
+            ]});
+
+            const resp = await server._handle({
+                jsonrpc: '2.0', id: 12, method: 'tools/call',
+                params: { name: 'generate_mapping', arguments: { segments: [{ id: 1, title: 'Intro', startTime: '00:00', endTime: '02:00' }] } },
+            });
+
+            assert(resp.result);
+            const data = JSON.parse(resp.result.content[0].text);
+            assert(data.overallVibe);
+            assert(data.tracks.length >= 1);
+        });
+    });
+
+    describe('tools/call — suggest_cover', () => {
+        it('returns cover design for valid input', async () => {
+            const server = createServer({ apiKey: 'test-key' });
+            server.llm = mockLlm({
+                designRationale: 'Philosophical tone',
+                colorPalette: { primary: '#000', secondary: '#fff', accent: '#f00' },
+                seriesCover: { conceptTitle: 'Test', visualStyle: 'Surrealist', composition: 'Test', prompt: 'Test prompt', filename: 'cover_series.png' },
+            });
+
+            const resp = await server._handle({
+                jsonrpc: '2.0', id: 13, method: 'tools/call',
+                params: { name: 'suggest_cover', arguments: { title: 'My Podcast', description: 'A test podcast' } },
+            });
+
+            assert(resp.result);
+            const data = JSON.parse(resp.result.content[0].text);
+            assert(data.designRationale);
+            assert(data.seriesCover);
         });
     });
 
