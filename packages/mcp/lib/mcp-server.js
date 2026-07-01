@@ -6,7 +6,8 @@ const analyzeScript = require('./tools/analyze-script');
 class MCPServer {
     constructor(config) {
         this.apiKey = config.apiKey;
-        this.model = config.model || 'gemini-2.0-flash';
+        this.provider = config.provider || 'gemini';
+        this.model = config.model || (this.provider === 'groq' ? 'llama-3.3-70b-versatile' : 'gemini-2.0-flash');
         this._llm = null;
         this._tools = {
             toolforge_seo_generate: seoGenerate,
@@ -18,7 +19,7 @@ class MCPServer {
     get llm() {
         if (!this._llm) {
             this._llm = new LLMClient({
-                provider: 'gemini',
+                provider: this.provider,
                 apiKey: this.apiKey,
                 model: this.model,
             });
