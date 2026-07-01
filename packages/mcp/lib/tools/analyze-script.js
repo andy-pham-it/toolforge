@@ -6,7 +6,7 @@ const { LLMClient: FootageLLMClient } = require('@andy-toolforge/footage-generat
 
 const definition = {
     name: 'analyze_script',
-    description: 'Analyze a podcast/video script and produce visual segments with image generation prompts for each segment',
+    description: 'Analyze a podcast/video script and produce visual segments with image generation prompts and formattedSummary for each segment',
     inputSchema: {
         type: 'object',
         properties: {
@@ -45,7 +45,16 @@ async function handler(llm, args) {
         lang,
     );
 
-    return { segments };
+    // Build formattedSummary from segments
+    const formattedSummary = segments.map((seg, i) => {
+        const time = seg.startTime ? `[${seg.startTime}${seg.endTime ? `-${seg.endTime}` : ''}]` : '';
+        return `## ${i + 1}. ${seg.title || seg.segmentTitle || `Segment ${i + 1}`} ${time}\n` +
+            (seg.summary ? `${seg.summary}\n` : '') +
+            (seg.visualStyle ? `Style: ${seg.visualStyle}\n` : '') +
+            (seg.prompt ? `Prompt: ${seg.prompt}\n` : '');
+    }).join('\n');
+
+    return { segments, formattedSummary };
 }
 
 module.exports = { definition, handler };

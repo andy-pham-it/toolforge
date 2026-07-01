@@ -4,7 +4,7 @@
  */
 const definition = {
     name: 'suggest_cover',
-    description: 'Suggest podcast cover art design (series cover, episode cover, thumbnail) with visual style, color palette, and generation prompt',
+    description: 'Suggest podcast cover art design (series cover, episode cover, thumbnail) with visual style, color palette, generation prompt, and formattedBrief summary',
     inputSchema: {
         type: 'object',
         properties: {
@@ -37,6 +37,7 @@ Rules:
 Return ONLY a valid JSON object with this exact structure:
 {
   "designRationale": "2-3 sentence explanation of the design direction",
+  "formattedBrief": "Ready-to-share design brief combining the designRationale, colorPalette specs, and a short summary of each cover type's concept, composition, and filename — formatted as scannable text perfect for sharing with a designer or image generator",
   "colorPalette": {
     "primary": "#hex",
     "secondary": "#hex",

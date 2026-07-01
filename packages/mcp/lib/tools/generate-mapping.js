@@ -3,7 +3,7 @@
  */
 const definition = {
     name: 'generate_mapping',
-    description: 'Map background music tracks and sound design elements to each script segment based on mood, pace, and content',
+    description: 'Map background music tracks and sound design elements to each script segment based on mood, pace, and content, with formattedTrackList summary',
     inputSchema: {
         type: 'object',
         properties: {
@@ -32,6 +32,7 @@ For each segment, recommend:
 Return ONLY a valid JSON object with this exact structure:
 {
   "overallVibe": "One-line description of the episode's audio identity",
+  "formattedTrackList": "Ready-to-share formatted description of the full track mapping: overall vibe, then per-track summary with (segmentTitle, time range, genre, energy, instruments, transition)",
   "tracks": [
     {
       "segmentId": 1,
