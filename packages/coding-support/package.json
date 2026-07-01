@@ -1,0 +1,21 @@
+{
+  "name": "@andy-toolforge/coding-support",
+  "version": "1.0.0",
+  "description": "Toolforge domain: Code analysis tools — line counting, dead code detection, dependency graphs, complexity reports",
+  "main": "lib/index.js",
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/andy-pham-it/toolforge.git"
+  },
+  "scripts": {
+    "postinstall": "node skills/postinstall.js",
+    "test": "node --test lib/*.test.js"
+  },
+  "dependencies": {
+    "@andy-toolforge/core": "^1.0.0",
+    "fast-glob": "^3.3.0"
+  }
+}

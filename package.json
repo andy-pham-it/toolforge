@@ -1,0 +1,14 @@
+{
+  "name": "toolforge",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "packages/core",
+    "packages/footage-generation",
+    "packages/seo-generation",
+    "packages/book-writing",
+    "packages/pm-support",
+    "packages/ba-support",
+    "packages/coding-support"
+  ]
+}

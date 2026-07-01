@@ -1,0 +1,1 @@
+../../skills/ba-requirement-gatherer.md

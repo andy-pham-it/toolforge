@@ -1,0 +1,20 @@
+{
+  "name": "@andy-toolforge/core",
+  "version": "1.0.0",
+  "description": "Toolforge foundation: browser manager, LLM client, logger, job queue",
+  "main": "lib/index.js",
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/andy-pham-it/toolforge.git"
+  },
+  "scripts": {
+    "test": "node --test lib/*.test.js"
+  },
+  "dependencies": {
+    "puppeteer": "^25.1.0",
+    "uuid": "^14.0.1"
+  }
+}

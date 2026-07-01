@@ -1,0 +1,20 @@
+{
+  "name": "@andy-toolforge/pm-support",
+  "version": "1.0.0",
+  "description": "Toolforge domain: Project management tools — task tracker, meeting assistant, project planner",
+  "main": "lib/index.js",
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/andy-pham-it/toolforge.git"
+  },
+  "scripts": {
+    "postinstall": "node skills/postinstall.js",
+    "test": "node --test lib/*.test.js"
+  },
+  "dependencies": {
+    "@andy-toolforge/core": "^1.0.0"
+  }
+}

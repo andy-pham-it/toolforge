@@ -1,0 +1,1 @@
+../../skills/ba-competitor-analysis.md

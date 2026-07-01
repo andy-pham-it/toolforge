@@ -1,0 +1,1 @@
+../../skills/podcast-cover-generator.md

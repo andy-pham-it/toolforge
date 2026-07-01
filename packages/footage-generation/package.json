@@ -1,0 +1,21 @@
+{
+  "name": "@andy-toolforge/footage-generation",
+  "version": "1.0.0",
+  "description": "Toolforge domain: generate images, videos, and visuals for podcasts and content",
+  "main": "lib/index.js",
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/andy-pham-it/toolforge.git"
+  },
+  "scripts": {
+    "postinstall": "node skills/postinstall.js",
+    "test": "node --test lib/*.test.js"
+  },
+  "dependencies": {
+    "@andy-toolforge/core": "^1.0.0",
+    "sharp": "^0.35.2"
+  }
+}

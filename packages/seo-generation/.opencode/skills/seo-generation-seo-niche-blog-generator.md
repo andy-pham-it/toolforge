@@ -1,0 +1,1 @@
+../../skills/seo-niche-blog-generator.md
