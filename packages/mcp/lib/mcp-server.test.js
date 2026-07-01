@@ -89,24 +89,43 @@ describe('MCPServer', () => {
             const mockReturn = {
                 youtube: {
                     suggestedTitle: 'YT Title',
-                    description: 'YT desc',
-                    tags: ['yt1', 'yt2'],
-                    keywords: ['kw1'],
-                    timestamps: [{ time: '00:00', label: 'Start' }],
+                    description: 'YT desc with more detail',
+                    tags: ['yt1', 'yt2', 'yt3'],
+                    keywords: ['kw1', 'kw2'],
+                    hashtags: ['#YT1', '#YT2'],
+                    thumbnailText: 'YT Thumbnail',
+                    thumbnailIdea: 'Bold text over dark background',
+                    hook: 'Opening hook for YouTube',
+                    timestamps: [
+                        { time: '00:00', label: 'Start' },
+                        { time: '05:00', label: 'Middle' },
+                        { time: '10:00', label: 'End' },
+                    ],
                 },
                 tiktok: {
                     suggestedTitle: 'TT Title',
-                    description: 'TT desc',
-                    tags: ['tt1'],
-                    keywords: [],
+                    description: 'TT desc with hook',
+                    tags: ['tt1', 'tt2'],
+                    keywords: ['kw3'],
+                    hashtags: ['#TT1', '#TT2', '#TT3'],
+                    thumbnailText: 'TT Cover',
+                    thumbnailIdea: 'Close-up with text overlay',
+                    hook: 'Scroller stopper',
                     timestamps: [],
                 },
                 facebook: {
                     suggestedTitle: 'FB Title',
-                    description: 'FB desc',
-                    tags: ['fb1', 'fb2'],
-                    keywords: ['kw2'],
-                    timestamps: [{ time: '00:00', label: 'Intro' }],
+                    description: 'FB desc with engagement',
+                    tags: ['fb1', 'fb2', 'fb3'],
+                    keywords: ['kw4', 'kw5'],
+                    hashtags: ['#FB1'],
+                    thumbnailText: 'FB Thumbnail',
+                    thumbnailIdea: 'Split image with CTA',
+                    hook: 'Feed engagement opener',
+                    timestamps: [
+                        { time: '00:00', label: 'Intro' },
+                        { time: '03:00', label: 'Key point' },
+                    ],
                 },
             };
             server.llm = mockLlm(mockReturn);
@@ -130,8 +149,14 @@ describe('MCPServer', () => {
             const data = JSON.parse(text);
             assert(data.youtube);
             assert.equal(data.youtube.suggestedTitle, 'YT Title');
+            assert(data.youtube.hashtags);
+            assert(data.youtube.thumbnailText);
+            assert(data.youtube.hook);
+            assert(data.youtube.timestamps.length >= 3);
             assert(data.tiktok);
+            assert(data.tiktok.hashtags);
             assert(data.facebook);
+            assert(data.facebook.thumbnailIdea);
         });
 
         it('returns error when args missing', async () => {

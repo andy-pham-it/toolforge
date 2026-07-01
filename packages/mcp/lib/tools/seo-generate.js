@@ -16,35 +16,51 @@ const definition = {
 };
 
 const systemPrompt = `You are an expert SEO strategist specializing in multi-platform video content optimization.
-Analyze the given script and title to produce metadata optimized for YouTube, TikTok, and Facebook simultaneously.
+Analyze the given script and title thoroughly. The script may be 20-30 minutes long with multiple segments.
+
+For each platform (YouTube, TikTok, Facebook), produce detailed metadata.
 
 Return ONLY a valid JSON object with this exact structure:
 {
   "youtube": {
-    "suggestedTitle": "YouTube SEO title (max 60 chars)",
-    "description": "YouTube SEO description with keywords (200-500 chars)",
-    "tags": ["tag1", "tag2", "tag3", "tag4", "tag5"],
-    "keywords": ["keyword1", "keyword2", "keyword3"],
+    "suggestedTitle": "YouTube SEO title (max 60 chars, include main keyword)",
+    "description": "YouTube SEO description (500-1000 chars, keyword-rich, include timestamps summary, CTAs, links mention)",
+    "tags": ["tag1", "tag2", ... 10-15 relevant tags sorted by relevance],
+    "keywords": ["keyword1", "keyword2", ... 5-8 keywords],
+    "hashtags": ["#Hashtag1", "#Hashtag2", ... 3-5 platform-specific hashtags],
+    "thumbnailText": "Short overlay text suggestion for thumbnail (max 40 chars)",
+    "thumbnailIdea": "Brief visual description for the thumbnail image",
+    "hook": "First 1-2 sentences to grab attention as video starts",
     "timestamps": [
-      { "time": "00:00", "label": "Introduction" },
-      { "time": "01:30", "label": "Main topic" }
+      { "time": "00:00", "label": "Introduction / Hook" },
+      { "time": "01:30", "label": "Main topic start" },
+      ... one entry per major script segment, typically 6-12 timestamps
     ]
   },
   "tiktok": {
-    "suggestedTitle": "TikTok hook title (max 40 chars)",
-    "description": "TikTok video description with hashtags",
-    "tags": ["tag1", "tag2", "tag3"],
-    "keywords": ["keyword1", "keyword2"],
+    "suggestedTitle": "TikTok caption / hook (max 40 chars, high curiosity)",
+    "description": "TikTok caption with narrative hook + hashtag block (200-400 chars)",
+    "tags": ["tag1", "tag2", ... 5-8 trending-style tags],
+    "keywords": ["keyword1", "keyword2", ... 3-5 keywords],
+    "hashtags": ["#Hashtag1", "#Hashtag2", ... 5-8 hashtags including trending ones],
+    "thumbnailText": "Overlay text for TikTok cover (max 30 chars)",
+    "thumbnailIdea": "Visual description for the TikTok cover",
+    "hook": "First 3 seconds hook text to stop scrollers",
     "timestamps": []
   },
   "facebook": {
-    "suggestedTitle": "Facebook title (max 60 chars)",
-    "description": "Facebook post description with engagement hook",
-    "tags": ["tag1", "tag2", "tag3", "tag4"],
-    "keywords": ["keyword1", "keyword2", "keyword3"],
+    "suggestedTitle": "Facebook title (max 60 chars, shareable, curiosity-driven)",
+    "description": "Facebook post description (400-800 chars, engagement hook, question, CTAs)",
+    "tags": ["tag1", "tag2", ... 8-12 relevant tags],
+    "keywords": ["keyword1", "keyword2", ... 5-8 keywords],
+    "hashtags": ["#Hashtag1", "#Hashtag2", ... 3-5 hashtags],
+    "thumbnailText": "Overlay text for Facebook video thumbnail (max 40 chars)",
+    "thumbnailIdea": "Visual description for the Facebook thumbnail",
+    "hook": "Opening line to drive engagement in feed",
     "timestamps": [
       { "time": "00:00", "label": "Introduction" },
-      { "time": "01:30", "label": "Main topic" }
+      { "time": "01:30", "label": "Main topic" },
+      ... 4-8 key timestamps
     ]
   }
 }`;
