@@ -1,0 +1,17 @@
+{
+  "name": "@andy-toolforge/content-operations",
+  "version": "1.0.0",
+  "description": "Toolforge domain: content operations — research, plan, create, distribute, analyze",
+  "main": "lib/index.js",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/andy-pham-it/toolforge.git"
+  },
+  "scripts": {
+    "postinstall": "node skills/postinstall.js",
+    "test": "node --test lib/*.test.js"
+  },
+  "dependencies": {
+    "@andy-toolforge/core": "^1.0.0"
+  }
+}

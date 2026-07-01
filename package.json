@@ -10,6 +10,7 @@
     "packages/pm-support",
     "packages/ba-support",
     "packages/coding-support",
-    "packages/mcp"
+    "packages/mcp",
+    "packages/content-operations"
   ]
 }
