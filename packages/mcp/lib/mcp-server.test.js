@@ -69,7 +69,7 @@ describe('MCPServer', () => {
             assert(resp.result);
             const tools = resp.result.tools;
             assert(Array.isArray(tools));
-            assert(tools.length >= 2);
+            assert(tools.length >= 9);
 
             const names = tools.map(t => t.name);
             assert(names.includes('toolforge_seo_generate'));
@@ -77,6 +77,10 @@ describe('MCPServer', () => {
             assert(names.includes('generate_prompts'));
             assert(names.includes('generate_mapping'));
             assert(names.includes('suggest_cover'));
+            assert(names.includes('andy_toolforge_content_summarizer'));
+            assert(names.includes('andy_toolforge_content_ideator'));
+            assert(names.includes('andy_toolforge_article_manager'));
+            assert(names.includes('andy_toolforge_competitor_analyzer'));
 
             // Check schemas
             const seo = tools.find(t => t.name === 'toolforge_seo_generate');

@@ -11,10 +11,11 @@
     "bin/"
   ],
   "scripts": {
-    "test": "node --test lib/*.test.js"
+    "test": "node --test lib/*.test.js lib/tools/*.test.js"
   },
   "dependencies": {
     "@andy-toolforge/core": "^1.0.0",
+    "@andy-toolforge/content-research": "^0.1.0",
     "@andy-toolforge/footage-generation": "^1.0.0"
   },
   "keywords": [

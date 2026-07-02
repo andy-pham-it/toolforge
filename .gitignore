@@ -24,3 +24,6 @@ coverage/
 
 # Tool runtime state
 .omo/
+
+# Generated skill symlinks (created by postinstall scripts)
+.opencode/skills/

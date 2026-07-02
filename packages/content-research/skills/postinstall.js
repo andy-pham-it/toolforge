@@ -1,26 +1,26 @@
 const fs = require('fs');
 const path = require('path');
 
-const skillFiles = [
-    'content-research-summarizer.md',
-    'content-research-ideator.md',
-    'content-research-manager.md',
-    'content-research-analyzer.md',
-];
+const DOMAIN = 'content-research';
+const projectRoot = process.cwd();
+const targetDir = path.join(projectRoot, '.opencode', 'skills');
+const sourceDir = path.join(__dirname);
 
-const targetDir = path.join(process.cwd(), '.opencode', 'skills');
-const sourceDir = __dirname;
+fs.mkdirSync(targetDir, { recursive: true });
 
-if (!fs.existsSync(targetDir)) {
-    fs.mkdirSync(targetDir, { recursive: true });
-}
-
-for (const file of skillFiles) {
-    const sourcePath = path.join(sourceDir, file);
-    const targetPath = path.join(targetDir, file);
-    if (fs.existsSync(targetPath)) {
-        fs.unlinkSync(targetPath); // Xóa symlink cũ nếu tồn tại
+fs.readdirSync(sourceDir).forEach(file => {
+    if (file.endsWith('.md')) {
+        const src = path.join(sourceDir, file);
+        const destName = `${DOMAIN}-${file.replace(/\s+/g, '_')}`;
+        const dest = path.join(targetDir, destName);
+        if (!fs.existsSync(dest)) {
+            try {
+                fs.symlinkSync(path.relative(targetDir, src), dest);
+                console.log(`  Linked ${destName}`);
+            } catch (e) {
+                fs.copyFileSync(src, dest);
+                console.log(`  Copied ${destName}`);
+            }
+        }
     }
-    fs.symlinkSync(path.relative(targetDir, sourcePath), targetPath, 'file');
-    console.log(`Symlinked ${file} to ${targetPath}`);
-}
+});

@@ -1,0 +1,1 @@
+../../skills/ideator.md

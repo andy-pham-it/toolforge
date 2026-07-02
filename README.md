@@ -14,6 +14,7 @@ packages/
 ├── pm-support/           → @andy-toolforge/pm-support          — Project management, task tracking, invoicing
 ├── coding-support/       → @andy-toolforge/coding-support      — Code analysis, dependency graphs, complexity
 ├── book-writing/         → @andy-toolforge/book-writing        — Book writing, chapter generation, export
+├── content-research/     → @andy-toolforge/content-research    — Content summarization, idea gen, article mgmt, competitor analysis
 └── ba-support/           → @andy-toolforge/ba-support          — Business analysis, competitor research, SWOT
 ```
 
@@ -49,6 +50,7 @@ npm publish -w @andy-toolforge/seo-generation
 npm publish -w @andy-toolforge/pm-support
 npm publish -w @andy-toolforge/coding-support
 npm publish -w @andy-toolforge/book-writing
+npm publish -w @andy-toolforge/content-research
 npm publish -w @andy-toolforge/ba-support
 ```
 

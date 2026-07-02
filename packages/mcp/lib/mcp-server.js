@@ -5,6 +5,10 @@ const analyzeScript = require('./tools/analyze-script');
 const generatePrompts = require('./tools/generate-prompts');
 const generateMapping = require('./tools/generate-mapping');
 const suggestCover = require('./tools/suggest-cover');
+const contentSummarizer = require('./tools/content-summarizer');
+const contentIdeator = require('./tools/content-ideator');
+const contentManager = require('./tools/content-manager');
+const contentAnalyzer = require('./tools/content-analyzer');
 
 class MCPServer {
     constructor(config) {
@@ -18,6 +22,10 @@ class MCPServer {
             generate_prompts: generatePrompts,
             generate_mapping: generateMapping,
             suggest_cover: suggestCover,
+            andy_toolforge_content_summarizer: contentSummarizer,
+            andy_toolforge_content_ideator: contentIdeator,
+            andy_toolforge_article_manager: contentManager,
+            andy_toolforge_competitor_analyzer: contentAnalyzer,
         };
     }
 
