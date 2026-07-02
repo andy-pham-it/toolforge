@@ -17,8 +17,6 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-          registry-url: https://npm.pkg.github.com
-          scope: '@toolforge'
       - run: npm ci
       - name: Publish changed packages
         run: |
@@ -33,8 +31,6 @@ jobs:
               npm publish -w "$name"
             fi
           done
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   tag-release:
     needs: publish
