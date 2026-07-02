@@ -93,25 +93,31 @@ describe('MCPServer', () => {
     describe('tools/call — toolforge_seo_generate', () => {
         it('returns multi-platform SEO metadata for valid input', async () => {
             const server = createServer({ apiKey: 'test-key' });
+
+            function buildTimestamps(count, prefix) {
+                return Array.from({ length: count }, (_, i) => ({
+                    time: `${String(Math.floor(i * 2)).padStart(2, '0')}:${String((i * 120) % 60).padStart(2, '0')}`,
+                    label: `${prefix} seg ${i + 1}`,
+                }));
+            }
+
             const mockReturn = {
                 youtube: {
                     suggestedTitle: 'YT Title',
                     description: 'YT desc with more detail',
+                    formattedDescription: '📌 Summary\n⏱️ Timestamps\n🔗 Links\n#SEO #Content',
                     tags: ['yt1', 'yt2', 'yt3'],
                     keywords: ['kw1', 'kw2'],
                     hashtags: ['#YT1', '#YT2'],
                     thumbnailText: 'YT Thumbnail',
                     thumbnailIdea: 'Bold text over dark background',
                     hook: 'Opening hook for YouTube',
-                    timestamps: [
-                        { time: '00:00', label: 'Start' },
-                        { time: '05:00', label: 'Middle' },
-                        { time: '10:00', label: 'End' },
-                    ],
+                    timestamps: buildTimestamps(8, 'YT'),
                 },
                 tiktok: {
                     suggestedTitle: 'TT Title',
                     description: 'TT desc with hook',
+                    formattedDescription: 'text hook\n#TT1 #TT2 #TT3',
                     tags: ['tt1', 'tt2'],
                     keywords: ['kw3'],
                     hashtags: ['#TT1', '#TT2', '#TT3'],
@@ -123,16 +129,20 @@ describe('MCPServer', () => {
                 facebook: {
                     suggestedTitle: 'FB Title',
                     description: 'FB desc with engagement',
+                    formattedDescription: '📌 Key points\n• Point 1\n• Point 2\nCTA: Comment\n#FB #SEO',
                     tags: ['fb1', 'fb2', 'fb3'],
                     keywords: ['kw4', 'kw5'],
                     hashtags: ['#FB1'],
                     thumbnailText: 'FB Thumbnail',
                     thumbnailIdea: 'Split image with CTA',
                     hook: 'Feed engagement opener',
-                    timestamps: [
-                        { time: '00:00', label: 'Intro' },
-                        { time: '03:00', label: 'Key point' },
-                    ],
+                    timestamps: buildTimestamps(6, 'FB'),
+                },
+                hashtagMatrix: {
+                    youtube: ['#YT1', '#YT2', '#SEO', '#Content', '#Marketing', '#Video', '#Tips', '#Growth'],
+                    tiktok: ['#TT1', '#TT2', '#TT3', '#Viral', '#Trending', '#FYP', '#Content', '#Tips'],
+                    facebook: ['#FB1', '#FB2', '#FB3', '#Social', '#Video', '#Engagement', '#Reach', '#Tips'],
+                    crossPlatform: ['#ContentCreation', '#VideoMarketing', '#DigitalStrategy', '#CreatorTips'],
                 },
             };
             server.llm = mockLlm(mockReturn);
