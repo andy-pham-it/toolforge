@@ -11,6 +11,7 @@
     "packages/ba-support",
     "packages/coding-support",
     "packages/mcp",
-    "packages/content-operations"
+    "packages/content-operations",
+    "packages/content-research"
   ]
 }

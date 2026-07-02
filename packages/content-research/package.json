@@ -1,0 +1,25 @@
+{
+  "name": "@andy-toolforge/content-research",
+  "version": "0.1.0",
+  "description": "Domain package for content research, summarization, idea generation, article management, and competitor analysis.",
+  "main": "lib/index.js",
+  "scripts": {
+    "test": "node --test",
+    "postinstall": "node skills/postinstall.js"
+  },
+  "keywords": [
+    "toolforge",
+    "content",
+    "research",
+    "seo",
+    "automation",
+    "llm",
+    "browser"
+  ],
+  "author": "Andy Pham",
+  "license": "MIT",
+  "dependencies": {
+    "@andy-toolforge/core": "^1.0.0",
+    "puppeteer": "^22.0.0"
+  }
+}
