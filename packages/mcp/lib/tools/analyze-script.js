@@ -48,10 +48,12 @@ async function handler(llm, args) {
     // Build formattedSummary from segments
     const formattedSummary = segments.map((seg, i) => {
         const time = seg.startTime ? `[${seg.startTime}${seg.endTime ? `-${seg.endTime}` : ''}]` : '';
+        const mainPrompt = seg.prompts?.a || seg.prompt || '';
+        const visualType = seg.visualType || seg.visualStyle || '';
         return `## ${i + 1}. ${seg.title || seg.segmentTitle || `Segment ${i + 1}`} ${time}\n` +
             (seg.summary ? `${seg.summary}\n` : '') +
-            (seg.visualStyle ? `Style: ${seg.visualStyle}\n` : '') +
-            (seg.prompt ? `Prompt: ${seg.prompt}\n` : '');
+            (visualType ? `Style: ${visualType}\n` : '') +
+            (mainPrompt ? `Prompt: ${mainPrompt}\n` : '');
     }).join('\n');
 
     return { segments, formattedSummary };
