@@ -1,16 +1,16 @@
-const { describe, it, mock } = require('node:test');
+const { describe, it } = require('node:test');
 const assert = require('node:assert/strict');
 const { handler } = require('./suggest-cover');
 
 describe('suggest_cover handler', () => {
     function mockLlm(returnValue) {
         return {
-            chat: mock.fn(async (_sys, _user, jsonMode) => {
+            chat: async (_sys, _user, jsonMode) => {
                 assert.equal(jsonMode, true);
                 return typeof returnValue === 'string'
                     ? returnValue
                     : JSON.stringify(returnValue);
-            }),
+            },
         };
     }
 

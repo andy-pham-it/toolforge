@@ -1,4 +1,4 @@
-const { describe, it, before, mock } = require('node:test');
+const { describe, it, before } = require('node:test');
 const assert = require('node:assert/strict');
 const MCPServer = require('./mcp-server');
 const { createServer } = require('./index');
@@ -8,11 +8,11 @@ function mockLlm(returnValue) {
     return {
         apiKey: 'test-key',
         model: 'gemini-2.0-flash',
-        chat: mock.fn(async (_system, _user, _jsonMode) => {
+        chat: async (_system, _user, _jsonMode) => {
             return typeof returnValue === 'string'
                 ? returnValue
                 : JSON.stringify(returnValue);
-        }),
+        },
     };
 }
 

@@ -1,4 +1,4 @@
-const { describe, it, mock } = require('node:test');
+const { describe, it } = require('node:test');
 const assert = require('node:assert/strict');
 const { handler } = require('./analyze-script');
 
@@ -7,9 +7,9 @@ describe('analyze_script handler', () => {
         return {
             apiKey: 'test-key',
             model: 'gemini-2.0-flash',
-            analyzeScript: mock.fn(async (_script, _title, _outline, _density, _lang) => {
+            analyzeScript: async (_script, _title, _outline, _density, _lang) => {
                 return result;
-            }),
+            },
         };
     }
 
