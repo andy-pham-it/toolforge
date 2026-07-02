@@ -28,7 +28,7 @@ jobs:
               echo "⏭️  $name@$version already published"
             else
               echo "📦 Publishing $name@$version..."
-              npm publish -w "$name"
+              npm publish -w "$name" --access public
             fi
           done
 
