@@ -27,3 +27,6 @@ coverage/
 
 # Generated skill symlinks (created by postinstall scripts)
 .opencode/skills/
+
+# Generated .opencode artifacts inside packages (postinstall output, not source)
+packages/*/.opencode/
