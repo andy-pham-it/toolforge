@@ -83,7 +83,7 @@ describe('MCPServer', () => {
             assert(names.includes('andy_toolforge_article_manager'));
             assert(names.includes('andy_toolforge_competitor_analyzer'));
 
-            // Check schemas
+            // Check at least one tool has a proper schema
             const seo = tools.find(t => t.name === 'toolforge_seo_generate');
             assert(seo.inputSchema);
             assert(seo.inputSchema.required.includes('script'));
@@ -445,9 +445,9 @@ describe('MCPServer', () => {
             it('skips plugin loading when discover is false', () => {
                 const server = createServer({ apiKey: 'test-key', discover: false });
                 const names = Object.keys(server._tools);
-                // Built-in: 9 tools + toolforge_suggest = 10
-                // No plugin tools should be present
-                assert.equal(names.length, 10, `expected 10 tools (no plugins), got ${names.length}`);
+                // All tools now come from plugins (migrated from built-in).
+                // With discover=false, only toolforge_suggest should be present.
+                assert.equal(names.length, 1, `expected 1 tool (toolforge_suggest only), got ${names.length}`);
                 assert(!names.includes('toolforge_content_research'), 'plugin tools should not load when discover=false');
             });
         });

@@ -1,6 +1,14 @@
 /**
- * toolforge_seo_generate tool — Generate SEO metadata for YouTube, TikTok, and Facebook in one call.
+ * @andy-toolforge/seo-generation MCP plugin tools.
+ * Loaded automatically by @andy-toolforge/mcp discovery mechanism.
+ *
+ * These tools were migrated from built-in MCP tools (packages/mcp/lib/tools/)
+ * to plugin discovery. Names are preserved for backward compatibility.
  */
+
+// ---------------------------------------------------------------------------
+// toolforge_seo_generate — uses raw LLM chat
+// ---------------------------------------------------------------------------
 const definition = {
     name: 'toolforge_seo_generate',
     description: 'Generate SEO metadata (title, description, formattedDescription, tags, keywords, hashtags, timestamps) for a video/audio script across YouTube, TikTok, and Facebook simultaneously',
@@ -25,7 +33,7 @@ Return ONLY a valid JSON object with this exact structure:
   "youtube": {
     "suggestedTitle": "YouTube SEO title (max 60 chars, include main keyword)",
     "description": "YouTube SEO description (500-1000 chars, keyword-rich, include timestamps summary, CTAs, links mention)",
-    "formattedDescription": "Ready-to-paste YouTube description with \\n line breaks:\\n📌 Content summary paragraph\\n⏱️ Timestamps per segment (MM:SS - Label)\\n🔗 Links/Social\\n#hashtags",
+    "formattedDescription": "Ready-to-paste YouTube description with \\\\n line breaks:\\\\n📌 Content summary paragraph\\\\n⏱️ Timestamps per segment (MM:SS - Label)\\\\n🔗 Links/Social\\\\n#hashtags",
     "tags": ["tag1", "tag2", ... 10-15 relevant tags sorted by relevance],
     "keywords": ["keyword1", "keyword2", ... 5-8 keywords],
     "hashtags": ["#Hashtag1", "#Hashtag2", ... 3-5 platform-specific hashtags],
@@ -41,7 +49,7 @@ Return ONLY a valid JSON object with this exact structure:
   "tiktok": {
     "suggestedTitle": "TikTok caption / hook (max 40 chars, high curiosity)",
     "description": "TikTok caption with narrative hook + hashtag block (200-400 chars)",
-    "formattedDescription": "Ready-to-paste TikTok caption with \\n line breaks:\\ntext hook paragraph\\n5-8 hashtags",
+    "formattedDescription": "Ready-to-paste TikTok caption with \\\\n line breaks:\\\\ntext hook paragraph\\\\n5-8 hashtags",
     "tags": ["tag1", "tag2", ... 5-8 trending-style tags],
     "keywords": ["keyword1", "keyword2", ... 3-5 keywords],
     "hashtags": ["#Hashtag1", "#Hashtag2", ... 5-8 hashtags including trending ones],
@@ -53,7 +61,7 @@ Return ONLY a valid JSON object with this exact structure:
   "facebook": {
     "suggestedTitle": "Facebook title (max 60 chars, shareable, curiosity-driven)",
     "description": "Facebook post description (400-800 chars, engagement hook, question, CTAs)",
-    "formattedDescription": "Ready-to-paste Facebook description with \\n line breaks:\\n📌 key takeaways as bullets\\nCTA / question\\n3-5 hashtags",
+    "formattedDescription": "Ready-to-paste Facebook description with \\\\n line breaks:\\\\n📌 key takeaways as bullets\\\\nCTA / question\\\\n3-5 hashtags",
     "tags": ["tag1", "tag2", ... 8-12 relevant tags],
     "keywords": ["keyword1", "keyword2", ... 5-8 keywords],
     "hashtags": ["#Hashtag1", "#Hashtag2", ... 3-5 hashtags],
@@ -92,7 +100,6 @@ async function handler(llm, args) {
     const raw = await llm.chat(systemPrompt, userPrompt, true);
     const parsed = JSON.parse(raw);
 
-    // Validate response shape — all 3 platforms required
     for (const platform of ['youtube', 'tiktok', 'facebook']) {
         const p = parsed[platform];
         if (!p || !p.suggestedTitle || !Array.isArray(p.tags)) {
@@ -100,7 +107,6 @@ async function handler(llm, args) {
         }
     }
 
-    // Validate timestamp count (YouTube and Facebook need substantial timestamps)
     if (!parsed.youtube.timestamps || parsed.youtube.timestamps.length < 6) {
         throw new Error(`YouTube timestamps insufficient: got ${parsed.youtube.timestamps?.length || 0}, need at least 6`);
     }
@@ -108,7 +114,6 @@ async function handler(llm, args) {
         throw new Error(`Facebook timestamps insufficient: got ${parsed.facebook.timestamps?.length || 0}, need at least 4`);
     }
 
-    // Validate hashtagMatrix
     if (!parsed.hashtagMatrix || !Array.isArray(parsed.hashtagMatrix.youtube) || !Array.isArray(parsed.hashtagMatrix.tiktok) || !Array.isArray(parsed.hashtagMatrix.facebook)) {
         throw new Error('LLM returned incomplete data: hashtagMatrix missing platform arrays');
     }
@@ -116,4 +121,8 @@ async function handler(llm, args) {
     return parsed;
 }
 
-module.exports = { definition, handler };
+module.exports = function () {
+    return [
+        { definition, handler },
+    ];
+};

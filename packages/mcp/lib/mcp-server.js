@@ -3,16 +3,6 @@ const path = require('path');
 const fs = require('fs');
 const readline = require('readline');
 
-const seoGenerate = require('./tools/seo-generate');
-const analyzeScript = require('./tools/analyze-script');
-const generatePrompts = require('./tools/generate-prompts');
-const generateMapping = require('./tools/generate-mapping');
-const suggestCover = require('./tools/suggest-cover');
-const contentSummarizer = require('./tools/content-summarizer');
-const contentIdeator = require('./tools/content-ideator');
-const contentManager = require('./tools/content-manager');
-const contentAnalyzer = require('./tools/content-analyzer');
-
 class MCPServer {
     constructor(config) {
         this.apiKey = config.apiKey;
@@ -21,17 +11,7 @@ class MCPServer {
         this.config = config;
         this._llm = null;
 
-        this._tools = {
-            toolforge_seo_generate: seoGenerate,
-            analyze_script: analyzeScript,
-            generate_prompts: generatePrompts,
-            generate_mapping: generateMapping,
-            suggest_cover: suggestCover,
-            andy_toolforge_content_summarizer: contentSummarizer,
-            andy_toolforge_content_ideator: contentIdeator,
-            andy_toolforge_article_manager: contentManager,
-            andy_toolforge_competitor_analyzer: contentAnalyzer,
-        };
+        this._tools = {};
 
         if (config.discover !== false) {
             this._loadPluginTools();

@@ -11,7 +11,7 @@
     "bin/"
   ],
   "scripts": {
-    "test": "node --test lib/*.test.js lib/tools/*.test.js"
+    "test": "node --test lib/*.test.js"
   },
   "dependencies": {
     "@andy-toolforge/core": "^1.0.0",
