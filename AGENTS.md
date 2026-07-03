@@ -113,7 +113,25 @@ Không tạo package mới nếu chỉ có một dự án dùng — cứ để c
 - Tất cả package theo semver
 - Pre-release: `-alpha.1`, `-beta.1`
 
-## 8. Files chiến lược — đọc trước khi quyết định
+## 8. WHERE TO LOOK
+
+| Task | Location |
+|------|----------|
+| Need an LLM client, browser, logger, or queue | `packages/core/lib/` |
+| Generate podcast/video images | `packages/footage-generation/lib/` |
+| Generate SEO metadata (title, desc, tags) | `packages/seo-generation/lib/` |
+| Research content, summarize, generate ideas | `packages/content-research/lib/` |
+| Content ops: plan, create, distribute, analyze | `packages/content-operations/lib/` |
+| Track project tasks, time, reports | `packages/pm-support/lib/` |
+| Analyze code complexity, dependencies | `packages/coding-support/lib/` |
+| Write/outline/review books | `packages/book-writing/lib/` |
+| Competitor/SWOT/market research | `packages/ba-support/lib/` |
+| MCP server tools (media, SEO, Gemini) | `packages/mcp/lib/tools/` |
+| Add a new tool to the MCP server | `packages/mcp/lib/tools/<name>.js` |
+| Add skill prompt files | `packages/<domain>/skills/` |
+| Publish a package | Run `npm publish -w @andy-toolforge/<pkg>` |
+
+## 9. Files chiến lược — đọc trước khi quyết định
 
 | File | Nội dung |
 |------|----------|
@@ -123,7 +141,7 @@ Không tạo package mới nếu chỉ có một dự án dùng — cứ để c
 | `CONTRIBUTING.md` | Hướng dẫn dev |
 | `packages/*/lib/index.js` | Export của từng package |
 
-## 9. Code Map
+## 10. Code Map
 
 Exports by package (key symbols from Serena analysis):
 
