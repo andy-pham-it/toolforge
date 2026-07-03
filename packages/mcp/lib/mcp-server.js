@@ -159,7 +159,6 @@ Respond with a JSON object:
             },
         };
 
-        suggestTool.handler._toolCache = null;
         Object.defineProperty(suggestTool, '_toolCache', {
             get: () => this._tools,
         });

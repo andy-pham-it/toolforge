@@ -2,7 +2,6 @@
  * @andy-toolforge/content-operations MCP plugin tools.
  * Loaded automatically by @andy-toolforge/mcp discovery mechanism.
  */
-const { LLMClient } = require('@andy-toolforge/core');
 
 const definition = {
     name: 'toolforge_content_research',

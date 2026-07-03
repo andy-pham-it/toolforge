@@ -1,5 +1,6 @@
 const { describe, it, before } = require('node:test');
 const assert = require('node:assert/strict');
+const fs = require('fs');
 const MCPServer = require('./mcp-server');
 const { createServer } = require('./index');
 
@@ -382,6 +383,73 @@ describe('MCPServer', () => {
             }
             assert(resp.error);
             assert.equal(resp.error.code, -32700);
+        });
+    });
+
+    describe('Plugin discovery mechanism', () => {
+        describe('_findToolforgeScopeDir', () => {
+            it('returns a non-null path in the monorepo environment', () => {
+                const server = createServer({ apiKey: 'test-key', discover: false });
+                const dir = server._findToolforgeScopeDir();
+                assert(dir, 'scope dir should not be null');
+                assert(dir.endsWith('@andy-toolforge'), `expected @andy-toolforge suffix, got: ${dir}`);
+                assert(fs.existsSync(dir), 'scope dir should exist on disk');
+            });
+        });
+
+        describe('toolforge_suggest', () => {
+            it('is registered in tools/list', () => {
+                const server = createServer({ apiKey: 'test-key', discover: false });
+                const names = server.getToolList().map(t => t.name);
+                assert(names.includes('toolforge_suggest'));
+            });
+
+            it('handler returns JSON with mock LLM', async () => {
+                const server = createServer({ apiKey: 'test-key', discover: false });
+                server.llm = mockLlm(JSON.stringify({
+                    bestTool: 'analyze_script',
+                    reason: 'Best tool for script analysis',
+                    suggestedArgs: { script: '...', title: '...' },
+                }));
+                const tool = server._tools['toolforge_suggest'];
+                assert(tool, 'toolforge_suggest should exist');
+                const result = await tool.handler(server.llm, { task: 'analyze a podcast script' });
+                assert.equal(result.bestTool, 'analyze_script');
+                assert(result.reason);
+                assert(result.suggestedArgs);
+            });
+
+            it('throws error for missing task argument', async () => {
+                const server = createServer({ apiKey: 'test-key', discover: false });
+                const tool = server._tools['toolforge_suggest'];
+                await assert.rejects(
+                    () => tool.handler(server.llm, {}),
+                    /Missing required argument: task/,
+                );
+            });
+        });
+
+        describe('config.discover', () => {
+            it('loads plugin tools by default (discover not set)', () => {
+                const server = createServer({ apiKey: 'test-key' });
+                const names = Object.keys(server._tools);
+                // Built-in: 9 tools + toolforge_suggest = 10
+                // Plugins from content-operations, ba-support, book-writing = 1 + 5 + 4 = 10
+                // Total expected: at least 14
+                assert(names.length >= 14, `expected >= 14 tools, got ${names.length}`);
+                assert(names.includes('toolforge_content_research'), 'content-operations plugin should load');
+                assert(names.includes('toolforge_competitor_analysis'), 'ba-support plugin should load');
+                assert(names.includes('toolforge_book_outline'), 'book-writing plugin should load');
+            });
+
+            it('skips plugin loading when discover is false', () => {
+                const server = createServer({ apiKey: 'test-key', discover: false });
+                const names = Object.keys(server._tools);
+                // Built-in: 9 tools + toolforge_suggest = 10
+                // No plugin tools should be present
+                assert.equal(names.length, 10, `expected 10 tools (no plugins), got ${names.length}`);
+                assert(!names.includes('toolforge_content_research'), 'plugin tools should not load when discover=false');
+            });
         });
     });
 });
