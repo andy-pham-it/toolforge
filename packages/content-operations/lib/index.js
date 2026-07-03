@@ -3,6 +3,7 @@ const ContentPlanner = require('./planner');
 const ContentCreator = require('./creator');
 const ContentDistributor = require('./distributor');
 const ContentAnalytics = require('./analytics');
+const ContentPatternLinter = require('./linter');
 
 module.exports = {
     ContentResearcher,
@@ -10,4 +11,5 @@ module.exports = {
     ContentCreator,
     ContentDistributor,
     ContentAnalytics,
+    ContentPatternLinter,
 };
