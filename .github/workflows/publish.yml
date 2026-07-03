@@ -42,5 +42,11 @@ jobs:
       - name: Create git tag with root version
         run: |
           VERSION=$(node -p "require('./package.json').version")
-          git tag "v$VERSION"
-          git push origin "v$VERSION"
+          TAG="v$VERSION"
+          if git ls-remote --tags origin "refs/tags/$TAG" | grep -q .; then
+            echo "⏭️  Tag $TAG already exists remotely — skipping"
+          else
+            echo "🏷️  Creating tag $TAG..."
+            git tag "$TAG"
+            git push origin "$TAG"
+          fi
