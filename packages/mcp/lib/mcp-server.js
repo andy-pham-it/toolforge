@@ -1,5 +1,8 @@
 const { LLMClient } = require('@andy-toolforge/core');
+const path = require('path');
+const fs = require('fs');
 const readline = require('readline');
+
 const seoGenerate = require('./tools/seo-generate');
 const analyzeScript = require('./tools/analyze-script');
 const generatePrompts = require('./tools/generate-prompts');
@@ -15,7 +18,9 @@ class MCPServer {
         this.apiKey = config.apiKey;
         this.provider = config.provider || 'gemini';
         this.model = config.model || (this.provider === 'groq' ? 'llama-3.3-70b-versatile' : 'gemini-2.0-flash');
+        this.config = config;
         this._llm = null;
+
         this._tools = {
             toolforge_seo_generate: seoGenerate,
             analyze_script: analyzeScript,
@@ -27,6 +32,11 @@ class MCPServer {
             andy_toolforge_article_manager: contentManager,
             andy_toolforge_competitor_analyzer: contentAnalyzer,
         };
+
+        if (config.discover !== false) {
+            this._loadPluginTools();
+        }
+        this._tools['toolforge_suggest'] = this._createSuggestTool();
     }
 
     /** Lazily create LLMClient (so tests can inject mock) */
@@ -44,6 +54,117 @@ class MCPServer {
     /** Override LLM client (for tests) */
     set llm(client) {
         this._llm = client;
+    }
+
+    /**
+     * Discover and load mcp-tools.js from all installed @andy-toolforge packages.
+     * Scans node_modules/@andy-toolforge/<pkg>/mcp-tools.js via require.resolve chain.
+     * Each file exports a function(config) => array of { definition, handler }.
+     * Built-in tools take priority — plugin tools with conflicting names are skipped.
+     * Error isolation: one failing package never breaks other tools.
+     */
+    _loadPluginTools() {
+        const scopeDir = this._findToolforgeScopeDir();
+        if (!scopeDir) return;
+
+        let entries;
+        try {
+            entries = fs.readdirSync(scopeDir);
+        } catch {
+            return;
+        }
+
+        for (const pkgName of entries.sort()) {
+            const mcpToolsPath = path.join(scopeDir, pkgName, 'mcp-tools.js');
+            if (!fs.existsSync(mcpToolsPath)) continue;
+
+            try {
+                const factory = require(mcpToolsPath);
+                const tools = typeof factory === 'function' ? factory(this.config) : factory;
+                if (!Array.isArray(tools)) continue;
+
+                for (const tool of tools) {
+                    const name = tool.definition?.name;
+                    if (!name || typeof tool.handler !== 'function') continue;
+                    if (this._tools[name]) {
+                        console.warn(`[mcp] Plugin tool "${name}" from @andy-toolforge/${pkgName} conflicts with built-in — skipping`);
+                        continue;
+                    }
+                    this._tools[name] = tool;
+                }
+            } catch (err) {
+                console.error(`[mcp] Failed to load plugin tools from @andy-toolforge/${pkgName}:`, err.message);
+            }
+        }
+    }
+
+    /**
+     * Find the node_modules/@andy-toolforge/ directory by traversing up from __dirname.
+     * Works for both workspace monorepo dev and production installs.
+     */
+    _findToolforgeScopeDir() {
+        let dir = path.resolve(__dirname);
+        const root = path.parse(dir).root;
+        while (dir !== root) {
+            const candidate = path.join(dir, 'node_modules', '@andy-toolforge');
+            if (fs.existsSync(candidate)) return candidate;
+            dir = path.dirname(dir);
+        }
+        return null;
+    }
+
+    /**
+     * Build the built-in toolforge_suggest tool.
+     * Uses LLM to route natural-language tasks to the best registered tool.
+     */
+    _createSuggestTool() {
+        const suggestTool = {
+            definition: {
+                name: 'toolforge_suggest',
+                description: 'Suggest the best @andy-toolforge tool for a given task in natural language',
+                inputSchema: {
+                    type: 'object',
+                    properties: {
+                        task: {
+                            type: 'string',
+                            description: 'What do you want to do in natural language (e.g. "generate SEO metadata for a podcast episode", "analyze a script for visual segments")',
+                        },
+                    },
+                    required: ['task'],
+                },
+            },
+            handler: async (llm, args) => {
+                const { task } = args;
+                if (!task) throw new Error('Missing required argument: task');
+
+                const toolList = Object.entries(suggestTool._toolCache || this._tools)
+                    .filter(([name]) => name !== 'toolforge_suggest')
+                    .map(([name, t]) => `  - ${name}: ${t.definition.description || 'No description'}`)
+                    .join('\n');
+
+                const systemPrompt = `You are a tool router for the @andy-toolforge MCP server. Given a user's task, suggest the best tool to use.
+
+Available tools:
+${toolList}
+
+Respond with a JSON object:
+{
+  "bestTool": "tool_name",
+  "reason": "Short reason why this tool is the best match",
+  "suggestedArgs": { ... key args to pass }
+}`;
+
+                const raw = await llm.chat(systemPrompt, task, true);
+                return JSON.parse(raw);
+            },
+        };
+
+        suggestTool.handler._toolCache = null;
+        Object.defineProperty(suggestTool, '_toolCache', {
+            get: () => this._tools,
+        });
+
+        return suggestTool;
     }
 
     /** Return tool definitions for tools/list */
