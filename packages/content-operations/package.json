@@ -1,6 +1,6 @@
 {
   "name": "@andy-toolforge/content-operations",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Toolforge domain: content operations — research, plan, create, distribute, analyze",
   "main": "lib/index.js",
   "repository": {

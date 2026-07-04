@@ -1,6 +1,6 @@
 {
   "name": "@andy-toolforge/mcp",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "MCP server tools for media content generation — SEO, script analysis via Gemini",
   "main": "lib/index.js",
   "bin": {

@@ -1,6 +1,6 @@
 {
   "name": "@andy-toolforge/content-research",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Domain package for content research, summarization, idea generation, article management, and competitor analysis.",
   "main": "lib/index.js",
   "scripts": {

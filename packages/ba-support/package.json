@@ -1,6 +1,6 @@
 {
   "name": "@andy-toolforge/ba-support",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Toolforge domain: Business analysis support — competitor analysis, SWOT, pricing analysis, market trends, report generation",
   "main": "lib/index.js",
   "repository": {

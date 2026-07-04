@@ -1,6 +1,6 @@
 {
   "name": "@andy-toolforge/seo-generation",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Toolforge domain: SEO content generation for YouTube, TikTok, blog",
   "main": "lib/index.js",
   "repository": {

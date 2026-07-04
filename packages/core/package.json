@@ -1,6 +1,6 @@
 {
   "name": "@andy-toolforge/core",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Toolforge foundation: browser manager, LLM client, logger, job queue",
   "main": "lib/index.js",
   "repository": {
