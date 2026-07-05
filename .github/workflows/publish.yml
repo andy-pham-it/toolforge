@@ -21,6 +21,7 @@ jobs:
         with:
           node-version: 20
           registry-url: 'https://registry.npmjs.org'
+          scope: '@andy-toolforge'
       - run: npm ci
       - name: Publish changed packages
         run: |
