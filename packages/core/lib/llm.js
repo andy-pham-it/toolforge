@@ -17,7 +17,7 @@ class LLMClient {
     _getBaseUrl(provider) {
         const urls = {
             groq: 'https://api.groq.com/openai/v1',
-            gemini: 'https://generativelanguage.googleapis.com/v1beta/openai/',
+            gemini: 'https://generativelanguage.googleapis.com/v1beta/openai',
             openai: 'https://api.openai.com/v1',
         };
         return urls[provider] || urls.groq;

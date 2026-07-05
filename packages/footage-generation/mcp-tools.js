@@ -37,7 +37,7 @@ async function analyzeScriptHandler(llm, args) {
     const footageLlm = typeof llm.analyzeScript === 'function'
         ? llm
         : new FootageLLMClient({
-            provider: 'gemini',
+            provider: llm.provider || 'gemini',
             apiKey: llm.apiKey,
             model: llm.model,
         });
