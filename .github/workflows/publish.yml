@@ -23,8 +23,21 @@ jobs:
           registry-url: 'https://registry.npmjs.org'
           scope: '@andy-toolforge'
       - run: npm ci
-      - name: Publish changed packages
+      - name: Debug npm auth config
         run: |
+          echo "=== npm whoami ==="
+          npm whoami 2>&1 || echo "FAILED: not authenticated"
+          echo "=== configured registry ==="
+          npm config get registry
+          echo "=== scope registry ==="
+          npm config get @andy-toolforge:registry
+      - name: Publish changed packages
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          # Ensure auth is explicitly set for publish
+          npm config set //registry.npmjs.org/:_authToken "$NODE_AUTH_TOKEN"
+          npm config set @andy-toolforge:registry "https://registry.npmjs.org/"
           for pkg in packages/*/; do
             name=$(node -p "require('./$pkg/package.json').name")
             version=$(node -p "require('./$pkg/package.json').version")
@@ -33,7 +46,7 @@ jobs:
               echo "⏭️  $name@$version already published"
             else
               echo "📦 Publishing $name@$version..."
-              npm publish -w "$name" --access public
+              (cd "$pkg" && npm publish --access public)
             fi
           done
 
