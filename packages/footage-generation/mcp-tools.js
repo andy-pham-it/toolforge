@@ -331,6 +331,84 @@ async function suggestCoverHandler(llm, args) {
 }
 
 // ---------------------------------------------------------------------------
+// generate_batch_image — spawns BrowserImageGenerator in background
+// ---------------------------------------------------------------------------
+const generateBatchImageDef = {
+    name: 'generate_batch_image',
+    description: 'Generate images for script segments using Gemini Images browser automation (free). Accepts segments from generate_prompts, spawns batch generation in background. Returns immediately with PID. Check output directory when done.',
+    inputSchema: {
+        type: 'object',
+        properties: {
+            segments: {
+                type: 'array',
+                description: 'Array of segment objects (from generate_prompts or analyze_script). Each must have title and prompts map.',
+                items: { type: 'object' },
+            },
+            outputDir: {
+                type: 'string',
+                description: 'Output directory. Defaults to ./images in current working directory.',
+            },
+        },
+        required: ['segments'],
+    },
+};
+
+async function generateBatchImageHandler(llm, args) {
+    const { segments, outputDir } = args;
+
+    if (!segments || !Array.isArray(segments) || segments.length === 0) {
+        throw new Error('Missing required argument: segments (non-empty array)');
+    }
+
+    const path = require('path');
+    const fs = require('fs');
+    const { spawn } = require('child_process');
+    const os = require('os');
+
+    const resolvedOutputDir = outputDir
+        ? path.resolve(outputDir)
+        : path.join(process.cwd(), 'images');
+    fs.mkdirSync(resolvedOutputDir, { recursive: true });
+
+    // Write temp prompts file
+    const PromptParser = require('./lib/prompt-parser');
+    const prompts = PromptParser.fromSegments(segments);
+    const promptsFile = path.join(os.tmpdir(), `gemini-batch-${Date.now()}.prompts.md`);
+    const content = prompts.map((p, i) => {
+        const segIndex = Math.floor(i / 5) + 1;
+        const label = ['a', 'b', 'c', 'd', 'e'][i % 5];
+        const labelNames = { a: 'chính', b: 'phụ 1', c: 'phụ 2', d: 'phụ 3', e: 'phụ 4' };
+        return [
+            `### 📌 Phân cảnh ${segIndex}: ${p.name}`,
+            `**--- Ảnh ${label.toUpperCase()} (${labelNames[label]}) ---**`,
+            `* **Tên file:** \`${p.file}\``,
+            '* **🚀 Prompt:**',
+            '```text',
+            p.prompt,
+            '```',
+            '',
+        ].join('\n');
+    }).join('\n');
+    fs.writeFileSync(promptsFile, content, 'utf-8');
+
+    // Spawn CLI in background
+    const cliPath = path.join(__dirname, '_private/cli.js');
+    const child = spawn('node', [cliPath, promptsFile, resolvedOutputDir], {
+        stdio: 'ignore',
+        detached: true,
+    });
+    child.unref();
+
+    return {
+        pid: child.pid,
+        outputDir: resolvedOutputDir,
+        promptsFile: promptsFile,
+        promptsCount: prompts.length,
+        message: `Batch generation started (PID ${child.pid}). ${prompts.length} prompts. Check ${resolvedOutputDir} when done.`,
+    };
+}
+
+// ---------------------------------------------------------------------------
 // Exports
 // ---------------------------------------------------------------------------
 module.exports = function () {
@@ -339,5 +417,6 @@ module.exports = function () {
         { definition: generatePromptsDef, handler: generatePromptsHandler },
         { definition: generateMappingDef, handler: generateMappingHandler },
         { definition: suggestCoverDef, handler: suggestCoverHandler },
+        { definition: generateBatchImageDef, handler: generateBatchImageHandler },
     ];
 };
