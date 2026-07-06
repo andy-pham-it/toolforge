@@ -1,6 +1,6 @@
 {
   "name": "@andy-toolforge/footage-generation",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "description": "Toolforge domain: generate images, videos, and visuals for podcasts and content",
   "main": "lib/index.js",
   "repository": {
@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@andy-toolforge/core": "^1.0.0",
+    "puppeteer": "^25.2.1",
     "sharp": "^0.35.2"
   }
 }
