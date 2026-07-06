@@ -1,6 +1,6 @@
 {
   "name": "@andy-toolforge/coding-support",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Toolforge domain: Code analysis tools — line counting, dead code detection, dependency graphs, complexity reports",
   "main": "lib/index.js",
   "repository": {

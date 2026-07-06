@@ -1,6 +1,6 @@
 {
   "name": "@andy-toolforge/pm-support",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Toolforge domain: Project management tools — task tracker, meeting assistant, project planner",
   "main": "lib/index.js",
   "repository": {
