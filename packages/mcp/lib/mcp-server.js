@@ -7,9 +7,13 @@ class MCPServer {
     constructor(config) {
         this.apiKey = config.apiKey;
         this.provider = config.provider || 'gemini';
-        this.model = config.model || (this.provider === 'groq' ? 'llama-3.3-70b-versatile' : 'gemini-3.1-flash-lite');
         this.config = config;
         this._llm = null;
+        this._currentModelIdx = 0;
+
+        // Model chain for automatic fallback
+        this.models = config.models || [config.model || (this.provider === 'groq' ? 'llama-3.3-70b-versatile' : 'gemini-3.1-flash-lite')];
+        if (typeof this.models === 'string') this.models = [this.models];
 
         this._tools = {};
 
@@ -19,7 +23,12 @@ class MCPServer {
         this._tools['toolforge_suggest'] = this._createSuggestTool();
     }
 
-    /** Lazily create LLMClient (so tests can inject mock) */
+    /** Current model name from the chain */
+    get model() {
+        return this.models[this._currentModelIdx] || this.models[0];
+    }
+
+    /** Lazily create LLMClient using current model (so tests can inject mock) */
     get llm() {
         if (!this._llm) {
             this._llm = new LLMClient({
@@ -34,6 +43,32 @@ class MCPServer {
     /** Override LLM client (for tests) */
     set llm(client) {
         this._llm = client;
+    }
+
+    /** Switch to next model in chain (fallback on failure) */
+    _nextModel() {
+        this._currentModelIdx++;
+        if (this._currentModelIdx >= this.models.length) {
+            this._currentModelIdx = 0; // wrap around
+        }
+        this._llm = null; // force recreate on next get
+        console.warn(`[mcp] Falling back to model: ${this.model}`);
+    }
+
+    /** True if error looks retryable (rate-limit, quota, server 5xx) */
+    _isRetryableError(err) {
+        const msg = (err.message || '').toLowerCase();
+        const code = err.status || err.statusCode || 0;
+        return (
+            code === 429 || code === 500 || code === 502 || code === 503 ||
+            msg.includes('rate limit') ||
+            msg.includes('rate_limit') ||
+            msg.includes('quota') ||
+            msg.includes('429') ||
+            msg.includes('503') ||
+            msg.includes('resource exhausted') ||
+            msg.includes('too many requests')
+        );
     }
 
     /**
@@ -235,21 +270,29 @@ Respond with a JSON object:
             return { jsonrpc: '2.0', id, error: { code: -32602, message: `Unknown tool: ${params.name}` } };
         }
 
-        try {
-            const result = await tool.handler(this.llm, params.arguments || {});
-            return {
-                jsonrpc: '2.0',
-                id,
-                result: {
-                    content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
-                },
-            };
-        } catch (err) {
-            return {
-                jsonrpc: '2.0',
-                id,
-                error: { code: -32000, message: err.message, data: err.stack },
-            };
+        const maxAttempts = this.models.length;
+        for (let attempt = 0; attempt < maxAttempts; attempt++) {
+            try {
+                const result = await tool.handler(this.llm, params.arguments || {});
+                return {
+                    jsonrpc: '2.0',
+                    id,
+                    result: {
+                        content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+                    },
+                };
+            } catch (err) {
+                if (this._isRetryableError(err) && attempt < maxAttempts - 1) {
+                    console.warn(`[mcp] Tool "${params.name}" failed with ${err.message} — retrying with next model`);
+                    this._nextModel();
+                    continue;
+                }
+                return {
+                    jsonrpc: '2.0',
+                    id,
+                    error: { code: -32000, message: err.message, data: err.stack },
+                };
+            }
         }
     }
 }
