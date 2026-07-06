@@ -122,6 +122,21 @@ class BrowserImageGenerator extends EventEmitter {
         this.language = options.language || DEFAULTS.language;
         this.logger = options.logger || null;
         this.langChat = HUMAN_CHAT[this.language] || HUMAN_CHAT.vi;
+        this.speed = options.speed || DEFAULTS.speed;
+
+        // Speed presets override min/max delays
+        const SPEEDS = {
+            fast:   { minDelay: 15000, maxDelay: 45000, batchBreakMin: 1, batchBreakMax: 2 },
+            normal: { minDelay: 30000, maxDelay: 60000, batchBreakMin: 1, batchBreakMax: 2 },
+            cautious: { minDelay: 90000, maxDelay: 180000, batchBreakMin: 5, batchBreakMax: 8 },
+        };
+        if (SPEEDS[this.speed]) {
+            const s = SPEEDS[this.speed];
+            this.minDelay = this.minDelay || s.minDelay;
+            this.maxDelay = this.maxDelay || s.maxDelay;
+            this.batchBreakMin = this.batchBreakMin || s.batchBreakMin;
+            this.batchBreakMax = this.batchBreakMax || s.batchBreakMax;
+        }
 
         this._browser = null;
         this._chromeProcess = null;
@@ -131,13 +146,14 @@ class BrowserImageGenerator extends EventEmitter {
         chromePath: '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
         debugPort: 9222,
         baseUrl: 'https://gemini.google.com/images',
-        minDelay: 90000,        // 90s
-        maxDelay: 180000,       // 180s
-        batchBreakMin: 5,       // 5 min
-        batchBreakMax: 8,       // 8 min
+        minDelay: 30000,        // 30s
+        maxDelay: 60000,        // 60s
+        batchBreakMin: 1,       // 1 min
+        batchBreakMax: 2,       // 2 min
         maxRetries: 5,
-        maxTimeout: 300000,     // 5 min per attempt
+        maxTimeout: 600000,     // 10 min per attempt
         language: 'vi',
+        speed: 'normal',        // 'fast' | 'normal' | 'cautious'
     };
 
     // ═══════════════════════════════════════════════════════════════════════
@@ -224,18 +240,15 @@ class BrowserImageGenerator extends EventEmitter {
         fs.mkdirSync(outputDir, { recursive: true });
 
         await this.ensureChromeRunning(false);
-        let connection = await this.connect();
-        let page = connection.page;
+        const connection = await this.connect();
+        const browser = connection.browser;
 
         let successCount = 0;
         let rateLimitRetries = 0;
         let skippedCount = 0;
-        let imagesSinceLastChat = 0;
-        let nextChatAt = this._randomInt(2, 3);
-        let newSuccessCount = 0;  // non-skipped
+        let newSuccessCount = 0;
 
         for (let i = 0; i < prompts.length; i++) {
-            // Check abort signal
             if (signal?.aborted) {
                 this._log(`Aborted at ${i}/${prompts.length}`);
                 break;
@@ -247,7 +260,6 @@ class BrowserImageGenerator extends EventEmitter {
 
             this._emitProgress(onProgress, { current: i + 1, total: prompts.length, name: p.name, status: 'starting', file: fileName });
 
-            // Resume: skip existing valid files
             if (fs.existsSync(outputPath)) {
                 const stat = fs.statSync(outputPath);
                 if (stat.size > 1000) {
@@ -259,34 +271,34 @@ class BrowserImageGenerator extends EventEmitter {
                 }
             }
 
-            // Check page/connection health before each image
-            try {
-                await page.evaluate('1');
-            } catch {
-                this._log('⚠️ Page disconnected, reconnecting...');
-                await this.close();
-                await this.ensureChromeRunning(false);
-                connection = await this.connect();
-                page = connection.page;
-                await this._sleep(2000);
-            }
-
-            // Generate single image with retry
+            // Fresh page per image — prevents accumulated rate-limit state
             let attempts = 0;
             let success = false;
             this._emitProgress(onProgress, { current: i + 1, total: prompts.length, name: p.name, status: 'generating', file: fileName });
 
             while (attempts <= this.maxRetries && !success && !signal?.aborted) {
+                const page = await browser.newPage();
+                await page.setViewport({ width: 1400, height: 900 });
+
                 try {
+                    // Check page not rate-limited / denied before starting
+                    if (!(await this._checkPageHealthy(page))) {
+                        this._log(`  ⚠️ Page unhealthy (rate-limited/denied), retrying...`);
+                        attempts++;
+                        continue;
+                    }
+
                     const buffer = await this._generateSingle(page, p.prompt, `${i + 1}/${prompts.length} ${fileName}`, attempts);
                     fs.writeFileSync(outputPath, buffer);
                     const sizeKB = (buffer.length / 1024).toFixed(0);
                     this._log(`💾 Saved: ${fileName} (${sizeKB}KB)`);
                     successCount++;
                     success = true;
-                    imagesSinceLastChat++;
                     newSuccessCount++;
                     this._emitProgress(onProgress, { current: i + 1, total: prompts.length, name: p.name, status: 'done', file: fileName });
+
+                    // Lightweight anti-rate-limit: simulate mic use
+                    await this._simulateMicUse(page).catch(() => {});
                 } catch (err) {
                     if (err.message === 'RATE_LIMITED') {
                         attempts++;
@@ -299,27 +311,24 @@ class BrowserImageGenerator extends EventEmitter {
                             process.stdout.write(`  ${m + 1}/${waitMin} min...`);
                             await this._sleep(60000);
                         }
-                        // Reconnect page after long wait
-                        try {
-                            await page.evaluate('1');
-                        } catch {
-                            await this.close();
-                            await this.ensureChromeRunning(false);
-                            connection = await this.connect();
-                            page = connection.page;
-                        }
-                        console.log(''); // newline after min counter
+                        console.log('');
                     } else if (err.message === 'CAPTURE_FAILED') {
                         attempts++;
-                        this._log(`⚠️ Capture failed (attempt ${attempts}), trying library fallback...`);
-                        // Already tried library in _generateSingle, so just retry whole thing
+                        this._log(`⚠️ Capture failed (attempt ${attempts}), retrying with fresh page...`);
+                        await this._takeDebugScreenshot(page, `capture_failed_${i + 1}`, outputDir);
+                    } else if (err.message === 'PAGE_HEALTHY_CHECK_FAILED') {
+                        attempts++;
+                        this._log(`  ⚠️ Page became unhealthy during generation, retrying...`);
                     } else if (err.message === 'ABORTED') {
-                        break; // Don't retry on abort
+                        break;
                     } else {
                         this._log(`❌ Failed: ${err.message}`);
+                        await this._takeDebugScreenshot(page, `error_${i + 1}`, outputDir);
                         this._emitProgress(onProgress, { current: i + 1, total: prompts.length, name: p.name, status: `error: ${err.message}`, file: fileName });
                         break;
                     }
+                } finally {
+                    await page.close().catch(() => {});
                 }
             }
 
@@ -328,25 +337,19 @@ class BrowserImageGenerator extends EventEmitter {
                 this._emitProgress(onProgress, { current: i + 1, total: prompts.length, name: p.name, status: 'failed', file: fileName });
             }
 
-            // ── Anti-rate-limit: human chat simulation ──
-            if (success && imagesSinceLastChat >= nextChatAt && (i + 1) < prompts.length && !signal?.aborted) {
-                try { await page.evaluate('1'); } catch { continue; }
-                await this._simulateHumanChat(page, p.name);
-                imagesSinceLastChat = 0;
-                nextChatAt = this._randomInt(2, 3);
-            }
-
-            // ── Batch breaks ──
             if (signal?.aborted) break;
-            if (success && newSuccessCount > 0 && newSuccessCount % 3 === 0 && (i + 1) < prompts.length) {
-                await this._batchBreak();
-            } else if (success && (i + 1) < prompts.length) {
-                await this._randomDelay(this.minDelay / 1000, this.maxDelay / 1000);
+
+            // Batch breaks
+            if (success && (i + 1) < prompts.length) {
+                if (newSuccessCount > 0 && newSuccessCount % 3 === 0) {
+                    await this._batchBreak();
+                } else {
+                    await this._randomDelay(this.minDelay / 1000, this.maxDelay / 1000);
+                }
             }
         }
 
         await this.close();
-
         return { successCount, totalCount: prompts.length, rateLimitRetries, skippedCount };
     }
 
@@ -510,10 +513,20 @@ class BrowserImageGenerator extends EventEmitter {
 
             if (rateLimited) return false; // caller checks rate-limit
 
-            const imgCount = await page.evaluate(() =>
-                Array.from(document.querySelectorAll('img'))
-                    .filter(img => img.complete && img.naturalWidth > 500).length
-            );
+            const imgCount = await page.evaluate(() => {
+                const candidates = Array.from(document.querySelectorAll('img')).filter(img => {
+                    if (!img.complete) return false;
+                    const w = img.naturalWidth;
+                    const h = img.naturalHeight;
+                    if (w < 300 || h < 300) return false;
+                    const ratio = Math.max(w, h) / Math.min(w, h);
+                    if (ratio > 3.0) return false;
+                    const src = (img.src || '').toLowerCase();
+                    if (src.includes('favicon') || src.includes('icon')) return false;
+                    return true;
+                });
+                return candidates.length;
+            });
             if (imgCount > 0) return true;
 
             const elapsed = ((Date.now() - startTime) / 1000).toFixed(0);
@@ -556,8 +569,13 @@ class BrowserImageGenerator extends EventEmitter {
         // Strategy 1: Download button → CDN URL
         try {
             await page.evaluate(() => {
-                const img = Array.from(document.querySelectorAll('img'))
-                    .find(i => i.complete && i.naturalWidth > 500);
+                const img = Array.from(document.querySelectorAll('img')).find(i => {
+                    if (!i.complete) return false;
+                    if (i.naturalWidth < 300 || i.naturalHeight < 300) return false;
+                    const ratio = Math.max(i.naturalWidth, i.naturalHeight) / Math.min(i.naturalWidth, i.naturalHeight);
+                    if (ratio > 3.0) return false;
+                    return !(i.src || '').toLowerCase().includes('favicon');
+                });
                 if (img) img.dispatchEvent(new MouseEvent('mouseenter', { bubbles: true }));
             });
             await this._sleep(2000);
@@ -596,8 +614,15 @@ class BrowserImageGenerator extends EventEmitter {
         // Strategy 2: Element screenshot
         try {
             const imgElement = await page.evaluateHandle(() => {
-                const imgs = Array.from(document.querySelectorAll('img'))
-                    .filter(img => img.complete && img.naturalWidth > 500);
+                const imgs = Array.from(document.querySelectorAll('img')).filter(img => {
+                    if (!img.complete) return false;
+                    const w = img.naturalWidth;
+                    const h = img.naturalHeight;
+                    if (w < 300 || h < 300) return false;
+                    const ratio = Math.max(w, h) / Math.min(w, h);
+                    if (ratio > 3.0) return false;
+                    return !(img.src || '').toLowerCase().includes('favicon');
+                });
                 return imgs[imgs.length - 1] || null;
             });
             if (imgElement) {
@@ -824,6 +849,73 @@ class BrowserImageGenerator extends EventEmitter {
                 }
             });
             await this._sleep(this._randomInt(1000, 2500));
+        } catch {}
+    }
+
+    /**
+     * Check if the page is usable — not showing rate-limit / denied / captcha.
+     * @private
+     */
+    async _checkPageHealthy(page) {
+        try {
+            const title = await page.title().catch(() => '');
+            if (title.toLowerCase().includes('denied') || title.toLowerCase().includes('sorry')) return false;
+
+            const body = await page.evaluate(() => document.body?.innerText?.slice(0, 500) || '').catch(() => '');
+            const bad = [
+                'request denied', 'rate limit', 'being asked for a lot',
+                "can't create", 'something went wrong', 'try again later',
+                'sign in', 'robot', 'unusual traffic', 'verify',
+            ];
+            for (const phrase of bad) {
+                if (body.toLowerCase().includes(phrase)) return false;
+            }
+            return true;
+        } catch {
+            return false;
+        }
+    }
+
+    /**
+     * Simulate clicking the microphone button to create human-activity signal.
+     * @private
+     */
+    async _simulateMicUse(page) {
+        try {
+            const micClicked = await page.evaluate(() => {
+                const buttons = Array.from(document.querySelectorAll('button, [role="button"]'));
+                const mic = buttons.find(el => {
+                    const label = (el.getAttribute('aria-label') || '').toLowerCase();
+                    const text = (el.innerText || '').toLowerCase();
+                    return label.includes('microphone') || label.includes('mic') || text.includes('microphone');
+                });
+                if (mic) { mic.click(); return true; }
+                return false;
+            });
+            if (micClicked) {
+                await this._sleep(this._randomInt(2000, 4000));
+                await page.keyboard.press('Escape');
+                await this._sleep(1000);
+                this._log('  🎤 Mic simulation done');
+            }
+        } catch {}
+    }
+
+    /**
+     * Capture debug screenshot + page text when something goes wrong.
+     * @private
+     */
+    async _takeDebugScreenshot(page, label, outputDir) {
+        try {
+            const debugDir = path.join(outputDir, 'debug');
+            fs.mkdirSync(debugDir, { recursive: true });
+            const ssPath = path.join(debugDir, `${label}_${Date.now()}.png`);
+            await page.screenshot({ path: ssPath, fullPage: false });
+            const text = await page.evaluate(() =>
+                document.body?.innerText?.slice(0, 2000) || 'NO TEXT'
+            ).catch(() => 'UNREADABLE');
+            this._log(`  📸 Debug screenshot: ${ssPath}`);
+            this._log(`  📄 Page text: "${text.slice(0, 300)}"`);
         } catch {}
     }
 
