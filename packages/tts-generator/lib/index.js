@@ -1,4 +1,7 @@
 const { VOICES, VOICE_NAMES, getVoice, pickVoiceForTone } = require('./voices');
+const TTSPlanner = require('./planner');
+const TTSGenerator = require('./generator');
+const OutputFormatter = require('./output');
 
 /**
  * @andy-toolforge/tts-generator entry point.
@@ -11,8 +14,8 @@ module.exports = {
     getVoice,
     pickVoiceForTone,
 
-    // Core classes (filled in by subsequent tasks)
-    // TTSPlanner:   require('./planner'),
-    // TTSGenerator: require('./generator'),
-    // OutputFormatter: require('./output'),
+    // Core classes
+    TTSPlanner,
+    TTSGenerator,
+    OutputFormatter,
 };

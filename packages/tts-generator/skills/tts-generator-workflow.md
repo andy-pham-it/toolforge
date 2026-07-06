@@ -1,12 +1,24 @@
 # TTS Generator Workflow
 
-> Skill for the TTS Generator package — automates script-to-audio pipeline.
+## When to use
 
-## Tools Available
+Use this skill when you need to convert podcast/video scripts to voice audio. The TTS Generator handles:
+- Smart script segmentation (LLM-based paragraph analysis)
+- Multi-voice selection from 30 Gemini TTS voices
+- Batch, single, or stream audio output
 
-- `generate_tts` — Full pipeline: script → LLM segmentation → Gemini TTS → audio output
-- `list_tts_voices` — List all 30 Gemini TTS voices
+## Workflow
 
-## Voice Selection
+1. **Prepare script**: Full podcast script text with clear paragraph breaks
+2. **Choose voice**: "auto" for smart selection, or pick from 30 voices (see tts-voice-selection skill)
+3. **Run batch generation**: The tool segments and generates audio in parallel
+4. **Assemble output**: Audio clips ready for final editing
 
-Use `list_tts_voices` MCP tool to list all 30 voices with descriptions.
+## MCP Tools
+
+- `generate_tts` — Full pipeline: script → segments → audio
+- `list_tts_voices` — Browse available voices with descriptions
+
+## Audio tags for expressiveness
+
+Add comma-separated tags for emotional tone: determination, enthusiasm, excitement, curiosity, whispers, laughs, positive, neutral, negative, frustration, anger, amusement, awe, admiration

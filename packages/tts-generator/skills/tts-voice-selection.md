@@ -1,24 +1,21 @@
 # TTS Voice Selection Guide
 
-## 30 Gemini TTS Voices
+## Quick picks by content type
 
-| Voice | Style | Best For |
-|-------|-------|----------|
-| Kore | Firm | Authoritative narration |
-| Charon | Informative | Educational content |
-| Zephyr | Bright | Upbeat introductions |
-| Sulafat | Warm | Storytelling |
-| Iapetus | Clear | Technical content |
-| Achird | Friendly | Conversational segments |
+| Content type | Recommended voice | Why |
+|-------------|------------------|-----|
+| Philosophical/contemplative | Charon (Informative) | Calm, educational tone |
+| Energetic opening | Zephyr (Bright) | Positive, energetic |
+| Authoritative statement | Kore (Firm) | Assertive, commanding |
+| Emotional/personal | Achernar (Soft) | Gentle, intimate |
+| Technical explanation | Iapetus (Clear) | Precise, articulate |
+| Friendly/conversational | Achird (Friendly) | Warm, approachable |
+| Closing/wrap-up | Sulafat (Warm) | Cozy, comforting |
 
-**Full list:** Use `list_tts_voices` MCP tool.
+## All 30 voices
 
-## How Voice Auto-Selection Works
+Use `list_tts_voices` MCP tool to see all available voices with descriptions.
 
-1. TTSPlanner analyzes the script and assigns a tone per segment
-2. `pickVoiceForTone(tone)` selects from the matching voice pool
-3. User can override with explicit `voice` parameter
+## Tags for emotional control
 
-## Audio Tags
-
-Add expressiveness with tags: `[determination]`, `[whispers]`, `[excitement]`, `[laughs]`, `[neutral]`, `[positive]`, `[negative]`. Over 200 tags supported.
+Add audio tags to shape delivery: [determination], [whispers], [laughs], [excitement], [curiosity], [amusement], [awe]
