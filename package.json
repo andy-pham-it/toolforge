@@ -12,6 +12,7 @@
     "packages/coding-support",
     "packages/mcp",
     "packages/content-operations",
-    "packages/content-research"
+    "packages/content-research",
+    "packages/tts-generator"
   ]
 }
