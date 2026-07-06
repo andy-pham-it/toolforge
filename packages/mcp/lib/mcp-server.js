@@ -7,7 +7,7 @@ class MCPServer {
     constructor(config) {
         this.apiKey = config.apiKey;
         this.provider = config.provider || 'gemini';
-        this.model = config.model || (this.provider === 'groq' ? 'llama-3.3-70b-versatile' : 'gemini-2.0-flash');
+        this.model = config.model || (this.provider === 'groq' ? 'llama-3.3-70b-versatile' : 'gemini-3.1-flash-lite');
         this.config = config;
         this._llm = null;
 

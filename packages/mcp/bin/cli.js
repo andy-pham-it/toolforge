@@ -12,7 +12,7 @@ let provider, apiKey, model;
 if (process.env.GEMINI_API_KEY) {
     provider = 'gemini';
     apiKey = process.env.GEMINI_API_KEY;
-    model = process.env.GEMINI_MODEL || 'gemini-2.0-flash';
+    model = process.env.GEMINI_MODEL || 'gemini-3.1-flash-lite';
 } else if (process.env.GROQ_API_KEY) {
     provider = 'groq';
     apiKey = process.env.GROQ_API_KEY;
