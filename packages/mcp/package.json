@@ -1,7 +1,7 @@
 {
   "name": "@andy-toolforge/mcp",
-  "version": "1.0.1",
-  "description": "MCP server tools for media content generation — SEO, script analysis via Gemini",
+  "version": "1.1.0",
+  "description": "MCP server tools for media content generation — SEO, script analysis, image generation, book writing, project management, code analysis",
   "main": "lib/index.js",
   "bin": {
     "toolforge-mcp": "./bin/cli.js"
@@ -16,7 +16,13 @@
   "dependencies": {
     "@andy-toolforge/core": "^1.0.0",
     "@andy-toolforge/content-research": "^0.1.0",
-    "@andy-toolforge/footage-generation": "^1.0.0"
+    "@andy-toolforge/footage-generation": "^1.1.0",
+    "@andy-toolforge/seo-generation": "^1.0.0",
+    "@andy-toolforge/content-operations": "^1.0.0",
+    "@andy-toolforge/ba-support": "^1.0.0",
+    "@andy-toolforge/book-writing": "^1.0.0",
+    "@andy-toolforge/pm-support": "^1.0.0",
+    "@andy-toolforge/coding-support": "^1.0.0"
   },
   "keywords": [
     "mcp",
