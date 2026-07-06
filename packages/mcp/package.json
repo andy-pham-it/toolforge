@@ -1,6 +1,6 @@
 {
   "name": "@andy-toolforge/mcp",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "description": "MCP server tools for media content generation — SEO, script analysis, image generation, book writing, project management, code analysis",
   "main": "lib/index.js",
   "bin": {
