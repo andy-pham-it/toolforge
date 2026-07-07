@@ -5,6 +5,13 @@
 
 **Text-to-speech generation using Gemini TTS models — script segmentation, multi-voice, batch/stream/single output.** Thuộc hệ sinh thái [toolforge](https://github.com/andy-pham-it/toolforge).
 
+Package này hỗ trợ **hai API mode** song song:
+
+| Mode | API | Models | Use case |
+|------|-----|--------|----------|
+| `interactions` (REST) | Gemini Interactions API | `gemini-*-tts-preview` | Batch TTS đơn giản, gọi REST một lần → WAV |
+| `live` (WebSocket) | Gemini Live API (BidiGenerateContent) | `gemini-live-*-native-audio`, `gemini-*-live-*` | Real-time streaming, bidirectional audio dialog |
+
 Package này thay thế hoàn toàn workflow thủ công (chia script trong AI Studio → generate từng đoạn → ghép trong CapCut) bằng một API tự động, hỗ trợ:
 
 - **Smart segmentation:** LLM-based chia script thành các đoạn logical (tự động fallback regex nếu LLM không available)
@@ -12,7 +19,7 @@ Package này thay thế hoàn toàn workflow thủ công (chia script trong AI S
 - **Audio tags:** 200+ expressive tags ([whispers], [laughs], [determination]...) để điều khiển giọng đọc
 - **3 output modes:** batch (mảng segment-audio pairs), single (concatenated audio), stream (ordered với position metadata)
 - **Multi-speaker:** Hỗ trợ đến 2 speakers trong cùng một interaction
-- **403 quota fallback:** Tự động fallback từ Gemini 3.1 Flash TTS → 2.5 Flash TTS khi hết quota
+- **403 quota fallback:** Tự động fallback cross-model (trong cùng mode) khi hết quota
 - **Batching:** Configurable concurrency để tránh rate limit
 
 ## Installation
@@ -53,8 +60,12 @@ const {
     pickVoiceForTone,  // (tone) → voice name
 
     TTSPlanner,        // Script segmentation
-    TTSGenerator,      // Gemini TTS API client
+    TTSGenerator,      // Gemini TTS API client (Interactions REST)
+    LiveTTSGenerator,  // Gemini TTS API client (Live WebSocket)
     OutputFormatter,   // Output formatting (batch/single/stream)
+
+    LIVE_MODELS,       // { modelName: { description } }
+    LIVE_MODEL_NAMES,  // ['gemini-live-2.5-flash-native-audio', ...]
 } = require('@andy-toolforge/tts-generator');
 ```
 
@@ -228,6 +239,118 @@ Audio tags được nhúng inline dạng `[tag]` markers trong input text. Voice
 
 ---
 
+### LiveTTSGenerator
+
+Gọi **Gemini Live API (WebSocket)** để sinh audio từ text segments. Hỗ trợ 3 models Live API với auto-fallback chain.
+
+```javascript
+const { LiveTTSGenerator } = require('@andy-toolforge/tts-generator');
+
+const gen = new LiveTTSGenerator({
+    apiKey: process.env.GEMINI_API_KEY,
+    live: {
+        models: [
+            'gemini-live-2.5-flash-native-audio',  // Primary
+            'gemini-3.1-flash-live-preview',        // Fallback 1
+            'gemini-3.5-live-translate-preview',     // Fallback 2
+        ],
+    },
+    maxRetries: 2,
+    baseDelay: 1000,
+});
+```
+
+**Constructor: `new LiveTTSGenerator(config)`**
+
+| Config | Type | Default | Mô tả |
+|--------|------|---------|-------|
+| `apiKey` | string | `GEMINI_API_KEY` env | Gemini API key (required) |
+| `live.models` | string[] | `[gemini-live-2.5-flash-native-audio, gemini-3.1-flash-live-preview, gemini-3.5-live-translate-preview]` | Model chain (auto-fallback) |
+| `maxRetries` | number | `2` | Retries per model trước khi fallback |
+| `baseDelay` | number | `1000` | Exponential backoff base (ms) |
+| `WebSocket` | Function | Native `WebSocket` | Custom WS constructor (cho test) |
+
+**Protocol flow:**
+
+```
+Client → Server (WebSocket):
+  1. setup:  { model, generationConfig: { responseModalities, speechConfig } }
+  2. clientContent: { turns: [{ role, parts }], turnComplete: true }
+
+Server → Client:
+  1. setupComplete: {}
+  2. serverContent: { modelTurn: { parts: [{ inlineData: { mimeType, data: base64 } }] } }
+```
+
+**Method: `generate(segment)` → `{ id, text, audio: Buffer, voice, format }`**
+
+Mở WebSocket → send setup → gửi text → nhận audio chunks → close.
+
+```javascript
+const result = await gen.generate({
+    id: 1,
+    text: 'Xin chào các bạn, hôm nay chúng ta sẽ nói về AI.',
+    voice: 'Charon',
+});
+
+console.log(result.audio);   // Buffer (WAV/L16)
+console.log(result.format);  // 'wav' or 'l16'
+```
+
+Audio response có thể là WAV (`audio/wav`) hoặc PCM16 (`audio/L16`) tùy model và config.
+
+**Method: `generateBatch(segments, options)` → `Array<Result>`**
+
+Mở WebSocket riêng cho mỗi segment. Failed segments trả về với `error` property.
+
+```javascript
+const results = await gen.generateBatch(plan.segments, { concurrency: 2 });
+
+results.forEach(r => {
+    if (r.error) {
+        console.error(`Segment ${r.id} failed: ${r.error}`);
+    }
+});
+```
+
+| Option | Type | Default | Mô tả |
+|--------|------|---------|-------|
+| `concurrency` | number | `2` | Max concurrent WebSocket connections |
+
+**Model fallback chain:**
+
+Khi một model trả về lỗi (quota, rate limit, server error), `LiveTTSGenerator` tự động fallback sang model tiếp theo trong danh sách. Nếu hết model, trả về error.
+
+```javascript
+// Auto-fallback: nếu gemini-live-2.5-flash-native-audio bị 429
+// → gemini-3.1-flash-live-preview → gemini-3.5-live-translate-preview
+```
+
+**Voice config trong Live API:**
+
+```javascript
+// Voice được cấu hình qua speechConfig trong setup message:
+{
+    setup: {
+        model: 'models/gemini-live-2.5-flash-native-audio',
+        generationConfig: {
+            responseModalities: ['AUDIO'],
+            speechConfig: {
+                voiceConfig: {
+                    prebuiltVoiceConfig: {
+                        voiceName: 'Charon'
+                    }
+                }
+            }
+        }
+    }
+}
+```
+
+Các voice tương thích với Live API: Zephyr, Puck, Charon, Kore, Fenrir, Leda, Orus, Aoede, Callirrhoe, Autonoe, Enceladus, Iapetus, Umbriel, Algieba, Despina, Erinome, Algenib, Rasalgethi, Laomedeia, Achernar, Alnilam, Schedar, Gacrux, Pulcherrima, Achird, Zubenelgenubi, Vindemiatrix, Sadachbia, Sadaltager, Sulafat.
+
+---
+
 ### OutputFormatter
 
 Định dạng output từ segments + audio buffers.
@@ -347,6 +470,7 @@ Không cần config thêm — tools tự xuất hiện khi MCP server start.
 | `language` | string | `"auto"` | `vi` \| `en` \| `auto` |
 | `pace` | string | `"normal"` | `slow` \| `normal` \| `fast` |
 | `tags` | string | `""` | Comma-separated audio tags |
+| `api_mode` | string | `"interactions"` | `interactions` (REST TTS API) \| `live` (WebSocket Live API) |
 
 ## Gemini TTS Voice List (30 voices)
 
@@ -408,19 +532,49 @@ Script Text
     ▼
 TTSPlanner (LLM + regex fallback)
     │  Chia script → logical segments
-    ▼
-TTSGenerator (Gemini Interactions API)
-    │  Gọi API với rate-limit retry + 403 fallback
-    ▼
-Audio Buffers (WAV)
     │
-    ├─ OutputFormatter.formatBatch()   → { segments: [{ id, text, audio }] }
-    ├─ OutputFormatter.formatSingle()  → Buffer (concatenated WAV)
-    └─ OutputFormatter.formatStream()  → AsyncGenerator<Segment>
+    ├─ api_mode: "interactions" ────────────────────────── api_mode: "live" ───
+    │                                                                         │
+    ▼                                                                         ▼
+TTSGenerator (Gemini Interactions REST)          LiveTTSGenerator (Gemini Live WebSocket)
+    │  wss://generativelanguage.googleapis.com/       │  wss://...BidiGenerateContent?key=
+    │  ws/google.ai.generativelanguage.v1beta.        │
+    │  GenerativeService.BidiGenerateContent          │
+    │                                                │
+    ▼                                                ▼
+Audio Buffers (WAV / PCM16)                    Audio Buffers (WAV / L16)
+    │                                                │
+    └──────────────────┬─────────────────────────────┘
+                       ▼
+        OutputFormatter.formatBatch()   → { segments: [{ id, text, audio }] }
+        OutputFormatter.formatSingle()  → Buffer (concatenated WAV)
+        OutputFormatter.formatStream()  → AsyncGenerator<Segment>
 ```
+
+## API Mode Comparison
+
+| Aspect | Interactions (REST) | Live (WebSocket) |
+|--------|--------------------|--------------------|
+| Transport | HTTP POST (REST) | WebSocket bidirectional |
+| Models | `gemini-*-tts-preview` | `gemini-live-*-native-audio`, `gemini-*-live-*` |
+| Audio format | WAV (audio/wav) | WAV or L16 PCM (audio/L16) |
+| Voice config | `speech_config[]` array | `speechConfig.voiceConfig.prebuiltVoiceConfig` |
+| Audio tags | `[tag]` inline in text | N/A (conversation-based) |
+| Multi-speaker | `speech_config[]` objects | Per-turn config |
+| Concurrency | HTTP connection pool | Per-segment WebSocket connection |
+| Best for | Batch TTS, pre-recorded content | Real-time dialog, interactive voice |
+
+## Live API Models
+
+| Model ID | Description |
+|----------|-------------|
+| `gemini-live-2.5-flash-native-audio` | Flash model with native audio I/O — best quality TTS |
+| `gemini-3.1-flash-live-preview` | Live API variant of Gemini 3.1 Flash — fast, general-purpose |
+| `gemini-3.5-live-translate-preview` | Live translation model — supports real-time translation + TTS |
 
 ## Related
 
 - [@andy-toolforge/core](https://npmjs.com/package/@andy-toolforge/core) — Nền tảng LLM client
 - [@andy-toolforge/mcp](https://npmjs.com/package/@andy-toolforge/mcp) — MCP server với plugin discovery
-- [Google Gemini TTS API](https://ai.google.dev/gemini-api/docs/interactions/speech-generation) — Official API docs
+- [Google Gemini TTS API](https://ai.google.dev/gemini-api/docs/interactions/speech-generation) — Official Interactions API docs
+- [Google Gemini Live API](https://ai.google.dev/gemini-api/docs/live-api) — Official Live API docs

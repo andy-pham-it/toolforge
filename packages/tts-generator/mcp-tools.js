@@ -9,7 +9,7 @@
  *   list_tts_voices — List all 30 Gemini TTS voices with descriptions
  */
 
-const { TTSPlanner, TTSGenerator, OutputFormatter, VOICES, VOICE_NAMES, pickVoiceForTone } = require('./lib');
+const { TTSPlanner, TTSGenerator, LiveTTSGenerator, OutputFormatter, VOICES, VOICE_NAMES, pickVoiceForTone, LIVE_MODEL_NAMES } = require('./lib');
 
 // ---------------------------------------------------------------------------
 // generate_tts
@@ -23,6 +23,7 @@ const generateTTSDef = {
             script:   { type: 'string', description: 'Full podcast script text to convert to speech' },
             title:    { type: 'string', description: 'Episode title (provides context for planner segmentation)' },
             voice:    { type: 'string', description: `Voice name override. One of: ${VOICE_NAMES.join(', ')}. Default: "auto" (smart selection by content tone)`, default: 'auto' },
+            api_mode: { type: 'string', enum: ['interactions', 'live'], description: 'API mode: "interactions" (REST, default) uses gemini-*-tts-preview models; "live" (WebSocket) uses gemini-live-*-preview models with native audio', default: 'interactions' },
             mode:     { type: 'string', enum: ['batch', 'single', 'stream'], description: 'Output mode: batch (array of segment-audio pairs), single (concatenated audio), stream (ordered segments, each with audio)', default: 'batch' },
             language: { type: 'string', description: 'Language code: "vi", "en", or "auto" detect', default: 'auto' },
             pace:     { type: 'string', enum: ['slow', 'normal', 'fast'], description: 'Speech pace', default: 'normal' },
@@ -33,7 +34,7 @@ const generateTTSDef = {
 };
 
 async function generateTTSHandler(llm, args) {
-    const { script, title, voice = 'auto', mode = 'batch', language = 'auto', pace = 'normal', tags = '' } = args;
+    const { script, title, voice = 'auto', api_mode = 'interactions', mode = 'batch', language = 'auto', pace = 'normal', tags = '' } = args;
 
     // Input validation
     if (!script || typeof script !== 'string' || script.trim().length === 0) {
@@ -71,16 +72,33 @@ async function generateTTSHandler(llm, args) {
         };
     });
 
-    // 3. Generate: call Gemini TTS for each segment
-    const gen = new TTSGenerator({
-        apiKey: process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY,
-        tts: {
-            model: 'gemini-3.1-flash-tts-preview',
-            fallback: 'gemini-2.5-flash-preview-tts',
-        },
-    });
+    // 3. Generate: choose API mode
+    let audioResults;
 
-    const audioResults = await gen.generateBatch(resolvedSegments);
+    if (api_mode === 'live') {
+        // Live API (WebSocket) with native audio models
+        const gen = new LiveTTSGenerator({
+            apiKey: process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY,
+            live: {
+                models: [
+                    'gemini-live-2.5-flash-native-audio',
+                    'gemini-3.1-flash-live-preview',
+                    'gemini-3.5-live-translate-preview',
+                ],
+            },
+        });
+        audioResults = await gen.generateBatch(resolvedSegments);
+    } else {
+        // Interactions API (REST) with TTS models (default)
+        const gen = new TTSGenerator({
+            apiKey: process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY,
+            tts: {
+                model: 'gemini-3.1-flash-tts-preview',
+                fallback: 'gemini-2.5-flash-preview-tts',
+            },
+        });
+        audioResults = await gen.generateBatch(resolvedSegments);
+    }
 
     // 4. Format output
     const formatter = new OutputFormatter();

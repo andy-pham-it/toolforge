@@ -2,6 +2,7 @@ const { VOICES, VOICE_NAMES, getVoice, pickVoiceForTone } = require('./voices');
 const TTSPlanner = require('./planner');
 const TTSGenerator = require('./generator');
 const OutputFormatter = require('./output');
+const { LiveTTSGenerator, LIVE_MODELS, LIVE_MODEL_NAMES } = require('./live-generator');
 
 /**
  * @andy-toolforge/tts-generator entry point.
@@ -18,4 +19,9 @@ module.exports = {
     TTSPlanner,
     TTSGenerator,
     OutputFormatter,
+
+    // Live API (WebSocket)
+    LiveTTSGenerator,
+    LIVE_MODELS,
+    LIVE_MODEL_NAMES,
 };

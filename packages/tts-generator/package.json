@@ -12,6 +12,7 @@
     "test": "node --test lib/*.test.js"
   },
   "dependencies": {
-    "@andy-toolforge/core": "^1.0.0"
+    "@andy-toolforge/core": "^1.0.0",
+    "ws": "^8.18.0"
   }
 }
