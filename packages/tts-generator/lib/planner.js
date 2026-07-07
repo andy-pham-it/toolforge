@@ -41,8 +41,43 @@ class TTSPlanner {
      * @param {number} [config.maxRetries=1] - Max retries on invalid JSON
      */
     constructor(config = {}) {
-        this.llm = config.llm;
+        this.llm = config.llm || this._createDefaultLLM();
         this.maxRetries = config.maxRetries ?? 1;
+    }
+
+    /**
+     * Create a default LLM for segmentation when none is explicitly provided.
+     * Uses environment variables to auto-configure: GROQ_API_KEY → groq/gemma-4-26b-it,
+     * falling back to GEMINI_API_KEY or OPENAI_API_KEY.
+     * @returns {LLMClient|null}
+     */
+    _createDefaultLLM() {
+        try {
+            if (process.env.GROQ_API_KEY) {
+                return new LLMClient({
+                    provider: 'groq',
+                    apiKey: process.env.GROQ_API_KEY,
+                    model: 'gemma-4-26b-it',
+                });
+            }
+            if (process.env.GEMINI_API_KEY) {
+                return new LLMClient({
+                    provider: 'gemini',
+                    apiKey: process.env.GEMINI_API_KEY,
+                    model: 'gemini-2.5-flash-lite',
+                });
+            }
+            if (process.env.OPENAI_API_KEY) {
+                return new LLMClient({
+                    provider: 'openai',
+                    apiKey: process.env.OPENAI_API_KEY,
+                    model: 'gpt-4o-mini',
+                });
+            }
+        } catch (err) {
+            console.warn(`TTSPlanner: could not create default LLM (${err.message})`);
+        }
+        return null;
     }
 
     /**

@@ -25,14 +25,55 @@ class OutputFormatter {
 
     /**
      * Concatenate all audio buffers into a single buffer.
-     * Note: For production use, proper WAV concatenation may be needed.
-     * For v1, simple buffer concatenation for same-format audio clips.
+     *
+     * For WAV files: strips the 44-byte RIFF header from all buffers except
+     * the first, so raw audio data is properly concatenated without header
+     * corruption. Updates the resulting WAV header's RIFF size field.
+     *
+     * For non-WAV formats: falls back to naive Buffer.concat with a warning.
      *
      * @param {Buffer[]} audioBuffers
      * @returns {Buffer}
      */
     formatSingle(audioBuffers) {
-        return Buffer.concat(audioBuffers);
+        if (audioBuffers.length === 0) {
+            return Buffer.alloc(0);
+        }
+        if (audioBuffers.length === 1) {
+            return audioBuffers[0];
+        }
+
+        // Check if all buffers are WAV (starts with "RIFF" and "WAVE")
+        const isWav = audioBuffers.every(
+            b => b.length >= 44 && b.toString('ascii', 0, 4) === 'RIFF' && b.toString('ascii', 8, 12) === 'WAVE'
+        );
+
+        if (!isWav) {
+            console.warn('OutputFormatter: non-WAV format detected, using naive buffer concatenation');
+            return Buffer.concat(audioBuffers);
+        }
+
+        // WAV-aware concatenation:
+        // Keep the full first buffer (header + data), then append only the
+        // audio data chunk from subsequent buffers (skip the 44-byte header).
+        const chunks = [audioBuffers[0]];
+        for (let i = 1; i < audioBuffers.length; i++) {
+            chunks.push(audioBuffers[i].subarray(44));
+        }
+
+        const combined = Buffer.concat(chunks);
+
+        // Update the RIFF chunk size field at byte 4 (little-endian 32-bit)
+        // Value = total file size - 8 (everything after the size field itself)
+        const totalSize = combined.length - 8;
+        combined.writeUInt32LE(totalSize, 4);
+
+        // For subchunk2Size at byte 40: total data = combined.length - 44
+        // (for standard PCM WAV with 44-byte header)
+        const dataSize = combined.length - 44;
+        combined.writeUInt32LE(dataSize, 40);
+
+        return combined;
     }
 
     /**

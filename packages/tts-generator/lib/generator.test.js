@@ -19,12 +19,53 @@ function makeMockFetch(statusCode, responseBody) {
         ok: statusCode >= 200 && statusCode < 300,
         status: statusCode,
         json: async () => responseBody,
-        text: async () => JSON.stringify(responseBody),
+        text: async () => (typeof responseBody === 'object' ? JSON.stringify(responseBody) : String(responseBody)),
     }));
 }
 
 describe('TTSGenerator', () => {
+    describe('constructor', () => {
+        it('should throw when no API key is provided', () => {
+            // Temporarily clear env vars
+            const savedKey = process.env.GEMINI_API_KEY;
+            const savedKey2 = process.env.GOOGLE_API_KEY;
+            delete process.env.GEMINI_API_KEY;
+            delete process.env.GOOGLE_API_KEY;
+
+            assert.throws(
+                () => new TTSGenerator({}),
+                { message: /API key is required/ },
+            );
+
+            // Restore
+            if (savedKey) process.env.GEMINI_API_KEY = savedKey;
+            if (savedKey2) process.env.GOOGLE_API_KEY = savedKey2;
+        });
+    });
+
     describe('generate()', () => {
+        it('should throw when segment has no text', async () => {
+            const gen = new TTSGenerator({
+                apiKey: 'test-key',
+                _fetch: makeMockFetch(200, {}),
+            });
+
+            await assert.rejects(
+                () => gen.generate({ id: 1, text: '' }),
+                { message: /segment\.text is required/ },
+            );
+
+            await assert.rejects(
+                () => gen.generate({ id: 1 }),
+                { message: /segment\.text is required/ },
+            );
+
+            await assert.rejects(
+                () => gen.generate(null),
+                { message: /segment\.text is required/ },
+            );
+        });
+
         it('should call Gemini Interactions API and return audio buffer', async () => {
             const mockAudioBase64 = Buffer.from('fake-audio-data').toString('base64');
             const mockResponse = {
@@ -57,12 +98,26 @@ describe('TTSGenerator', () => {
             // Verify API call structure
             assert.equal(fetchMock.mock.calls.length, 1);
             const callUrl = fetchMock.mock.calls[0].arguments[0];
-            assert.ok(callUrl.includes('generativelanguage.googleapis.com'));
-            assert.ok(callUrl.includes('key=test-key'));
+            assert.ok(callUrl.includes('generativelanguage.googleapis.com'), 'URL should be Interactions API');
+            assert.ok(!callUrl.includes('key='), 'API key should NOT be in URL');
+
+            const callHeaders = fetchMock.mock.calls[0].arguments[1].headers;
+            assert.equal(callHeaders['x-goog-api-key'], 'test-key', 'API key should be in x-goog-api-key header');
 
             const callBody = JSON.parse(fetchMock.mock.calls[0].arguments[1].body);
+            // Model
             assert.equal(callBody.model, 'gemini-3.1-flash-tts-preview');
-            assert.equal(callBody.input.text, SAMPLE_SEGMENT.text);
+            // Input as string (not {text: "..."})
+            assert.equal(typeof callBody.input, 'string', 'input should be a string');
+            assert.ok(callBody.input.includes(SAMPLE_SEGMENT.text));
+            // Audio tags embedded as [neutral] prefix
+            assert.ok(callBody.input.startsWith('[neutral]'), 'audio tags should be inline [tag] markers');
+            // response_format at top level
+            assert.deepEqual(callBody.response_format, { type: 'audio' });
+            // speech_config as array
+            assert.ok(callBody.generation_config, 'should have generation_config');
+            assert.ok(Array.isArray(callBody.generation_config.speech_config), 'speech_config should be an array');
+            assert.equal(callBody.generation_config.speech_config[0].voice, 'Charon');
         });
 
         it('should throw on non-ok response', async () => {
@@ -103,13 +158,71 @@ describe('TTSGenerator', () => {
 
             const gen = new TTSGenerator({
                 apiKey: 'test-key',
-                tts: { model: 'gemini-3.1-flash-tts-preview' },
+                tts: { model: 'gemini-3.1-flash-tts-preview', fallback: null },
                 _fetch: fetchMock,
+                maxRetries: 2,
             });
 
             const result = await gen.generate(SAMPLE_SEGMENT);
             assert.ok(result);
             assert.equal(callCount, 2, 'should retry once');
+        });
+
+        it('should fallback to fallback model on 403', async () => {
+            let callCount = 0;
+            const mockAudioBase64 = Buffer.from('fallback-success').toString('base64');
+            const fetchMock = mock.fn(async () => {
+                callCount++;
+                if (callCount === 1) {
+                    return { ok: false, status: 403, text: async () => 'Quota exceeded' };
+                }
+                return {
+                    ok: true,
+                    status: 200,
+                    json: async () => ({
+                        turns: [{
+                            parts: [{
+                                inlineData: { mimeType: 'audio/wav', data: mockAudioBase64 },
+                            }],
+                        }],
+                    }),
+                    text: async () => '',
+                };
+            });
+
+            const gen = new TTSGenerator({
+                apiKey: 'test-key',
+                tts: {
+                    model: 'gemini-3.1-flash-tts-preview',
+                    fallback: 'gemini-2.5-flash-preview-tts',
+                },
+                _fetch: fetchMock,
+            });
+
+            const result = await gen.generate(SAMPLE_SEGMENT);
+            assert.ok(result);
+            assert.equal(callCount, 2, 'should try primary, then fallback');
+        });
+
+        it('should throw if both models return 403', async () => {
+            const fetchMock = mock.fn(async () => {
+                return { ok: false, status: 403, text: async () => 'Quota exceeded on all models' };
+            });
+
+            const gen = new TTSGenerator({
+                apiKey: 'test-key',
+                tts: {
+                    model: 'gemini-3.1-flash-tts-preview',
+                    fallback: 'gemini-2.5-flash-preview-tts',
+                },
+                _fetch: fetchMock,
+                maxRetries: 0, // Don't retry — just test fallback
+            });
+
+            await assert.rejects(
+                () => gen.generate(SAMPLE_SEGMENT),
+                { message: /quota exhausted on both/ },
+            );
         });
     });
 
@@ -141,14 +254,14 @@ describe('TTSGenerator', () => {
             assert.equal(fetchMock.mock.calls.length, 2, 'should call API per segment');
         });
 
-        it('should skip failed segments and return partial results', async () => {
+        it('should skip failed segments and return partial results with ids', async () => {
             const fetchMock = mock.fn(async (url, opts) => {
                 const body = JSON.parse(opts.body);
-                const text = body.input.text;
-                if (text === 'Second.') {
+                const text = body.input;
+                if (text && text.includes('Second')) {
                     return { ok: false, status: 500, text: async () => 'Server error' };
                 }
-                const mockAudioBase64 = Buffer.from(`audio-${text}`).toString('base64');
+                const mockAudioBase64 = Buffer.from(`audio-${text || 'unknown'}`).toString('base64');
                 return {
                     ok: true,
                     status: 200,
@@ -176,11 +289,19 @@ describe('TTSGenerator', () => {
             ];
 
             const results = await gen.generateBatch(segments, { concurrency: 1 });
-            // segment 2 fails — should still return 2 successful + 1 error
             assert.equal(results.length, 3, 'should return all segments');
             const failed = results.find(r => r.error);
             assert.ok(failed, 'failed segment should have error property');
-            assert.equal(failed.id, 2);
+            assert.equal(failed.id, 2, 'failed segment should carry its id');
+        });
+
+        it('should return empty array for empty segments input', async () => {
+            const gen = new TTSGenerator({
+                apiKey: 'test-key',
+                _fetch: makeMockFetch(200, {}),
+            });
+            const results = await gen.generateBatch([]);
+            assert.deepEqual(results, []);
         });
     });
 });
