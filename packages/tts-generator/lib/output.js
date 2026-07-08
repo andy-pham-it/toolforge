@@ -18,6 +18,9 @@ class OutputFormatter {
             audio: audioBuffers[i],
             voice: seg.voice || 'auto',
             duration: seg.duration || seg.estimatedDuration || null,
+            tagsInjected: seg.tagsInjected || false,
+            originalText: seg.originalText || null,
+            sourceRef: seg.sourceRef || null,
         }));
 
         return { segments: paired };
@@ -95,6 +98,9 @@ class OutputFormatter {
                 audio: audioBuffers[i],
                 voice: segments[i].voice || 'auto',
                 duration: segments[i].duration || segments[i].estimatedDuration || null,
+                tagsInjected: segments[i].tagsInjected || false,
+                originalText: segments[i].originalText || null,
+                sourceRef: segments[i].sourceRef || null,
             };
         }
     }

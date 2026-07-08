@@ -1,6 +1,6 @@
 {
   "name": "@andy-toolforge/tts-generator",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Toolforge domain: text-to-speech generation using Gemini TTS models — script segmentation, multi-voice, batch/stream/single output",
   "main": "lib/index.js",
   "repository": {
@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@andy-toolforge/core": "^1.0.0",
-    "@google/genai": "^2.10.0"
+    "@google/genai": "^2.10.0",
+    "express": "^4.21.0"
   }
 }

@@ -314,5 +314,89 @@ describe('TTSGenerator', () => {
             const results = await gen.generateBatch([]);
             assert.deepEqual(results, []);
         });
+
+        it('should delay between segments with segmentDelay option', async () => {
+            const fakeAudio = Buffer.from('audio-data');
+            const mockResponse = {
+                candidates: [{
+                    content: {
+                        parts: [{
+                            inlineData: {
+                                mimeType: 'audio/l16; rate=24000',
+                                data: fakeAudio,
+                            },
+                        }],
+                    },
+                }],
+            };
+
+            const gen = new TTSGenerator({
+                apiKey: 'test-key',
+                tts: { model: 'gemini-3.1-flash-tts-preview', fallback: null },
+                _generateFn: async () => mockResponse,
+                maxRetries: 0,
+            });
+
+            const segments = [
+                { ...SAMPLE_SEGMENT, id: 1, text: 'First.' },
+                { ...SAMPLE_SEGMENT, id: 2, text: 'Second.' },
+                { ...SAMPLE_SEGMENT, id: 3, text: 'Third.' },
+            ];
+
+            const start = Date.now();
+            await gen.generateBatch(segments, { segmentDelay: 200 });
+            const elapsed = Date.now() - start;
+
+            // 2 delays between 3 segments = 400ms minimum
+            assert.ok(elapsed >= 400, `should delay ~400ms total, got ${elapsed}ms`);
+        });
+
+        it('should abort mid-batch with AbortSignal', async () => {
+            let callCount = 0;
+            const fakeAudio = Buffer.from('audio');
+            const mockResponse = {
+                candidates: [{
+                    content: {
+                        parts: [{
+                            inlineData: {
+                                mimeType: 'audio/l16; rate=24000',
+                                data: fakeAudio,
+                            },
+                        }],
+                    },
+                }],
+            };
+
+            const gen = new TTSGenerator({
+                apiKey: 'test-key',
+                tts: { model: 'gemini-3.1-flash-tts-preview', fallback: null },
+                _generateFn: async () => {
+                    callCount++;
+                    return mockResponse;
+                },
+                maxRetries: 0,
+            });
+
+            const controller = new AbortController();
+            const segments = [
+                { ...SAMPLE_SEGMENT, id: 1, text: 'First.' },
+                { ...SAMPLE_SEGMENT, id: 2, text: 'Second.' },
+                { ...SAMPLE_SEGMENT, id: 3, text: 'Third.' },
+            ];
+
+            // Abort after first segment
+            const resultsPromise = gen.generateBatch(segments, {
+                segmentDelay: 1000,
+                signal: controller.signal,
+            });
+
+            // Wait a short time for first segment to complete, then abort
+            await new Promise(r => setTimeout(r, 100));
+            controller.abort();
+
+            const results = await resultsPromise;
+            assert.equal(results.length, 1, 'should stop after first segment');
+            assert.equal(callCount, 1, 'should only call API once');
+        });
     });
 });

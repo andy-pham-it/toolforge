@@ -67,7 +67,7 @@ class TTSGenerator {
 
                     if (err.message && (
                         err.message.includes('429') ||
-                        err.message.includes('rate') ||
+                        err.message.includes('rate limit') ||
                         err.message.includes('quota')
                     )) {
                         const delay = this._backoff(attempt);
@@ -154,11 +154,13 @@ class TTSGenerator {
 
     /**
      * Generate audio for multiple segments.
+     * Runs SEQUENTIALLY (one at a time) with configurable delay between segments.
      * Failed segments include an error property instead of throwing.
      *
      * @param {Array} segments - Array of segment objects
      * @param {Object} [options]
-     * @param {number} [options.concurrency=3] - Max concurrent API calls
+     * @param {number} [options.segmentDelay=5000] - Delay (ms) between segment generations
+     * @param {AbortSignal} [options.signal] - AbortSignal to cancel mid-batch
      * @returns {Promise<Array<{id, text, audio?, voice?, error?}>>}
      */
     async generateBatch(segments, options = {}) {
@@ -166,31 +168,25 @@ class TTSGenerator {
             return [];
         }
 
-        const concurrency = options.concurrency ?? 3;
+        const segmentDelay = options.segmentDelay ?? 0;
+        const signal = options.signal || null;
         const results = [];
 
-        for (let i = 0; i < segments.length; i += concurrency) {
-            const chunk = segments.slice(i, i + concurrency);
-            const chunkResults = await Promise.allSettled(
-                chunk.map(seg =>
-                    this.generate(seg).catch(err => ({
-                        id: seg.id,
-                        text: seg.text,
-                        error: err.message,
-                    }))
-                ),
-            );
+        for (let i = 0; i < segments.length; i++) {
+            if (signal?.aborted) break;
 
-            for (const result of chunkResults) {
-                if (result.status === 'fulfilled') {
-                    results.push(result.value);
-                } else {
-                    // Safety net: this should rarely fire since .catch handles failures
-                    results.push({
-                        id: result.reason?.segment?.id ?? null,
-                        error: result.reason?.message || 'Unknown error',
-                    });
-                }
+            const seg = segments[i];
+            const result = await this.generate(seg).catch(err => ({
+                id: seg.id,
+                text: seg.text,
+                voice: seg.voice || 'auto',
+                error: err.message,
+            }));
+            results.push(result);
+
+            // Sleep between segments (not after the last one)
+            if (segmentDelay > 0 && i < segments.length - 1 && !signal?.aborted) {
+                await new Promise(r => setTimeout(r, segmentDelay));
             }
         }
 

@@ -1,6 +1,7 @@
 'use strict';
 
 const { LLMClient } = require('@andy-toolforge/core');
+const { GoogleGenAI } = require('@google/genai');
 
 const PLANNER_SYSTEM_PROMPT = `You are a script segmentation expert for podcast production. Analyze the given script and split it into logical segments for text-to-speech generation.
 
@@ -34,6 +35,27 @@ Return ONLY valid JSON with this exact structure:
   }
 }`;
 
+const INJECT_TAGS_SYSTEM_PROMPT = `You are a podcast segment analyzer. Analyze each segment for text-to-speech generation and enhance it with audio tags.
+
+For each segment, determine:
+1. **Content type**: narrative, philosophical, technical, emotional, dialogue, storytelling, educational, humorous, descriptive
+2. **Pacing**: slow (complex/explanatory content), normal (narrative/storytelling), fast (exciting/urgent)
+3. **Tone/emotion**: calm, excited, serious, cheerful, mysterious, warm, authoritative, curious, nostalgic, dramatic
+
+Available audio tags (inject as [tag] markers at the START of segment text):
+[slow], [normal], [fast], [philosophical], [storyteller], [conversational], [authoritative],
+[calm], [excited], [serious], [cheerful], [mysterious], [warm], [curious], [dramatic],
+[whispers], [laughs], [emphatic], [nostalgic]
+
+Rules:
+- Inject 1-3 tags at the start — e.g. "[slow][philosophical] Content..."
+- If existing audioTags already cover the tone, don't duplicate
+- Each segment should be ~30-60 seconds spoken (~70-150 words for Vietnamese, ~90-200 for English)
+- If a segment is significantly longer, suggest a split point
+- Pacing MUST match content density: philosophical/technical → slow, narrative → normal, exciting → fast
+
+Return ONLY valid JSON. No markdown, no code fences.`;
+
 class TTSPlanner {
     /**
      * @param {Object} config
@@ -43,6 +65,7 @@ class TTSPlanner {
     constructor(config = {}) {
         this.llm = config.llm || this._createDefaultLLM();
         this.maxRetries = config.maxRetries ?? 1;
+        this._genAI = config.genai || null;
     }
 
     /**
@@ -179,6 +202,284 @@ class TTSPlanner {
                 languages: languages.size > 0 ? [...languages] : ['auto'],
             },
         };
+    }
+
+    /**
+     * Enhance segments with audio tags based on content analysis.
+     * Uses an AI reasoning model to analyze tone, pacing, and style.
+     *
+     * @param {Array} segments - Segments from plan()
+     * @param {string} originalScript - Full original script (for sourceRef computation)
+     * @param {Object} [options]
+     * @param {string} [options.backend='google-api'] - 'google-api' or 'gemini-web'
+     * @param {string} [options.stylePrompt=''] - Additional style/tone guidance
+     * @param {string} [options.model] - Model override (e.g. 'gemini-2.5-pro-exp-03-25')
+     * @param {AbortSignal} [options.signal] - AbortSignal
+     * @returns {Promise<Array>} Enhanced segments with tags, originalText, sourceRef
+     */
+    async injectTags(segments, originalScript = '', options = {}) {
+        if (!Array.isArray(segments) || segments.length === 0) {
+            return [];
+        }
+
+        const { backend = 'google-api', stylePrompt = '', model, signal } = options;
+
+        // Compute sourceRef by matching text positions in the original script
+        const withRef = this._computeSourceRef(segments, originalScript);
+
+        let enhanced;
+        if (backend === 'google-api') {
+            enhanced = await this._injectTagsWithGoogleAI(withRef, originalScript, { stylePrompt, model, signal });
+        } else if (backend === 'gemini-web') {
+            enhanced = await this._injectTagsWithGeminiWeb(withRef, originalScript, { stylePrompt, signal });
+        } else {
+            throw new Error(`TTSPlanner: unknown injectTags backend "${backend}"`);
+        }
+
+        // Merge AI results back into original segments (preserve all fields)
+        return this._mergeInjectResults(segments, enhanced);
+    }
+
+    /**
+     * Compute character offset sourceRef for each segment.
+     * @private
+     */
+    _computeSourceRef(segments, originalScript) {
+        if (!originalScript) {
+            return segments.map(s => ({ ...s, sourceRef: null }));
+        }
+        let searchFrom = 0;
+        return segments.map(seg => {
+            // Try to find the exact text; fall back to null
+            const cleanText = seg.text.replace(/\[.*?\]/g, '').trim();
+            const idx = originalScript.indexOf(cleanText, searchFrom);
+            if (idx >= 0) {
+                searchFrom = idx + cleanText.length;
+                return { ...seg, sourceRef: { startChar: idx, endChar: idx + cleanText.length } };
+            }
+            return { ...seg, sourceRef: null };
+        });
+    }
+
+    /**
+     * Inject tags via @google/genai SDK (Gemini REST API).
+     * @private
+     */
+    async _injectTagsWithGoogleAI(segments, originalScript, { stylePrompt, model, signal } = {}) {
+        const genAI = this._genAI || this._createDefaultGenAI();
+        if (!genAI) {
+            throw new Error(
+                'TTSPlanner: GoogleGenAI not available for injectTags. ' +
+                'Set GEMINI_API_KEY or GOOGLE_API_KEY environment variable.'
+            );
+        }
+
+        const effectiveModel = model || 'gemini-2.5-flash';
+
+        const userPrompt = [
+            originalScript ? `Full script context:\n${originalScript}\n` : '',
+            stylePrompt ? `Style guidance: ${stylePrompt}\n` : '',
+            `Segments to analyze:\n${JSON.stringify(segments.map(s => ({
+                id: s.id,
+                text: s.text,
+                title: s.title,
+                pace: s.pace,
+                existingTags: s.audioTags || [],
+            })), null, 2)}`,
+            '',
+            `For each segment, return:
+            - "text": original text with [tag] markers prepended
+            - "audioTags": array of tag names (without brackets)
+            - "pace": "slow" | "normal" | "fast"
+            - "tone": emotional tone name
+            - "suggestedSplit": null or { "splitAt": "sentence to split at", "reason": "why" }
+            - "sourceRef": { "startChar": N, "endChar": N } — character offset in original script`,
+        ].filter(Boolean).join('\n');
+
+        let lastError;
+        for (let attempt = 0; attempt <= this.maxRetries; attempt++) {
+            try {
+                const response = await genAI.models.generateContent({
+                    model: effectiveModel,
+                    contents: [
+                        { role: 'user', parts: [{ text: INJECT_TAGS_SYSTEM_PROMPT }] },
+                        { role: 'user', parts: [{ text: userPrompt }] },
+                    ],
+                    config: {
+                        responseMimeType: 'application/json',
+                        temperature: 0.3,
+                    },
+                });
+
+                const text = response.text;
+                if (!text) throw new Error('Empty response from AI');
+
+                const parsed = typeof text === 'string' ? JSON.parse(text) : text;
+
+                // Handle both { segments: [...] } and direct [...] formats
+                let result = parsed;
+                if (Array.isArray(parsed)) {
+                    result = { segments: parsed };
+                }
+
+                if (!result.segments || !Array.isArray(result.segments)) {
+                    throw new Error('AI returned invalid structure: missing segments array');
+                }
+
+                return result.segments;
+            } catch (err) {
+                lastError = err;
+                if (attempt < this.maxRetries) {
+                    const delay = Math.pow(2, attempt) * 1000;
+                    await this._sleep(delay);
+                }
+            }
+        }
+
+        throw new Error(`TTSPlanner: injectTags failed after ${this.maxRetries + 1} attempts — ${lastError.message}`);
+    }
+
+    /**
+     * Inject tags via Puppeteer + Gemini web UI.
+     * Uses a persistent Chrome profile for session persistence.
+     * @private
+     */
+    async _injectTagsWithGeminiWeb(segments, originalScript, { stylePrompt, signal } = {}) {
+        const GeminiWebClient = require('./gemini-web');
+
+        const userPrompt = [
+            INJECT_TAGS_SYSTEM_PROMPT,
+            '',
+            originalScript ? `Full script context:\n${originalScript}\n` : '',
+            stylePrompt ? `Style guidance: ${stylePrompt}\n` : '',
+            `Segments to analyze:\n${JSON.stringify(segments.map(s => ({
+                id: s.id,
+                text: s.text,
+                title: s.title,
+                pace: s.pace,
+                existingTags: s.audioTags || [],
+            })), null, 2)}`,
+            '',
+            'Respond ONLY with valid JSON. No markdown, no code fences, no extra text.',
+        ].filter(Boolean).join('\n');
+
+        const client = new GeminiWebClient();
+        let page;
+
+        try {
+            page = await client.getPage();
+
+            // Check abort signal before navigation
+            if (signal?.aborted) throw new Error('ABORTED');
+
+            await page.setViewport({ width: 1400, height: 900 });
+            await client.navigateToChat(page);
+
+            // Check sign-in state
+            const signedIn = await client.checkSignedIn(page);
+            if (!signedIn) {
+                throw new Error(
+                    'Gemini Web requires sign-in. Please log in to gemini.google.com ' +
+                    'in your Chrome browser, then re-run.'
+                );
+            }
+
+            if (signal?.aborted) throw new Error('ABORTED');
+
+            // Send prompt
+            await client.sendPrompt(page, userPrompt);
+
+            if (signal?.aborted) throw new Error('ABORTED');
+
+            // Wait for response
+            const responseText = await client.waitForResponse(page, 120000);
+
+            if (!responseText || responseText.length < 50) {
+                throw new Error('Gemini Web returned an empty or too-short response');
+            }
+
+            // Parse JSON from the response
+            // First try to clean markdown fences
+            const cleaned = responseText
+                .replace(/^```(?:json)?\s*|\s*```$/g, '')
+                .trim();
+
+            // Find JSON object in the response
+            const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
+            if (!jsonMatch) {
+                throw new Error('Could not find valid JSON in Gemini Web response');
+            }
+
+            const parsed = JSON.parse(jsonMatch[0]);
+            if (!parsed.segments || !Array.isArray(parsed.segments)) {
+                throw new Error('Gemini Web returned invalid structure: missing segments array');
+            }
+
+            return parsed.segments;
+        } catch (err) {
+            if (err.message === 'ABORTED') {
+                throw err;
+            }
+            throw new Error(`TTSPlanner: gemini-web failed — ${err.message}`);
+        } finally {
+            if (page) try { await page.close(); } catch {}
+            try { await client.close(); } catch {}
+        }
+    }
+
+    /**
+     * Merge AI-enhanced tags back into original segment objects.
+     * Preserves all original fields; overwrites text, audioTags, pace.
+     * @private
+     */
+    _mergeInjectResults(originalSegments, enhancedSegments) {
+        const enhancedMap = new Map();
+        enhancedSegments.forEach((s, i) => {
+            // Some models strip the id field — fall back by position
+            const id = s.id != null ? s.id : (originalSegments[i] ? originalSegments[i].id : i + 1);
+            enhancedMap.set(id, { ...s, id });
+        });
+
+        return originalSegments.map(orig => {
+            const enh = enhancedMap.get(orig.id);
+            if (!enh) {
+                return { ...orig, tagsInjected: false };
+            }
+
+            return {
+                ...orig,
+                text: enh.text || orig.text,
+                originalText: orig.text,
+                audioTags: enh.audioTags || orig.audioTags || [],
+                pace: enh.pace || orig.pace,
+                tagsInjected: true,
+                tone: enh.tone || null,
+                estimatedDuration: orig.estimatedDuration,
+                suggestedSplit: enh.suggestedSplit || null,
+                sourceRef: orig.sourceRef || enh.sourceRef || null,
+                // Keep original audioTags in a separate field if needed
+                originalAudioTags: orig.audioTags || [],
+            };
+        });
+    }
+
+    /**
+     * Create a default GoogleGenAI instance from env vars.
+     * @private
+     */
+    _createDefaultGenAI() {
+        const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
+        if (!apiKey) return null;
+        try {
+            return new GoogleGenAI({ apiKey });
+        } catch {
+            return null;
+        }
+    }
+
+    /** @private */
+    _sleep(ms) {
+        return new Promise(r => setTimeout(r, ms));
     }
 }
 
