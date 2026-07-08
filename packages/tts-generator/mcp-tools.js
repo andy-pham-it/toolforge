@@ -24,6 +24,7 @@ const generateTTSDef = {
             title:    { type: 'string', description: 'Episode title (provides context for planner segmentation)' },
             voice:    { type: 'string', description: `Voice name override. One of: ${VOICE_NAMES.join(', ')}. Default: "auto" (smart selection by content tone)`, default: 'auto' },
             api_mode: { type: 'string', enum: ['interactions', 'live'], description: 'API mode: "interactions" (REST, default) uses gemini-*-tts-preview models; "live" (WebSocket) uses gemini-live-*-preview models with native audio', default: 'interactions' },
+            live_model: { type: 'string', enum: LIVE_MODEL_NAMES, description: `Live API model to use. Only applies when api_mode="live". Default: "${LIVE_MODEL_NAMES[0]}" (smart chain fallback)`, default: undefined },
             mode:     { type: 'string', enum: ['batch', 'single', 'stream'], description: 'Output mode: batch (array of segment-audio pairs), single (concatenated audio), stream (ordered segments, each with audio)', default: 'batch' },
             language: { type: 'string', description: 'Language code: "vi", "en", or "auto" detect', default: 'auto' },
             pace:     { type: 'string', enum: ['slow', 'normal', 'fast'], description: 'Speech pace', default: 'normal' },
@@ -34,7 +35,7 @@ const generateTTSDef = {
 };
 
 async function generateTTSHandler(llm, args) {
-    const { script, title, voice = 'auto', api_mode = 'interactions', mode = 'batch', language = 'auto', pace = 'normal', tags = '' } = args;
+    const { script, title, voice = 'auto', api_mode = 'interactions', live_model, mode = 'batch', language = 'auto', pace = 'normal', tags = '' } = args;
 
     // Input validation
     if (!script || typeof script !== 'string' || script.trim().length === 0) {
@@ -77,21 +78,21 @@ async function generateTTSHandler(llm, args) {
 
     if (api_mode === 'live') {
         // Live API (WebSocket) with native audio models
+        const cfg = module.exports._pluginConfig || {};
+        const liveOpts = {};
+        if (live_model) {
+            liveOpts.models = [live_model];
+        }
         const gen = new LiveTTSGenerator({
-            apiKey: process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY,
-            live: {
-                models: [
-                    'gemini-live-2.5-flash-native-audio',
-                    'gemini-3.1-flash-live-preview',
-                    'gemini-3.5-live-translate-preview',
-                ],
-            },
+            apiKey: cfg.apiKey || process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY,
+            live: liveOpts,
         });
         audioResults = await gen.generateBatch(resolvedSegments);
     } else {
         // Interactions API (REST) with TTS models (default)
+        const cfg = module.exports._pluginConfig || {};
         const gen = new TTSGenerator({
-            apiKey: process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY,
+            apiKey: cfg.apiKey || process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY,
             tts: {
                 model: 'gemini-3.1-flash-tts-preview',
                 fallback: 'gemini-2.5-flash-preview-tts',
@@ -183,7 +184,12 @@ async function listTTSVoicesHandler(llm, args) {
 // ---------------------------------------------------------------------------
 // Exports
 // ---------------------------------------------------------------------------
-module.exports = function () {
+module.exports = function (config = {}) {
+    // Store config for use in handlers (MCP server passes { apiKey, provider })
+    // Handlers below reference the module-level _pluginConfig set here.
+    // This is a module-level cache — each instantiation of the MCP server
+    // creates a fresh plugin context.
+    module.exports._pluginConfig = config;
     return [
         { definition: generateTTSDef, handler: generateTTSHandler },
         { definition: listTTSVoicesDef, handler: listTTSVoicesHandler },

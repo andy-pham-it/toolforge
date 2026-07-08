@@ -113,6 +113,32 @@ Không tạo package mới nếu chỉ có một dự án dùng — cứ để c
 - Tất cả package theo semver
 - Pre-release: `-alpha.1`, `-beta.1`
 
+## 7.5. Development Commands
+
+```bash
+# Install all dependencies (root links all workspaces)
+npm install
+
+# Test all packages
+npm test --workspaces
+
+# Test a single package
+npm test -w @andy-toolforge/core
+npm test -w @andy-toolforge/footage-generation
+npm test -w @andy-toolforge/seo-generation
+
+# Add a dependency to a package
+npm install <dep> -w @andy-toolforge/<pkg>
+```
+
+**Testing:** All packages use Node.js built-in test runner (`node:test` / `node:assert`). Tests co-located in `lib/*.test.js` — no jest, mocha, or vitest.
+
+**No build step.** Plain CommonJS loaded directly from `lib/`. Edit a file → takes effect immediately. Workspace-linked by `npm install` at root.
+
+**No linter/formatter config.** No ESLint or Prettier in the monorepo.
+
+**Publishing:** Automatic — GitHub Actions (`.github/workflows/publish.yml`) on push to `main`. Each package version is checked against npm registry; only new versions are published. Manual publish via `npm publish -w @andy-toolforge/<pkg>`.
+
 ## 8. WHERE TO LOOK
 
 | Task | Location |
@@ -120,6 +146,7 @@ Không tạo package mới nếu chỉ có một dự án dùng — cứ để c
 | Need an LLM client, browser, logger, or queue | `packages/core/lib/` |
 | Generate podcast/video images | `packages/footage-generation/lib/` |
 | Generate SEO metadata (title, desc, tags) | `packages/seo-generation/lib/` |
+| Generate TTS audio (Gemini TTS, multi-voice) | `packages/tts-generator/lib/` |
 | Research content, summarize, generate ideas | `packages/content-research/lib/` |
 | Content ops: plan, create, distribute, analyze | `packages/content-operations/lib/` |
 | Track project tasks, time, reports | `packages/pm-support/lib/` |
@@ -140,6 +167,7 @@ Không tạo package mới nếu chỉ có một dự án dùng — cứ để c
 | `docs/2026-06-30-podcast-platform-ecosystem-design.md` | Spec thiết kế gốc |
 | `CONTRIBUTING.md` | Hướng dẫn dev |
 | `packages/*/lib/index.js` | Export của từng package |
+| `packages/*/AGENTS.md` | Context cho từng domain package (mỗi package có riêng) |
 
 ## 10. Code Map
 
@@ -162,8 +190,25 @@ Exports by package (key symbols from Serena analysis):
 | `coding-support` | `CodebaseAnalyzer` | `lib/codebase-analyzer.js` | Line counts, dead code, dep graph, complexity |
 | `book-writing` | `BookWriter` | `lib/writer.js` | Outline, write chapters, review, export (md/plain/html) |
 | `ba-support` | `MarketResearcher` | `lib/researcher.js` | Competitor crawl, pricing, SWOT, trends, reports |
+| `content-research` | `ContentSummarizer` | `lib/summarizer.js` | Summarize content via LLM with skill-file prompts |
+| `content-research` | `ContentIdeator` | `lib/ideator.js` | Generate content ideas |
+| `content-research` | `ArticleManager` | `lib/manager.js` | Article lifecycle (classify, tag, summarize, improve) |
+| `content-research` | `CompetitorAnalyzer` | `lib/analyzer.js` | Crawl competitor URL + analyze via LLM (Puppeteer) |
+| `content-research` | `LLMClient` | `lib/llm.js` | Extends core LLMClient; loads domain skill files |
+| `content-operations` | `ContentResearcher` | `lib/researcher.js` | Research trending topics, keywords, content gaps |
+| `content-operations` | `ContentPlanner` | `lib/planner.js` | Build content calendars, schedule posts |
+| `content-operations` | `ContentCreator` | `lib/creator.js` | Generate content from plans via LLM |
+| `content-operations` | `ContentDistributor` | `lib/distributor.js` | Push content to platforms |
+| `content-operations` | `ContentAnalytics` | `lib/analytics.js` | Track performance, generate reports |
+| `content-operations` | `ContentPatternLinter` | `lib/linter.js` | Check content quality & pattern compliance |
+| `mcp` | `MCPServer` | `lib/mcp-server.js` | MCP protocol server — registers tools, handles JSON-RPC |
+| `mcp` | `createServer(config)` | `lib/index.js` | Factory: creates MCPServer from config |
+| `tts-generator` | `TTSPlanner` | `lib/planner.js` | Script segmentation (LLM + regex fallback) |
+| `tts-generator` | `TTSGenerator` | `lib/generator.js` | Gemini TTS via Interactions REST API |
+| `tts-generator` | `LiveTTSGenerator` | `lib/live-generator.js` | Gemini TTS via Live WebSocket API |
+| `tts-generator` | `OutputFormatter` | `lib/output.js` | Output formatting (batch/single/stream) |
 
-## 10. AI decision checklist
+## 11. AI decision checklist
 
 Trước khi thực hiện bất kỳ thay đổi nào, AI **PHẢI** tự kiểm tra:
 
