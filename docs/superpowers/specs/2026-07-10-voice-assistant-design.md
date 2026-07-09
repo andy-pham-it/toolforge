@@ -527,7 +527,92 @@ const analyst = new VoiceAssistant({
 });
 ```
 
-### 9.4 Ghép nối domain
+### 9.4. Trợ lý y tế (healthcare)
+
+```js
+const healthAssistant = new VoiceAssistant({
+  systemPrompt: `Bạn là trợ lý y tế thông minh. Bạn có thể:
+- Tra cứu triệu chứng bệnh và cung cấp thông tin tham khảo (kèm disclaimer: không thay thế bác sĩ)
+- Nhắc lịch uống thuốc, theo dõi sức khỏe hàng ngày
+- Tra cứu thông tin bệnh viện, bác sĩ gần đây
+- Hỗ trợ đặt lịch hẹn khám bệnh
+- Luôn kèm disclaimer khi đưa ra thông tin y tế`,
+  voice: 'Kore',
+  tools: [
+    { name: 'symptom_checker', description: 'Tra cứu thông tin về triệu chứng', handler: async ({ symptom }) => medicalDB.lookupSymptom(symptom) },
+    { name: 'find_nearby_hospitals', description: 'Tìm bệnh viện/phòng khám gần đây', handler: async ({ location, specialty }) => mapsAPI.findNearby(location, specialty) },
+    { name: 'book_appointment', description: 'Đặt lịch hẹn khám bệnh', handler: async ({ doctorId, date, time }) => bookingAPI.schedule(doctorId, date, time) },
+    { name: 'medication_reminder', description: 'Tạo nhắc nhở uống thuốc', handler: async ({ medication, time, frequency }) => reminderAPI.create(medication, time, frequency) },
+    { name: 'health_tip', description: 'Cung cấp mẹo sức khỏe theo chủ đề', handler: async ({ topic }) => healthTips.get(topic) }
+  ]
+});
+```
+
+### 9.5. Trợ lý du lịch
+
+```js
+const travelAssistant = new VoiceAssistant({
+  systemPrompt: `Bạn là trợ lý du lịch thông minh. Bạn có thể:
+- Tìm kiếm chuyến bay, khách sạn, tour du lịch
+- Đề xuất itinerary theo ngân sách và sở thích
+- Cung cấp thông tin thời tiết, địa điểm tham quan
+- Đặt vé máy bay, phòng khách sạn (xác nhận trước khi đặt)
+- Hỗ trợ đa ngôn ngữ: tiếng Việt, tiếng Anh`,
+  voice: 'Zephyr',
+  tools: [
+    { name: 'search_flights', description: 'Tìm chuyến bay', handler: async ({ from, to, date }) => flightAPI.search(from, to, date) },
+    { name: 'search_hotels', description: 'Tìm khách sạn theo địa điểm', handler: async ({ location, checkIn, checkOut }) => hotelAPI.search(location, checkIn, checkOut) },
+    { name: 'get_weather', description: 'Dự báo thời tiết', handler: async ({ location, date }) => weatherAPI.forecast(location, date) },
+    { name: 'recommend_attractions', description: 'Gợi ý địa điểm tham quan', handler: async ({ city, interests }) => travelAPI.attractions(city, interests) },
+    { name: 'book_flight', description: 'Đặt vé máy bay', handler: async ({ flightId, passengers }) => bookingAPI.bookFlight(flightId, passengers) }
+  ]
+});
+```
+
+### 9.6. Trợ lý nhà hàng / ẩm thực
+
+```js
+const restaurantAssistant = new VoiceAssistant({
+  systemPrompt: `Bạn là trợ lý ẩm thực. Bạn có thể:
+- Gợi ý món ăn theo sở thích, chế độ ăn, nguyên liệu có sẵn
+- Tra cứu công thức nấu ăn, hướng dẫn từng bước
+- Tìm nhà hàng theo khu vực, loại món ăn, giá cả
+- Đặt bàn nhà hàng, gọi món
+- Tính toán dinh dưỡng cho khẩu phần ăn`,
+  voice: 'Puck',
+  tools: [
+    { name: 'suggest_dish', description: 'Gợi ý món ăn dựa trên sở thích/nguyên liệu', handler: async ({ preferences, ingredients }) => recipeAI.suggest(preferences, ingredients) },
+    { name: 'get_recipe', description: 'Tra cứu công thức nấu ăn', handler: async ({ dishName }) => recipeDB.lookup(dishName) },
+    { name: 'find_restaurant', description: 'Tìm nhà hàng', handler: async ({ location, cuisine, priceRange }) => mapsAPI.findRestaurants(location, cuisine, priceRange) },
+    { name: 'reserve_table', description: 'Đặt bàn nhà hàng', handler: async ({ restaurantId, date, time, partySize }) => bookingAPI.reserve(restaurantId, date, time, partySize) },
+    { name: 'nutrition_info', description: 'Tính toán thông tin dinh dưỡng', handler: async ({ dishName, portion }) => nutritionAPI.calculate(dishName, portion) }
+  ]
+});
+```
+
+### 9.7. Trợ lý DevOps (developer operations)
+
+```js
+const devopsAssistant = new VoiceAssistant({
+  systemPrompt: `You are a DevOps assistant. You can:
+- Check CI/CD pipeline status, recent deployments
+- View server/application logs and metrics
+- Restart services, scale resources
+- Query database, run read-only commands
+- Monitor system health and alert on anomalies
+- Always confirm before any destructive action (restart, scale down, delete)`,
+  voice: 'Fenrir',
+  tools: [
+    { name: 'check_pipeline', description: 'Check CI/CD pipeline status for a project/branch', handler: async ({ project, branch }) => ciAPI.pipelineStatus(project, branch) },
+    { name: 'view_logs', description: 'View recent application logs', handler: async ({ service, lines }) => logAPI.tail(service, lines) },
+    { name: 'get_metrics', description: 'Get system metrics (CPU, memory, requests)', handler: async ({ service, duration }) => metricsAPI.get(service, duration) },
+    { name: 'restart_service', description: 'Restart a service (requires confirmation)', handler: async ({ service }) => infraAPI.restart(service) },
+    { name: 'run_query', description: 'Run a read-only SQL query', handler: async ({ query }) => dbAPI.readOnlyQuery(query) }
+  ]
+});
+```
+
+### 9.8 Ghép nối domain
 
 Các config trên có thể được:
 - **Định nghĩa tĩnh** trong code (như examples trên)
