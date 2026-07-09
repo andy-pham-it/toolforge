@@ -1,6 +1,6 @@
 {
   "name": "@andy-toolforge/mcp",
-  "version": "1.1.4",
+  "version": "1.2.0",
   "description": "MCP server tools for media content generation — SEO, script analysis, TTS, image generation, book writing, project management, code analysis",
   "main": "lib/index.js",
   "bin": {
@@ -23,7 +23,7 @@
     "@andy-toolforge/book-writing": "^1.0.0",
     "@andy-toolforge/pm-support": "^1.0.0",
     "@andy-toolforge/coding-support": "^1.0.0",
-    "@andy-toolforge/tts-generator": "0.1.1"
+    "@andy-toolforge/tts-generator": "^0.4.0"
   },
   "keywords": [
     "mcp",

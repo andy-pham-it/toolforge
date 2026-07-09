@@ -11,16 +11,7 @@ packages/mcp/
   lib/
     index.js      — Entry: exports { createServer, MCPServer }
     mcp-server.js — MCPServer  Core MCP server implementation
-    tools/        — Individual MCP tool definitions
-      seo-generate.js   — SEO generation tool
-      analyze-script.js — Script analysis tool
-      generate-prompts.js — Image prompt generation tool
-      generate-mapping.js — Audio mapping tool
-      suggest-cover.js   — Cover art suggestion tool
-      article-manager.js — Article management tool
-      content-ideator.js — Content idea generation tool
-      content-summarizer.js — Content summarization tool
-      competitor-analyzer.js — Competitor analysis tool
+    (Plugin tools loaded dynamically from each package's mcp-tools.js)
   package.json    — deps: @andy-toolforge/core, @andy-toolforge/content-research, @andy-toolforge/footage-generation
 ```
 

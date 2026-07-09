@@ -2,6 +2,7 @@ const { LLMClient } = require('@andy-toolforge/core');
 const path = require('path');
 const fs = require('fs');
 const readline = require('readline');
+const mcpPkg = require('../package.json');
 
 class MCPServer {
     constructor(config) {
@@ -109,6 +110,7 @@ class MCPServer {
                 }
             } catch (err) {
                 console.error(`[mcp] Failed to load plugin tools from @andy-toolforge/${pkgName}:`, err.message);
+                if (err.stack) console.error(`[mcp] Stack:`, err.stack.split('\n').slice(0, 3).join('\n'));
             }
         }
     }
@@ -238,7 +240,7 @@ Respond with a JSON object:
                     capabilities: { tools: {} },
                     serverInfo: {
                         name: '@andy-toolforge/mcp',
-                        version: '1.0.0',
+                        version: mcpPkg.version,
                     },
                 },
             };
