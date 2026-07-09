@@ -1,0 +1,18 @@
+{
+  "name": "@andy-toolforge/voice-assistant",
+  "version": "0.1.0",
+  "description": "Toolforge domain: AI voice assistant using Gemini Live API — bidirectional audio with built-in STT/TTS/function calling, domain-agnostic config",
+  "main": "lib/index.js",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/andy-pham-it/toolforge.git"
+  },
+  "scripts": {
+    "postinstall": "node skills/postinstall.js",
+    "test": "node --test lib/*.test.js"
+  },
+  "dependencies": {
+    "@andy-toolforge/core": "^1.0.0",
+    "@google/genai": "^2.10.0"
+  }
+}

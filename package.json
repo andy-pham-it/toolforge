@@ -13,6 +13,7 @@
     "packages/mcp",
     "packages/content-operations",
     "packages/content-research",
-    "packages/tts-generator"
+    "packages/tts-generator",
+    "packages/voice-assistant"
   ]
 }
