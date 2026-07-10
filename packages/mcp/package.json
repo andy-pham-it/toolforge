@@ -9,11 +9,10 @@
   "files": [
     "lib/",
     "bin/",
-    "skills/",
-    "scripts/"
+    "skills/"
   ],
   "scripts": {
-    "postinstall": "node scripts/postinstall.js",
+    "postinstall": "node skills/postinstall.js",
     "test": "node --test lib/*.test.js"
   },
   "dependencies": {
