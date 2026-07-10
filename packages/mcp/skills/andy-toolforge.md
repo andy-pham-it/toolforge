@@ -88,3 +88,23 @@ skill_mcp(mcp_name="andy-toolforge", tool_name="<tool>", arguments={...})
 | Tool | Mô tả |
 |------|-------|
 | `toolforge_suggest` | Mô tả task → gợi ý tool phù hợp |
+
+## Workflow Skills
+
+Ngoài việc gọi tool trực tiếp, bạn có thể load các skill workflow dưới đây để thực hiện tác vụ phức tạp:
+
+| Skill | Mô tả |
+|-------|-------|
+| `toolforge-podcast-visual-production` | Tạo images + cover + BGM từ script |
+| `toolforge-podcast-content-strategy` | Research topics, competitor analysis, SEO |
+| `toolforge-podcast-project-manager` | Quản lý project, tasks, time tracking, invoice |
+| `toolforge-podcast-script-development` | Viết và review podcast scripts |
+| `toolforge-podcast-voice-production` | TTS và voice assistant |
+
+**Pipeline sản xuất podcast hoàn chỉnh:**
+
+1. `toolforge-podcast-content-strategy` → Research nội dung + phân tích competitor
+2. `toolforge-podcast-script-development` → Viết script từ outline
+3. `toolforge-podcast-voice-production` → Tạo TTS audio từ script
+4. `toolforge-podcast-visual-production` → Tạo images + cover + BGM
+5. `toolforge-podcast-content-strategy` → SEO metadata cho episode hoàn chỉnh

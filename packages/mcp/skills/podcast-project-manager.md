@@ -2,6 +2,12 @@
 
 Quản lý project, tasks, time tracking, và invoices cho sản xuất podcast.
 
+## Điều kiện tiên quyết
+
+- Project name để tạo project
+- Task names để thêm tasks
+- Project ID (có sau Step 1) — **lưu lại** để dùng cho các step sau
+
 ## Workflow
 
 ### Bước 1: Tạo project
@@ -22,6 +28,8 @@ skill_mcp(mcp_name="andy-toolforge", tool_name="pm_add_task", arguments={
   "projectId": "...", "name": "Edit video", "status": "todo"
 })
 ```
+
+Các status có thể dùng: `todo`, `in-progress`, `done`.
 
 ### Bước 3: Track thời gian
 
@@ -46,3 +54,9 @@ skill_mcp(mcp_name="andy-toolforge", tool_name="pm_calculate_invoice", arguments
   "projectId": "...", "rate": 50
 })
 ```
+
+## Tích hợp với các workflow khác
+
+- **Tất cả workflow skills**: Dùng Project Manager để theo dõi tiến độ từng giai đoạn sản xuất
+
+Pipeline đề xuất: Tạo project (skill này) → Script → Visual → Voice → SEO → Cập nhật task status
