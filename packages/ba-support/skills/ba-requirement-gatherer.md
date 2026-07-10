@@ -105,3 +105,31 @@ Feature: [Feature name]
 - P1 (Should have): ...
 - P2 (Could have): ...
 ```
+
+## 📋 Prerequisites
+
+- Stakeholder notes or project context (at minimum a problem statement)
+- Knowledge of business domain for meaningful requirement prioritization
+- Optional: existing documentation or technical constraints
+
+## ⚠️ Error Recovery
+
+| Error | Likely Cause | Fix |
+|-------|-------------|-----|
+| Requirements too vague | Insufficient stakeholder input | Ask more targeted questions about scope and constraints |
+| User stories don't align | Missing business context | Revisit business goals before writing stories |
+| Priority conflicts | Conflicting stakeholder expectations | Flag trade-offs explicitly and ask for decision |
+
+## 🔗 Integration
+
+- **MCP tools:** `toolforge_competitor_analysis`, `toolforge_pricing_analysis`, `toolforge_swot_analysis` — use for competitive context during requirement gathering
+- **Domain packages:** Requirements feed into `pm-support`'s `TaskTracker` for project planning
+- **Skill chain:** Requirements → Project plan → Task tracking → Reporting
+
+## 📚 Related Skills
+
+- `ba-competitor-analysis` — competitive context for requirements
+- `ba-support-hub` — overview of all BA workflows
+- `pm-project-planner` — turn requirements into task plans
+- `pm-support-hub` — project management integration
+- `andy-toolforge` (MCP Bridge) — invoke BA tools via `skill_mcp`

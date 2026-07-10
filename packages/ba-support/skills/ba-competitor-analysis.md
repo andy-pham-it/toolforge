@@ -92,3 +92,32 @@ Skill này hướng dẫn AI phân tích đối thủ cạnh tranh toàn diện.
 1. ...
 2. ...
 ```
+
+## 📋 Prerequisites
+
+- Valid competitor URL(s) to crawl (accessible from the network)
+- For pricing analysis: data from at least 2 competitors for meaningful comparison
+- For trends: relevant keywords for the market
+- `LLMClient` instance (optional for basic crawl, required for analysis)
+
+## ⚠️ Error Recovery
+
+| Error | Likely Cause | Fix |
+|-------|-------------|-----|
+| Competitor URL unreachable | Site blocks crawlers or URL is invalid | Try alternative competitor URL or use manual data entry |
+| Pricing data incomplete | Fewer than 2 competitors | Collect more data or note the limitation |
+| SWOT missing quadrants | Insufficient data | Add competitor data or mark as "insufficient data" for missing quadrants |
+| Trends return nothing | Keywords too niche | Broaden keywords or check spelling |
+
+## 🔗 Integration
+
+- **MCP tools:** `toolforge_competitor_analysis` (crawl), `toolforge_pricing_analysis` (pricing), `toolforge_swot_analysis` (SWOT), `toolforge_trend_analysis` (trends), `toolforge_business_report` (report)
+- **Domain packages:** Results can be stored/exported via report generation
+- **Cross-domain:** Use with `content-research`'s competitor analyzer for content strategy context
+
+## 📚 Related Skills
+
+- `ba-requirement-gatherer` — gather requirements before competitor analysis
+- `ba-support-hub` — overview of all BA tools
+- `toolforge_content_research` (via MCP) — content competitor analysis
+- `andy-toolforge` (MCP Bridge) — invoke BA tools via `skill_mcp`

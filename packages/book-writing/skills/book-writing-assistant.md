@@ -77,3 +77,31 @@ Mỗi chương: 800-2000 từ, markdown format, H2 subsections.
 - [ ] Review
 - [ ] Export
 ```
+
+## 📋 Prerequisites
+
+- Clear topic or thesis for the book
+- `LLMClient` instance with valid API key (Groq or Gemini)
+- Optional: target audience, tone, and chapter count preferences
+
+## ⚠️ Error Recovery
+
+| Error | Likely Cause | Fix |
+|-------|-------------|-----|
+| Outline too generic | Topic too broad | Narrow the topic or provide specific angle |
+| Chapter content contradicts earlier | Continuity broken | Run `BookWriter.reviewConsistency()` to detect issues |
+| Export format issues | Missing chapters | Complete all chapters before export |
+| LLM context limit reached | Chapter too long | Keep chapters 800–2000 words, split if needed |
+
+## 🔗 Integration
+
+- **MCP tools:** `toolforge_book_outline`, `toolforge_book_write_chapter`, `toolforge_book_review`, `toolforge_book_export`
+- **Domain packages:** Book content can feed `andy-toolforge_content_summarizer` for marketing summaries
+- **Cross-domain:** Combine with `content-operations` to plan book-launch content calendar
+
+## 📚 Related Skills
+
+- `book-summarizer` — summarize completed book for marketing
+- `book-writing-hub` — overview of all book writing tools
+- `content-operations-editorial-calendar` — plan book launch content
+- `andy-toolforge` (MCP Bridge) — invoke book tools via `skill_mcp`

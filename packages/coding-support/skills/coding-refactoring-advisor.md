@@ -64,3 +64,30 @@ Mô tả cấu trúc mới, file nào thay đổi, file nào tạo mới.
 ### Risks
 - ...
 ```
+
+## 📋 Prerequisites
+
+- Source code to analyze (file path or module)
+- Clear refactoring goal: reduce complexity, improve testability, performance, etc.
+- Optional: constraints (must keep API backward compatible, etc.)
+
+## ⚠️ Error Recovery
+
+| Error | Likely Cause | Fix |
+|-------|-------------|-----|
+| Analysis too shallow | Large file exceeds context | Focus on one module or function at a time |
+| Missing dependency detection | Circular dependencies not visible | Run `codebase_dependency_graph` before refactoring |
+| Effort estimates off | Unknown code complexity | Add buffer (1.5x) to estimates for unfamiliar code |
+
+## 🔗 Integration
+
+- **MCP tools:** `codebase_line_counts`, `codebase_dead_code`, `codebase_dependency_graph`, `codebase_complexity` — use these to gather data before proposing refactoring
+- **Domain packages:** Refactoring plans feed into `pm-support`'s `TaskTracker` for execution tracking
+- **Cross-domain:** Coordinate with `pm-project-planner` for structured refactoring sprints
+
+## 📚 Related Skills
+
+- `coding-code-reviewer` — review code before/after refactoring
+- `coding-support-hub` — overview of all coding support tools
+- `pm-project-planner` — plan refactoring as project tasks
+- `andy-toolforge` (MCP Bridge) — invoke coding tools via `skill_mcp`

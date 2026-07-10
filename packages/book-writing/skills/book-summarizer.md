@@ -72,3 +72,30 @@ Skill này hướng dẫn AI tóm tắt nội dung sách thành nhiều format k
 
 [Content based on format]
 ```
+
+## 📋 Prerequisites
+
+- Book content (manuscript, chapter summaries, or detailed notes)
+- Target format selected: blog post, video script, slide deck, or social post
+- `LLMClient` instance with valid API key
+
+## ⚠️ Error Recovery
+
+| Error | Likely Cause | Fix |
+|-------|-------------|-----|
+| Summary too generic | Source content insufficient | Request chapter-level summaries or full manuscript |
+| Hook doesn't grab attention | Missing context about audience | Specify target audience and tone |
+| Slide deck exceeds 10 slides | Too many concepts per slide | Consolidate related points, keep 1 idea per slide |
+
+## 🔗 Integration
+
+- **MCP tools:** `toolforge_book_outline`, `toolforge_book_write_chapter`, `toolforge_book_review`, `toolforge_book_export`
+- **Domain packages:** Summaries can be used by `seo-generation` for metadata or `content-operations` for content calendars
+- **Cross-domain:** Book summaries feed `andy-toolforge_content_summarizer` (content-research) for multi-format output
+
+## 📚 Related Skills
+
+- `book-writing-assistant` — write the full book before summarizing
+- `book-writing-hub` — overview of all book writing tools
+- `seo-generation-hub` — generate SEO metadata from summaries
+- `andy-toolforge` (MCP Bridge) — invoke book tools via `skill_mcp`

@@ -88,3 +88,30 @@ Skill này hướng dẫn AI hỗ trợ chuẩn bị trước meeting và tạo 
 ## Next Meeting
 📅 ...
 ```
+
+## 📋 Prerequisites
+
+- Meeting type and context (what project/topic)
+- Optional: attendee list, previous meeting notes, duration
+- For post-meeting: raw notes or transcript to process
+
+## ⚠️ Error Recovery
+
+| Error | Likely Cause | Fix |
+|-------|-------------|-----|
+| Agenda too vague | Insufficient context | Ask clarifying questions about meeting purpose |
+| Action items missing owners | Notes don't specify who | Flag explicitly: "Owner not specified in notes" |
+| Duplicate action items | Same task mentioned multiple times | Deduplicate and merge with latest update |
+
+## 🔗 Integration
+
+- **MCP tools:** `pm_create_project`, `pm_add_task`, `pm_track_time`, `pm_generate_report`, `pm_calculate_invoice`
+- **Domain packages:** Action items can be created as tasks via `TaskTracker`
+- **Cross-domain:** Meeting summaries can feed `content-operations`'s editorial calendar for content strategy meetings
+
+## 📚 Related Skills
+
+- `pm-project-planner` — plan projects discussed in meetings
+- `pm-support-hub` — overview of all PM tools
+- `content-operations-editorial-calendar` — schedule content from meetings
+- `andy-toolforge` (MCP Bridge) — invoke PM tools via `skill_mcp`

@@ -52,3 +52,31 @@ Danh sách issues phân loại theo severity:
 ### ✅ OK
 - [file] — không có issues
 ```
+
+## 📋 Prerequisites
+
+- Code diff or file content to review
+- Language/framework context for accurate pattern detection
+- Optional: project conventions or style guide reference
+
+## ⚠️ Error Recovery
+
+| Error | Likely Cause | Fix |
+|-------|-------------|-----|
+| False positive | Pattern misidentified as issue | Cross-check with language best practices, downgrade severity |
+| Missing security issue | Insufficient context | Query dependencies for known vulnerabilities |
+| Review too verbose | Too many low-severity suggestions | Filter to critical/important only per rules |
+| Auto-generated file flagged | Pattern not excluded | Skip auto-generated, dependency, and config files |
+
+## 🔗 Integration
+
+- **MCP tools:** `codebase_complexity` — measure code complexity before review; `codebase_dependency_graph` — understand dependencies
+- **Domain packages:** Code review issues feed into `coding-refactoring-advisor` for structured fix plans
+- **Cross-domain:** Combine with `pm-support`'s `TaskTracker` to create tasks from review findings
+
+## 📚 Related Skills
+
+- `coding-refactoring-advisor` — fix issues found during review
+- `coding-support-hub` — overview of all coding support tools
+- `pm-support-hub` — track review findings as tasks
+- `andy-toolforge` (MCP Bridge) — invoke coding tools via `skill_mcp`

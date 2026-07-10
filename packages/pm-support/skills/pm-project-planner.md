@@ -72,3 +72,31 @@ project:
 ### Risks
 - ...
 ```
+
+## 📋 Prerequisites
+
+- Project description or goal statement
+- Optional: scope constraints, deadline, budget, team size/roles
+- For effort estimation: understanding of technology stack and complexity
+
+## ⚠️ Error Recovery
+
+| Error | Likely Cause | Fix |
+|-------|-------------|-----|
+| Circular dependencies | Poor task sequencing | Review dependency chain, break cycles by reordering |
+| Milestone spacing >2 weeks | Missing intermediate milestones | Add checkpoint milestones for long phases |
+| Effort estimates too optimistic | Unknown complexity | Apply 1.5x–2x buffer for unfamiliar work |
+
+## 🔗 Integration
+
+- **MCP tools:** `pm_create_project`, `pm_add_task`, `pm_track_time` — execute the plan via PM tools
+- **Domain packages:** Plans can be tracked via `TaskTracker` for time logging and invoicing
+- **Cross-domain:** Combine with `ba-requirement-gatherer` for requirements-driven planning, or `coding-refactoring-advisor` for technical plans
+
+## 📚 Related Skills
+
+- `pm-meeting-assistant` — discuss plans in meetings
+- `pm-support-hub` — overview of all PM tools
+- `ba-requirement-gatherer` — gather requirements before planning
+- `coding-refactoring-advisor` — technical refactoring plans
+- `andy-toolforge` (MCP Bridge) — invoke PM tools via `skill_mcp`
