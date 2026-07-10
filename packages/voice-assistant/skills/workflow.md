@@ -1,3 +1,8 @@
+---
+name: voice-assistant-workflow
+description: Use when configuring or running voice assistant sessions for interactive AI conversations.
+---
+
 # Voice Assistant Workflow
 
 > Hướng dẫn AI agent sử dụng `@andy-toolforge/voice-assistant` để tạo trợ lý giọng nói.
@@ -116,3 +121,32 @@ Agent (to user): "Đã xác nhận xong. Khách hàng A sẽ nhận hàng vào t
 | No audio response | Voice not set | Defaults to `Charon` |
 | Tool returns error | Handler throws | Check `error` event |
 | Session hangs | StopListening + no disconnect | Call `assistant.disconnect()` |
+
+## 📋 Prerequisites
+
+- **Input:** Conversation context or goal (what the assistant should accomplish)
+- **API Keys:** `GEMINI_API_KEY` for Gemini Live API
+- **Dependencies:** `@andy-toolforge/voice-assistant` package
+- **Related skills:** `toolforge-voice-assistant-hub` for all voice assistant tools
+
+## ⚠️ Error Recovery
+
+| Error | Cause | Solution |
+|-------|-------|----------|
+| Session timeout | Long idle period | Reduce `maxTurns` or call `voice_assistant_session` with shorter timeout |
+| Voice not responding | Missing or invalid voice name | Default to `Charon` — verify voice name from `list_tts_voices` |
+| Tool call fails | Handler throws in tool | Log `error` event and retry with simplified parameters |
+
+## 🔗 Integration
+
+**MCP Alternative:** All tools in this skill are available via MCP:
+- `skill_mcp(mcp_name="andy-toolforge", tool_name="voice_assistant_session")`
+- `skill_mcp(mcp_name="andy-toolforge", tool_name="voice_assistant_configure")`
+
+**Works with:** `toolforge-tts-generator-hub` (voice selection), `toolforge-pm-support-hub` (task tracking for voice-driven workflows)
+
+## 📎 Related Skills
+
+- `toolforge-voice-assistant-hub` — Complete voice assistant tool reference
+- `toolforge-tts-generator-hub` — TTS audio generation for non-interactive voice
+- `toolforge-podcast-visual-production` — Combine voice with visual content
