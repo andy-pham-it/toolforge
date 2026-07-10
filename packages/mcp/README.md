@@ -114,12 +114,75 @@ Hoặc dùng `${VAR}` syntax — client app sẽ resolve từ environment của 
 
 | App | Cách set env để dùng `${VAR}` syntax |
 |-----|--------------------------------------|
-| **OpenCode GUI** | Tạo file `.env` trong project directory, hoặc set trong `~/.config/opencode/opencode.jsonc` → thêm key vào `environment` field |
+| **OpenCode GUI** | (Xem hướng dẫn chi tiết bên dưới) |
 | **Claude Desktop** | Dùng `launchctl setenv GEMINI_API_KEY "AIza_xxx"` trong terminal, restart app |
 | **Cursor** | Thêm vào `~/.zshrc` rồi launch Cursor từ terminal (`open -a Cursor`) |
 | **VS Code** | Dùng extension "Remote - SSH" hoặc set trong `.vscode/launch.json` → `env` field |
 
-> **Mẹo cho OpenCode GUI**: Nếu không muốn lưu key trong config file (dễ lộ secret), cách an toàn nhất là dùng `.env` file ở thư mục project — OpenCode tự động load biến từ đó. Hoặc dùng `launchctl setenv` chạy một lần sau reboot.
+#### Hướng dẫn chi tiết cho OpenCode GUI
+
+OpenCode GUI là macOS native app — không load `.zshrc` hay `.bash_profile`. Có 3 cách để cấp API key:
+
+**Cách A — Config trong `opencode.jsonc`** (nhanh nhất)
+
+Sửa file `~/.config/opencode/opencode.jsonc`, thêm `environment` field:
+
+```jsonc
+{
+  "mcpServers": {
+    "toolforge": {
+      "command": "npx",
+      "args": ["toolforge-mcp"],
+      "env": {
+        "GEMINI_API_KEY": "AIza_your_key_here",
+        "GROQ_API_KEY": "gsk_your_key_here"
+      }
+    }
+  }
+}
+```
+
+Hoặc nếu bạn đã set biến trong global `environment` của OpenCode, dùng `${VAR}` syntax:
+
+```jsonc
+{
+  "environment": {
+    "GEMINI_API_KEY": "AIza_xxx",
+    "GROQ_API_KEY": "gsk_xxx"
+  },
+  "mcpServers": {
+    "toolforge": {
+      "command": "npx",
+      "args": ["toolforge-mcp"],
+      "env": {
+        "GEMINI_API_KEY": "${GEMINI_API_KEY}",
+        "GROQ_API_KEY": "${GROQ_API_KEY}"
+      }
+    }
+  }
+}
+```
+
+**Cách B — `.env` file** (an toàn hơn, không lộ secret trong config)
+
+Tạo file `.env` ở **thư mục project** (nơi bạn mở OpenCode):
+
+```bash
+GEMINI_API_KEY=AIza_xxx
+GROQ_API_KEY=gsk_xxx
+```
+
+OpenCode GUI tự động đọc `.env` và resolve `${VAR}` trong MCP config. File này có thể add vào `.gitignore`.
+
+**Cách C — `launchctl setenv`** (dùng chung cho mọi GUI app)
+
+```bash
+launchctl setenv GEMINI_API_KEY "AIza_xxx"
+launchctl setenv GROQ_API_KEY "gsk_xxx"
+# Restart OpenCode GUI
+```
+
+Biến có hiệu lực đến lần reboot. Để tự động, tạo LaunchAgent plist hoặc thêm vào script startup.
 
 ### Cách 3: `.env` file (nếu client app hỗ trợ)
 
