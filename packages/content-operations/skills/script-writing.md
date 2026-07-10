@@ -58,3 +58,30 @@ const script = await creator.writeScript('How to edit videos', 120, 'youtube');
 console.log(script.hook);
 // "Want to edit videos like a pro in just 2 minutes?"
 ```
+
+## 📋 Prerequisites
+
+- `LLMClient` instance with valid API key (Groq or Gemini)
+- Topic and target format must be specified
+- For timed scripts, provide accurate duration in seconds (15–3600)
+
+## ⚠️ Error Recovery
+
+| Error | Likely Cause | Fix |
+|-------|-------------|-----|
+| `LLMClient` times out | API key invalid or quota exceeded | Check API key, try different provider |
+| Script too short for duration | Insufficient topic detail | Provide richer topic description |
+| Platform format unsupported | Custom format string | Use: "youtube" \| "tiktok" \| "podcast" \| "short" |
+
+## 🔗 Integration
+
+- **MCP tool:** `toolforge_content_research` (`packages/mcp/lib/tools/content-research.js`) can research trending topics before script writing
+- **Domain packages:** Results feed into `ContentPlanner` for calendar scheduling, or `ContentDistributor` for publishing
+- **Skill chain:** See `content-operations-hub.md` for the full content lifecycle
+
+## 📚 Related Skills
+
+- `content-operations-trend-discovery` — research topics before writing
+- `content-operations-blog-writing` — alternative format for written content
+- `content-operations-editorial-calendar` — plan scripts into a calendar
+- `andy-toolforge` (MCP Bridge) — invoke script writing via `skill_mcp`

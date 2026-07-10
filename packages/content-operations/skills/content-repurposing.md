@@ -60,3 +60,32 @@ const result = await distributor.repurposeContent(
 console.log(result.bestPlatform);
 // "YouTube"
 ```
+
+## 📋 Prerequisites
+
+- `LLMClient` instance with valid API key
+- Source content (text) ready for repurposing
+- Target platform list — each platform gets a unique adaptation
+
+## ⚠️ Error Recovery
+
+| Error | Likely Cause | Fix |
+|-------|-------------|-----|
+| Platform adaptation too generic | Source content too short | Provide richer source material |
+| Schedule overlaps | TimeSlot conflicts | Adjust `intervalHours` or stagger by day |
+| CrossPost warnings | Platform character limits | Respect per-platform limits (e.g. Twitter 280) |
+
+## 🔗 Integration
+
+- **MCP tool:** `toolforge_content_research` — research best platforms for your content type
+- **Domain packages:** Repurposed content pairs with `ContentAnalytics` to compare performance across platforms
+- **Cross-domain:** Use `@andy-toolforge/seo-generation`'s `MultiPlatformPublisher` for publishing to YouTube/TikTok/Facebook via REST APIs
+- **Skill chain:** Create → Repurpose → Distribute → Analyze
+
+## 📚 Related Skills
+
+- `content-operations-script-writing` — create source content
+- `content-operations-blog-writing` — create blog source content
+- `content-operations-performance-analysis` — measure cross-platform results
+- `seo-generation-hub` — platform-specific optimization
+- `andy-toolforge` (MCP Bridge) — invoke via `skill_mcp`

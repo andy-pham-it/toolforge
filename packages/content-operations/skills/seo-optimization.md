@@ -54,3 +54,31 @@ const result = await creator.optimizeForSEO(
 console.log(`SEO Score: ${result.seoScore}/100`);
 console.log('Improvements:', result.improvements);
 ```
+
+## 📋 Prerequisites
+
+- `LLMClient` instance with valid API key
+- Base content to optimize (cannot optimize from scratch — use `writeBlogPost` or `writeScript` first)
+- Optional: target keyword list for focused optimization
+
+## ⚠️ Error Recovery
+
+| Error | Likely Cause | Fix |
+|-------|-------------|-----|
+| Low SEO score (<30) | Content too short or no keywords | Provide more detailed content or explicit keywords |
+| Platform unsupported | Invalid platform string | Use: "blog" \| "youtube" \| "web" |
+| Missing recommendations | Content already well-optimized | That's OK — score should be high |
+
+## 🔗 Integration
+
+- **MCP tool:** `toolforge_content_research` — use for keyword research before optimization
+- **Domain packages:** Optimized content can be published via `ContentDistributor` or analyzed via `ContentAnalytics`
+- **Cross-domain:** Use `@andy-toolforge/seo-generation`'s `SEOAnalyzer` for platform-specific metadata (YouTube, TikTok, Facebook)
+
+## 📚 Related Skills
+
+- `content-operations-script-writing` — create base content first
+- `content-operations-blog-writing` — create SEO-optimized blog posts
+- `content-operations-performance-analysis` — measure SEO impact
+- `seo-generation-hub` — platform-specific SEO metadata
+- `andy-toolforge` (MCP Bridge) — invoke via `skill_mcp`

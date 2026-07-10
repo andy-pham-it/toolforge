@@ -62,3 +62,31 @@ const trends = await researcher.discoverTrends('digital marketing', 'youtube', {
 console.log(trends.trends);
 // [{ name: 'AI Marketing', momentum: 'rising', ... }]
 ```
+
+## 📋 Prerequisites
+
+- `LLMClient` instance with valid API key
+- For competitor analysis: valid competitor URL accessible from the network
+- For keyword analysis: specify language (`"vi"` or `"en"`) matching the target audience
+
+## ⚠️ Error Recovery
+
+| Error | Likely Cause | Fix |
+|-------|-------------|-----|
+| Competitor URL unreachable | URL invalid or site blocks crawlers | Verify URL, try a different competitor URL |
+| No trend data returned | Niche too narrow or platform-specific | Broaden niche or remove platform filter |
+| Low-quality keyword suggestions | Language mismatch | Ensure `language` param matches niche's primary language |
+
+## 🔗 Integration
+
+- **MCP tool:** `toolforge_content_research` (`packages/mcp/lib/tools/content-research.js`) — use via `skill_mcp` for quick research without code
+- **Domain packages:** Research output feeds `ContentPlanner` for calendar building and `ContentCreator` for script writing
+- **Skill chain:** Trend discovery → Script writing → Performance analysis
+
+## 📚 Related Skills
+
+- `content-operations-script-writing` — turn discovered trends into scripts
+- `content-operations-editorial-calendar` — schedule trend-based content
+- `content-operations-performance-analysis` — measure trend performance
+- `content-operations-hub` — overview of all content-ops workflows
+- `andy-toolforge` (MCP Bridge) — invoke via `skill_mcp`

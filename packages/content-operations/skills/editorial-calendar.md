@@ -55,3 +55,31 @@ Suggest optimal posting times for a target audience.
 const calendar = await planner.buildCalendar('digital marketing', 'weekly');
 const strategy = await planner.createContentStrategy('digital marketing', ['lead gen']);
 ```
+
+## 📋 Prerequisites
+
+- `LLMClient` instance with valid API key (required for strategy generation)
+- Defined niche and publishing frequency
+- Optional: target audience description for optimal timing suggestions
+
+## ⚠️ Error Recovery
+
+| Error | Likely Cause | Fix |
+|-------|-------------|-----|
+| Calendar generation fails | Niche too vague | Provide more specific niche (e.g. "AI tools for small business" vs "technology") |
+| Strategy lacks differentiation | Niche too broad | Narrow to specific angle or audience segment |
+| Batch plan bottlenecks | All content in same format | Mix formats (video, blog, social) in calendar entries |
+
+## 🔗 Integration
+
+- **MCP tool:** `toolforge_content_research` — research trends before building calendar
+- **Domain packages:** Calendar entries become briefs for `ContentCreator` and `ContentDistributor`
+- **Skill chain:** Trend discovery → Calendar → Script/Blog writing → SEO optimization → Distribution → Performance analysis
+
+## 📚 Related Skills
+
+- `content-operations-trend-discovery` — research before planning
+- `content-operations-script-writing` — execute calendar items
+- `content-operations-content-repurposing` — distribute planned content
+- `content-operations-performance-analysis` — measure calendar effectiveness
+- `andy-toolforge` (MCP Bridge) — invoke via `skill_mcp`

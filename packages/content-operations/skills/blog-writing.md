@@ -55,3 +55,33 @@ const post = await creator.writeBlogPost('Cách học tiếng Anh tại nhà', {
     seoKeywords: ['học tiếng Anh', 'tự học'],
 });
 ```
+
+## 📋 Prerequisites
+
+- `LLMClient` instance with valid API key
+- Clear topic and target audience
+- Optional: SEO keywords for optimization, language specification (default: Vietnamese)
+
+## ⚠️ Error Recovery
+
+| Error | Likely Cause | Fix |
+|-------|-------------|-----|
+| Generated content too generic | Topic too broad | Narrow topic or provide angle/audience |
+| SEO keywords underused | Keywords not in content naturally | Re-run with expanded keyword list |
+| Headlines not engaging | Keywords too technical | Mix technical and benefit-driven keywords |
+| Estimated reading time inaccurate | Word count far from output | Check actual output word count |
+
+## 🔗 Integration
+
+- **MCP tool:** `toolforge_content_research` — research topic before writing
+- **Domain packages:** Blog posts can be repurposed via `ContentDistributor` or analyzed via `ContentAnalytics`
+- **Cross-domain:** Use `@andy-toolforge/seo-generation` for YouTube/TikTok metadata from blog content
+- **Skill chain:** Research → Write → SEO optimize → Distribute → Analyze
+
+## 📚 Related Skills
+
+- `content-operations-trend-discovery` — research topic first
+- `content-operations-seo-optimization` — optimize after writing
+- `content-operations-content-repurposing` — repurpose blog to other formats
+- `seo-generation-hub` — platform-specific SEO
+- `andy-toolforge` (MCP Bridge) — invoke via `skill_mcp`
