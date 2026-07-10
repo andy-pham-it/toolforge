@@ -60,6 +60,83 @@ server.start(); // stdio transport
 }
 ```
 
+## Cấu hình API Key
+
+Server cần ít nhất một API key để hoạt động (hầu hết tools đều dùng LLM). Provider được chọn theo thứ tự ưu tiên: `GROQ_API_KEY` > `GEMINI_API_KEY`.
+
+### Cách 1: Biến môi trường (dùng cho terminal)
+
+```bash
+export GEMINI_API_KEY="AIza_xxx"
+export GROQ_API_KEY="gsk_xxx"
+npx toolforge-mcp
+```
+
+### Cách 2: Config trong OpenCode/Claude Desktop (dùng cho GUI app)
+
+**macOS GUI apps** (OpenCode GUI, Claude Desktop) **không** load `.zshrc` hay `.bash_profile`. API key phải được khai báo trực tiếp trong config:
+
+```json
+{
+  "mcpServers": {
+    "toolforge": {
+      "command": "npx",
+      "args": ["toolforge-mcp"],
+      "env": {
+        "GEMINI_API_KEY": "AIza_your_key_here",
+        "GROQ_API_KEY": "gsk_your_key_here"
+      }
+    }
+  }
+}
+```
+
+Hoặc dùng `${VAR}` syntax — OpenCode sẽ resolve từ environment của nó:
+
+```jsonc
+{
+  "mcpServers": {
+    "toolforge": {
+      "command": "npx",
+      "args": ["toolforge-mcp"],
+      "env": {
+        "GEMINI_API_KEY": "${GEMINI_API_KEY}",
+        "GROQ_API_KEY": "${GROQ_API_KEY}"
+      }
+    }
+  }
+}
+```
+
+Khi dùng syntax này, cần đảm bảo biến môi trường tồn tại trong GUI app:
+  - **OpenCode GUI**: dùng `.env` file trong project directory, hoặc set trong `~/.config/opencode/opencode.jsonc` → `files.extraEnv`
+  - **Claude Desktop**: dùng `launchctl setenv GEMINI_API_KEY "AIza_xxx"` (cần restart)
+  - **Terminal**: npm script wrapper (`open -a OpenCode` từ terminal sau khi export)
+
+### Cách 3: `.env` file (nếu client app hỗ trợ)
+
+Một số GUI apps (như OpenCode) tự động đọc `.env` trong project directory. Tạo file `.env`:
+
+```bash
+GEMINI_API_KEY=AIza_xxx
+GROQ_API_KEY=gsk_xxx
+```
+
+### Cách 4: launchctl setenv (cho macOS GUI apps)
+
+```bash
+launchctl setenv GEMINI_API_KEY "AIza_xxx"
+launchctl setenv GROQ_API_KEY "gsk_xxx"
+# Sau đó restart GUI app
+```
+
+Biến sẽ có hiệu lực cho đến lần reboot. Để tự động hoá, tạo LaunchAgent plist.
+
+### Lưu ý
+
+- `toolforge_suggest` là tool duy nhất cần LLM — các tool còn lại (footage-generation, book-writing, v.v.) vẫn chạy không cần API key, chỉ báo lỗi khi thực sự gọi LLM.
+- Server **không crash** nếu thiếu API key — chỉ warning và cho các tool khác hoạt động bình thường.
+
 ## Plugin Discovery — Cách hoạt động
 
 Khi MCP server khởi động:
