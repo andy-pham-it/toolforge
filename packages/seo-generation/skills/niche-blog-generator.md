@@ -146,3 +146,29 @@ Luôn thêm disclosure ở đầu hoặc cuối bài:
 **Output internalLinks:**
 - `app học tiếng Anh miễn phí` → `/app-hoc-tieng-anh-mien-phi`
 - `cách luyện nghe tiếng Anh` → `/cach-luyen-nghe-tieng-anh`
+
+## 📥 Prerequisites
+
+- Keyword hoặc chủ đề chính
+- Site context (niche, audience, domain)
+- (Optional) Existing posts list để internal linking
+- (Optional) Affiliate links cần chèn
+
+## 🚨 Error Recovery
+
+- Keyword quá cạnh tranh → chọn long-tail variation thay vì head keyword
+- Blog content bị trùng với bài đã có → kiểm tra existing posts trước, điều chỉnh góc tiếp cận
+- LLM sinh content bị hallucination → verify facts trước khi publish
+
+## 🔗 Integration
+
+- **MCP tool:** Không có MCP tool trực tiếp (skill này là prompt template cho agent tự viết blog)
+- Input keyword có thể từ `content-research-content-ideator` (generate topic ideas)
+- Output blog có thể dùng làm input cho `toolforge_seo_generate` (seo-generation) để tối ưu metadata
+- Blog content có thể feed vào `seo-generation-content-arbitrage` để repurpose thành social posts
+
+## 📚 Related Skills
+
+- `seo-generation-video-podcast` — SEO cho podcast/video episodes
+- `seo-generation-content-arbitrage` — repurpose content thành multi-platform
+- `seo-generation-hub` — tổng quan tools seo-generation

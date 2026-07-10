@@ -130,3 +130,27 @@ Nội dung chính:
 Tags: tư duy phản biện, nhận biết tin giả, kỹ năng tư duy, podcast,
 kiểm chứng thông tin, media literacy
 ```
+
+## 📥 Prerequisites
+
+- Episode title
+- Full script text (or transcript)
+- Target platforms: YouTube, TikTok, Facebook (mặc định all 3)
+- Language code: `vi` hoặc `en`
+
+## 🚨 Error Recovery
+
+- Script quá ngắn (< 100 từ) → SEO metadata có thể thiếu chiều sâu. Cần thêm context hoặc episode outline
+- LLM output thiếu platform-specific fields → kiểm tra lại script content, thử với language code khác
+
+## 🔗 Integration
+
+- **MCP tool:** `toolforge_seo_generate`
+- Output từ tool này (title, description, tags) có thể dùng làm input cho `andy_toolforge_content_ideator` để mở rộng thành blog post
+- SEO metadata có thể feed vào `podcast-content-strategy` workflow (MCP skill) để hoàn thiện content pipeline
+
+## 📚 Related Skills
+
+- `seo-generation-content-arbitrage` — repurpose episode thành multi-format content
+- `seo-generation-niche-blog-generator` — mở rộng episode topic thành blog post
+- `seo-generation-hub` — tổng quan tools seo-generation

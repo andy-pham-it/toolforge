@@ -128,3 +128,28 @@ Nội dung...
 ⏱ 0:45-0:55: Minh hoạ: ảnh so sánh lớp học có AI vs không AI
 ⏱ 0:55-1:00: Follow để xem phần 2 về công cụ AI miễn phí!
 ```
+
+## 📥 Prerequisites
+
+- Source content — blog post, podcast transcript, hoặc video script (1000+ từ)
+- (Optional) Target platform list — mặc định: Blog + Twitter + TikTok + Facebook/LinkedIn
+- (Optional) Brand voice notes — giọng văn mong muốn
+
+## 🚨 Error Recovery
+
+- Source content quá ngắn (< 500 từ) → khó repurpose thành nhiều format. Cần mở rộng content trước
+- Platform-specific constraints (Twitter 280 ký tự) → kiểm tra độ dài output, trim nếu cần
+- LLM sinh content không đúng platform tone → thêm brand voice notes hoặc platform-specific examples
+
+## 🔗 Integration
+
+- **MCP tool:** Không có MCP tool trực tiếp (skill này là template cho agent tự repurpose)
+- Input content có thể từ `andy_toolforge_content_summarizer` (content-research) để tóm tắt trước
+- Output blog có thể dùng làm input cho `toolforge_seo_generate` (seo-generation) để tối ưu SEO
+- Kết quả có thể feed vào `content-research-article-manager` để classify và manage
+
+## 📚 Related Skills
+
+- `seo-generation-video-podcast` — SEO cho episodes
+- `seo-generation-niche-blog-generator` — tạo blog posts từ keyword
+- `seo-generation-hub` — tổng quan tools seo-generation
