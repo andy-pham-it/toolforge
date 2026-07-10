@@ -8,9 +8,12 @@
   },
   "files": [
     "lib/",
-    "bin/"
+    "bin/",
+    "skills/",
+    "scripts/"
   ],
   "scripts": {
+    "postinstall": "node scripts/postinstall.js",
     "test": "node --test lib/*.test.js"
   },
   "dependencies": {
