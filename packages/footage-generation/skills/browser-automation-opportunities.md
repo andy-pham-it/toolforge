@@ -1,3 +1,8 @@
+---
+name: browser-automation-opportunities
+description: Use when evaluating business opportunities for browser automation (Puppeteer + Gemini) — cost comparison vs paid APIs, use-case prioritization, industry analysis, and implementation frameworks. Reference document for anyone building automated content pipelines with zero API costs.
+---
+
 # Cơ Hội Tự Động Hóa Trình Duyệt (Puppeteer + Gemini/Web UI)
 
 > **Kỹ thuật cốt lõi:** Dùng Puppeteer (headless browser) để giả lập thao tác con người trên web service,
@@ -925,3 +930,33 @@ Input → Generate → [HUMAN REVIEW] → Refine → Final Output
 ---
 
 *Tài liệu cập nhật: 30/06/2026. Dựa trên kinh nghiệm thực tế từ Podcast Vision project.*
+
+## 📋 Điều kiện tiên quyết
+
+- Đã có kinh nghiệm cơ bản về Puppeteer / browser automation
+- Chrome/Chromium đã cài đặt
+- Hiểu rõ ToS của từng web service trước khi tự động hoá
+- Có chiến lược anti-detection (random delay, human-like behavior)
+
+## 🚨 Xử lý lỗi
+
+| Lỗi | Nguyên nhân | Cách xử lý |
+|-----|-------------|-------------|
+| Web service thay đổi UI | Selector/class name thay đổi | Cập nhật selector, thêm fallback selector |
+| Bị phát hiện bot | Thiếu anti-detection measure | Thêm random delay, mouse movement, human-like typing |
+| IP bị block | Request quá nhiều | Dùng proxy rotation, giảm frequency |
+| Tài khoản bị restricted | Vi phạm ToS service | Tạo tài khoản mới, tuân thủ rate limit |
+
+## 🔗 Tích hợp MCP
+
+Toolforge cung cấp các MCP tool có liên quan đến automation:
+- `generate_batch_image` — sinh ảnh hàng loạt qua Gemini Images (Puppeteer)
+- `toolforge_competitor_analysis` — crawl competitor websites
+
+Các kỹ thuật trong tài liệu này có thể implement bằng thư viện riêng (Puppeteer trực tiếp), không qua MCP tools.
+
+## 📚 Skill liên quan
+
+- `batch-image-generator.md` — Ứng dụng cụ thể của browser automation: sinh ảnh Gemini
+- `footage-generation-hub.md` — Hub skill footage-generation
+- `andy-toolforge.md` — MCP Bridge

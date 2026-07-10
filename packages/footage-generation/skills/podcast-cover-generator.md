@@ -138,3 +138,41 @@ podcast-processor tạo prompts.md xong
 - `batch-image-generator` — skill sinh ảnh qua Gemini browser automation
 - `image-artisan/` — thư viện hướng dẫn chi tiết cho từng visual style (prompt-comparison.md, prompt-surrealist.md, prompt-typography.md, prompt-lineart.md, prompt-infographic.md). Khi cần viết prompt cho một style cụ thể, đọc file tương ứng để biết cấu trúc và kỹ thuật chuyên sâu.
 - Quy tắc "no photorealistic humans" được định nghĩa ở skill này và podcast-processor. Nếu artisan skills có hướng dẫn trái ngược (ví dụ: "giữ nguyên diện mạo nhân vật"), ưu tiên quy tắc của skill này.
+
+## 📋 Điều kiện tiên quyết
+
+- Có outline series (chapter titles + mô tả ngắn) hoặc tiêu đề tập
+- Đã hiểu rõ theme/ chủ đề chính của series
+- Không tự ý tạo cover khi chưa có outline — gọi `podcast-processor` trước để xử lý scene prompts
+- Biết trước tỉ lệ ảnh đầu ra (mặc định 16:9 cho cover)
+
+## 🚨 Xử lý lỗi
+
+| Lỗi | Nguyên nhân | Cách xử lý |
+|-----|-------------|-------------|
+| Không có outline | Không đủ dữ liệu | Hỏi user hoặc suy ra từ tiêu đề tập |
+| Prompt cover bị batch parser từ chối | Sai format heading | Đảm bảo `### 📌 Phân cảnh N:` đúng cú pháp |
+| Cover không đồng bộ style series | Chọn style sai | Xem lại bảng style ở trên, chọn style phù hợp bản chất chapter |
+| Batch generator không tìm thấy prompts-covers.md | Sai đường dẫn | Đặt file cùng thư mục với prompts.md scene |
+
+
+## 🔗 Tích hợp MCP
+
+Skill này không có MCP tool riêng. Flow MCP hoàn chỉnh:
+
+```
+analyze_script / generate_prompts (MCP)
+  → prompts.md (file)
+    → podcast-cover-generator (thủ công)
+      → prompts-covers.md (file)
+        → generate_batch_image (MCP, background)
+```
+
+Dùng `skill_mcp(mcp_name="andy-toolforge", ...)` cho các bước MCP.
+
+## 📚 Skill liên quan
+
+- `workflow-podcast-processor.md` — Master workflow, section 4 mô tả tích hợp với skill này
+- `batch-image-generator.md` — Sinh ảnh thật từ prompts-covers.md
+- `footage-generation-hub.md` — Hub skill tổng quan footage-generation
+- `andy-toolforge.md` — MCP Bridge

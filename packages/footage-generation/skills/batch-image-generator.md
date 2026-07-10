@@ -97,3 +97,42 @@ Nếu ảnh gen quá lâu:
 
 File `_private/cli.js` và `_private/` nên được include trong npm package (cần cho `ImageGenerator.generateBatch()`).
 Kiểm tra `files` trong `packages/footage-generation/package.json`.
+
+## 📋 Điều kiện tiên quyết
+
+- Chrome đã cài đặt và có thể chạy headless
+- Đã login Gemini Images (`node _private/cli.js --login` lần đầu)
+- File `prompts.md` đã được tạo từ `generate_prompts` hoặc `analyze_script`
+- Đủ dung lượng ổ cứng cho ảnh PNG đầu ra
+- Kiên nhẫn: 2-3 phút/ảnh (do anti-rate-limit delays)
+
+## 🚨 Xử lý lỗi
+
+| Lỗi | Nguyên nhân | Cách xử lý |
+|-----|-------------|-------------|
+| Timeout khi gen ảnh | Gemini Images phản hồi chậm | Script tự retry với progressive backoff; nếu vẫn lỗi, chạy lại với `--resume` |
+| Rate limited | Gửi quá nhiều request | Tự động delay 90-180s giữa các ảnh; nếu vẫn bị, nghỉ 15 phút rồi chạy lại |
+| Chrome crash | Thiếu RAM/profile hỏng | Khởi động lại Chrome, xoá `_private/chrome-profile/` nếu cần |
+| Ảnh không như mong đợi | Prompt chưa đủ chi tiết | Sửa prompt trong `prompts.md` và chạy lại với `--resume` |
+| File prompts.md không tìm thấy | Sai đường dẫn | Kiểm tra path và output dir, đảm bảo prompts.md cùng thư mục với output |
+
+## 🔗 Tích hợp MCP
+
+Dùng `skill_mcp(mcp_name="andy-toolforge", tool_name="generate_batch_image", arguments={...})` để gọi từ agent workflow:
+
+```javascript
+{
+  segments: [...],    // Từ generate_prompts hoặc analyze_script
+  outputDir: "./images"
+}
+// Trả về PID + output path (chạy background, không block)
+```
+
+Tool này thường được gọi sau khi workflow `podcast-processor` hoàn tất prompts.
+
+## 📚 Skill liên quan
+
+- `workflow-podcast-processor.md` — Master workflow gọi skill này ở bước 6
+- `podcast-cover-generator.md` — Tạo cover ảnh (series, chapter, episode)
+- `footage-generation-hub.md` — Hub skill tổng quan footage-generation
+- `andy-toolforge.md` — MCP Bridge: tool `generate_batch_image` + `generate_prompts`

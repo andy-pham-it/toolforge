@@ -201,3 +201,41 @@ Kịch bản podcast + Outline
               ↓
          Import vào video editor + ghép audio
 ```
+
+## 📋 Điều kiện tiên quyết
+
+- Có kịch bản podcast hoàn chỉnh (text) + tiêu đề tập
+- Có outline (danh sách chapter) nếu muốn tạo cover ảnh
+- Đã xác định ngôn ngữ chính của podcast (vi/en) — dùng `$LANG` trong prompt
+- File system: có quyền tạo thư mục tập và ghi file
+
+## 🚨 Xử lý lỗi
+
+| Lỗi | Nguyên nhân | Cách xử lý |
+|-----|-------------|-------------|
+| Không đọc được kịch bản | Định dạng không hỗ trợ | Yêu cầu text plain hoặc markdown |
+| Phân tích ra quá ít phân đoạn (<3) | Kịch bản quá ngắn | Giảm số ảnh mỗi phân đoạn xuống 2 (a/b) |
+| Phân tích ra quá nhiều phân đoạn (>10) | Kịch bản quá dài | Tăng số ảnh mỗi phân đoạn, gộp đoạn nhỏ |
+| Không có outline cho cover | Thiếu dữ liệu | Bỏ qua bước cover, chỉ tạo scene prompts |
+| Batch parser báo lỗi format heading | Sai cú pháp `### 📌 Phân cảnh N:` | Kiểm tra số thứ tự N, đảm bảo đúng format |
+
+## 🔗 Tích hợp MCP
+
+Gọi các tool MCP theo thứ tự pipeline:
+
+1. `analyze_script(script, title, outline, density, lang)` → segments
+2. `generate_prompts(script, title, outline, language, density)` → 5 prompts/segment
+3. `generate_mapping(segments, mood, language)` → background music mapping
+4. `suggest_cover(title, description, outline, coverType, language)` → cover art design
+5. `generate_batch_image(segments, outputDir)` → sinh ảnh thật (background, non-blocking)
+
+Dùng `skill_mcp(mcp_name="andy-toolforge", tool_name="...", arguments={...})` cho từng bước.
+
+## 📚 Skill liên quan
+
+- `podcast-cover-generator.md` — Tạo cover ảnh (section 4 của workflow này)
+- `batch-image-generator.md` — Sinh ảnh hàng loạt (section 6 của workflow này)
+- `footage-generation-hub.md` — Hub skill footage-generation
+- `podcast-content-strategy.md` — Nghiên cứu + SEO workflow (dùng chung input script)
+- `podcast-voice-production.md` — TTS + voice assistant (script → audio pipeline)
+- `andy-toolforge.md` — MCP Bridge
