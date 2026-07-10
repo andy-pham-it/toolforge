@@ -122,12 +122,15 @@ class MCPServer {
     _findToolforgeScopeDir() {
         let dir = path.resolve(__dirname);
         const root = path.parse(dir).root;
+        let best = null;
         while (dir !== root) {
             const candidate = path.join(dir, 'node_modules', '@andy-toolforge');
-            if (fs.existsSync(candidate)) return candidate;
+            if (fs.existsSync(candidate)) {
+                best = candidate; // keep walking up — top-level scope has more packages
+            }
             dir = path.dirname(dir);
         }
-        return null;
+        return best;
     }
 
     /**
