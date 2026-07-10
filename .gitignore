@@ -30,3 +30,9 @@ coverage/
 
 # Generated .opencode artifacts inside packages (postinstall output, not source)
 packages/*/.opencode/
+
+# Stale test artifacts
+tmp-tts-output/
+test-debug*.cjs
+test-tts*.mjs
+test-live*.cjs
