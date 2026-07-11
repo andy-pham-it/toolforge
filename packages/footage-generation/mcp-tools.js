@@ -77,22 +77,37 @@ const generatePromptsDef = {
             outline: { type: 'string', description: 'Optional outline/agenda of the episode' },
             language: { type: 'string', description: 'Language code for text in images (vi, en)', default: 'vi' },
             density: { type: 'number', description: 'Number of images per segment (1-5)', default: 5 },
+            exact_text: {
+                type: 'array',
+                items: { type: 'string' },
+                description: 'Exact text lines that MUST appear in infographic/typography/comparison images. Pass an array of strings, each line will be embedded verbatim into the image prompt.',
+            },
         },
         required: ['script', 'title'],
     },
 };
 
-const generatePromptsSystem = `You are a visual production expert for podcast videos. Analyze a podcast script and produce detailed image generation prompts for each content segment.
+const generatePromptsSystem = (language, exactText) => {
+    const langInstruction = language === 'vi'
+        ? `- HARD LANGUAGE CONSTRAINT: language=${language} → ALL text in images MUST be in Vietnamese with full diacritics (tất cả chữ trong ảnh phải bằng tiếng Việt có dấu đầy đủ, không viết tắt, không dùng tiếng Anh). This is a MANDATORY rule, not a suggestion.`
+        : `- HARD LANGUAGE CONSTRAINT: language=${language} → ALL text in images MUST be in English. This is a MANDATORY rule, not a suggestion.`;
+
+    const exactTextRules = (exactText && exactText.length > 0)
+        ? `\n- EXACT TEXT REQUIREMENT: The following text MUST appear verbatim in the image (for Typography / Infographic / Comparison styles). Embed this text directly into the image prompt instructions:\n  ${exactText.map((t, i) => `  ${i + 1}. "${t}"`).join('\n')}`
+        : '';
+
+    return `You are a visual production expert for podcast videos. Analyze a podcast script and produce detailed image generation prompts for each content segment.
 
 Rules:
 - Split the script into 5-12 logical segments based on topic transitions
 - For each segment, classify the visual style: Surrealist, Lineart, Comparison, Typography, or Infographic
-- Generate 5 image prompts per segment (a=main, b=supplementary1, c=supplementary2, d=supplementary3, e=transition)
-- Prompts must be single-line (no line breaks within a prompt), written in English prose
+- Generate 5 images per segment (a=main, b=supplementary1, c=supplementary2, d=supplementary3, e=transition)
+- Prompts must be single-line (no line breaks within a prompt)
 - Aspect ratio: horizontal 16:9
 - NEVER describe photorealistic humans. Use: silhouette, shadow figure, stylized outline, abstract figure, artistic sketch
-- For Typography, Infographic, Comparison: add text-in-image instruction matching the language
-- Surrealist and Lineart: no text needed
+- For Typography, Infographic, Comparison: the prompt MUST include text-in-image instruction with the exact text to render
+- Surrealist and Lineart: no text in image needed
+${langInstruction}${exactTextRules}
 - The 5 images per segment should cover: main visual metaphor (a), expanded metaphor (b), contrasting view (c), symbolic layer (d), transition/summary (e)
 
 Return ONLY a valid JSON array of segment objects:
@@ -105,33 +120,36 @@ Return ONLY a valid JSON array of segment objects:
     "startTime": "00:00",
     "endTime": "04:30",
     "images": {
-      "a": { "filename": "1_title_a.png", "prompt": "Single-line English prompt for main image...", "editSuggestions": { "closer": "...", "differentSpace": "...", "moodShift": "..." } },
-      "b": { "filename": "1_title_b.png", "prompt": "Single-line prompt for supplementary image...", "editSuggestions": { ... } },
-      "c": { "filename": "1_title_c.png", "prompt": "...", "editSuggestions": { ... } },
-      "d": { "filename": "1_title_d.png", "prompt": "...", "editSuggestions": { ... } },
-      "e": { "filename": "1_title_e.png", "prompt": "...", "editSuggestions": { ... } }
+      "a": { "filename": "1_title_a.png", "prompt": "Single-line image prompt for main image with lang-appropriate text...", "editSuggestions": { "closer": "...", "differentSpace": "...", "moodShift": "..." } },
+      "b": { "filename": "1_title_b.png", "prompt": "Single-line prompt for supplementary image...", "editSuggestions": { "closer": "...", "differentSpace": "...", "moodShift": "..." } },
+      "c": { "filename": "1_title_c.png", "prompt": "...", "editSuggestions": { "closer": "...", "differentSpace": "...", "moodShift": "..." } },
+      "d": { "filename": "1_title_d.png", "prompt": "...", "editSuggestions": { "closer": "...", "differentSpace": "...", "moodShift": "..." } },
+      "e": { "filename": "1_title_e.png", "prompt": "...", "editSuggestions": { "closer": "...", "differentSpace": "...", "moodShift": "..." } }
     }
   }
-]`;
+]`; };
 
 async function generatePromptsHandler(llm, args) {
-    const { script, title, outline, language = 'vi', density = 5 } = args;
+    const { script, title, outline, language = 'vi', density = 5, exact_text } = args;
 
     if (!script || !title) {
         throw new Error('Missing required arguments: script, title');
     }
+
+    const systemPrompt = generatePromptsSystem(language, exact_text);
 
     const userPrompt = [
         `Title: ${title}`,
         outline ? `Outline: ${outline}` : '',
         `Language for image text: ${language}`,
         `Images per segment: ${density}`,
+        exact_text && exact_text.length > 0 ? `Exact text to display in images:\n${exact_text.map((t, i) => `  ${i + 1}. "${t}"`).join('\n')}` : '',
         '',
         `Script:`,
         script,
     ].filter(Boolean).join('\n');
 
-    const raw = await llm.chat(generatePromptsSystem, userPrompt, true);
+    const raw = await llm.chat(systemPrompt, userPrompt, true);
     const parsed = JSON.parse(raw);
 
     if (!Array.isArray(parsed) || parsed.length === 0) {
