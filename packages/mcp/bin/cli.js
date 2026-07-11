@@ -7,6 +7,10 @@
  *
  * Model fallback chain (Gemini): GEMINI_MODEL_CHAIN > GEMINI_MODEL > default
  * Example: GEMINI_MODEL_CHAIN=gemini-3.1-flash-lite,gemma-4-31b,gemma-4-26b
+ *
+ * NOTE: Server starts even without API keys (tools return clear errors instead of crashing).
+ * This allows the MCP to be available when keys are configured via OpenCode vault
+ * or provided at tool-call time.
  */
 const { createServer } = require('../lib/index');
 
@@ -23,8 +27,10 @@ if (process.env.GEMINI_API_KEY) {
     apiKey = process.env.GROQ_API_KEY;
     models = [process.env.GROQ_MODEL || 'llama-3.3-70b-versatile'];
 } else {
-    console.error('Either GEMINI_API_KEY or GROQ_API_KEY environment variable is required');
-    process.exit(1);
+    provider = null;
+    apiKey = null;
+    models = [];
+    console.warn('[mcp] Warning: No API key found (check GEMINI_API_KEY or GROQ_API_KEY). Tools that need LLM will return errors.');
 }
 
 const server = createServer({ provider, apiKey, models });

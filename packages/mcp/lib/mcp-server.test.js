@@ -19,8 +19,10 @@ function mockLlm(returnValue) {
 
 describe('MCPServer', () => {
     describe('createServer', () => {
-        it('throws if apiKey is missing', () => {
-            assert.throws(() => createServer({}), /apiKey/);
+        it('warns but does not throw when apiKey is missing — tools return errors instead', () => {
+            const server = createServer({});
+            assert(server instanceof MCPServer);
+            assert.equal(server.apiKey, undefined);
         });
 
         it('creates server with valid config', () => {

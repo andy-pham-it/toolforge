@@ -29,8 +29,9 @@ class MCPServer {
         return this.models[this._currentModelIdx] || this.models[0];
     }
 
-    /** Lazily create LLMClient using current model (so tests can inject mock) */
+    /** Lazily create LLMClient using current model (so tests can inject mock). Returns null if no API key configured. */
     get llm() {
+        if (!this.apiKey) return null;
         if (!this._llm) {
             this._llm = new LLMClient({
                 provider: this.provider,
@@ -273,6 +274,15 @@ Respond with a JSON object:
         const tool = this._tools[params.name];
         if (!tool) {
             return { jsonrpc: '2.0', id, error: { code: -32602, message: `Unknown tool: ${params.name}` } };
+        }
+
+        // If no API key configured, return a clear error before trying tool handlers
+        if (!this.apiKey) {
+            return {
+                jsonrpc: '2.0',
+                id,
+                error: { code: -32000, message: 'No API key configured. Set GEMINI_API_KEY or GROQ_API_KEY in your opencode.jsonc MCP environment.' },
+            };
         }
 
         const maxAttempts = this.models.length;

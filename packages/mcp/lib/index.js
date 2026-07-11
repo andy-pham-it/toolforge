@@ -11,9 +11,9 @@ const MCPServer = require('./mcp-server');
  */
 function createServer(config) {
     if (!config || !config.apiKey) {
-        throw new Error('MCPServer requires an apiKey');
+        console.warn('[mcp] Warning: No API key provided. Tools will return errors until GEMINI_API_KEY or GROQ_API_KEY is set.');
     }
-    return new MCPServer(config);
+    return new MCPServer(config || {});
 }
 
 module.exports = { createServer, MCPServer };
