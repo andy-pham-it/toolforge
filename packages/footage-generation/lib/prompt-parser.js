@@ -76,9 +76,15 @@ class PromptParser {
             const slug = seg.title
                 ? seg.title.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '')
                 : `segment_${stt}`;
-            const labelKeys = Object.keys(seg.prompts || {});
+
+            // Accept both seg.prompts (plain string map) and seg.images (object map from generate_prompts)
+            const rawPrompts = seg.prompts || seg.images || {};
+            const labelKeys = Object.keys(rawPrompts);
             labelKeys.forEach(key => {
-                const promptText = seg.prompts[key];
+                const entry = rawPrompts[key];
+                if (!entry) return;
+                // entry can be a string (direct prompt text) or an object { prompt: '...', filename: '...' }
+                const promptText = typeof entry === 'string' ? entry : entry.prompt;
                 if (!promptText) return;
                 const fileName = `${stt}_${slug}_${key}.png`;
                 prompts.push({
