@@ -366,13 +366,26 @@ const generateBatchImageDef = {
                 type: 'string',
                 description: 'Output directory. Defaults to ./images in current working directory.',
             },
+            outputFormats: {
+                type: 'array',
+                description: 'Output image formats (e.g. ["png","jpg","webp"]). Default: ["png"]. Requires sharp.',
+                items: { type: 'string' },
+            },
+            jpgQuality: {
+                type: 'number',
+                description: 'JPEG compression quality (1-100). Default: 85.',
+            },
+            webpQuality: {
+                type: 'number',
+                description: 'WebP compression quality (1-100). Default: 80.',
+            },
         },
         required: ['segments'],
     },
 };
 
 async function generateBatchImageHandler(llm, args) {
-    const { segments, outputDir } = args;
+    const { segments, outputDir, outputFormats, jpgQuality, webpQuality } = args;
 
     if (!segments || !Array.isArray(segments) || segments.length === 0) {
         throw new Error('Missing required argument: segments (non-empty array)');
@@ -409,9 +422,14 @@ async function generateBatchImageHandler(llm, args) {
     }).join('\n');
     fs.writeFileSync(promptsFile, content, 'utf-8');
 
-    // Spawn CLI in background
     const cliPath = path.join(__dirname, '_private/cli.js');
-    const child = spawn('node', [cliPath, promptsFile, resolvedOutputDir], {
+    const cliArgs = [cliPath, promptsFile, resolvedOutputDir];
+    if (outputFormats && Array.isArray(outputFormats)) {
+        cliArgs.push('--formats', outputFormats.join(','));
+    }
+    if (jpgQuality) cliArgs.push('--jpg-quality', String(jpgQuality));
+    if (webpQuality) cliArgs.push('--webp-quality', String(webpQuality));
+    const child = spawn('node', cliArgs, {
         stdio: 'ignore',
         detached: true,
     });

@@ -24,6 +24,7 @@ const os = require('os');
 const http = require('http');
 const { spawn } = require('child_process');
 const EventEmitter = require('events');
+const sharp = require('sharp');
 
 // ─── Human chat phrases ──────────────────────────────────────────────────────
 
@@ -123,6 +124,9 @@ class BrowserImageGenerator extends EventEmitter {
         this.logger = options.logger || null;
         this.langChat = HUMAN_CHAT[this.language] || HUMAN_CHAT.vi;
         this.speed = options.speed || DEFAULTS.speed;
+        this.outputFormats = options.outputFormats || DEFAULTS.outputFormats;
+        this.jpgQuality = options.jpgQuality || DEFAULTS.jpgQuality;
+        this.webpQuality = options.webpQuality || DEFAULTS.webpQuality;
 
         // Speed presets override min/max delays
         const SPEEDS = {
@@ -154,6 +158,9 @@ class BrowserImageGenerator extends EventEmitter {
         maxTimeout: 600000,     // 10 min per attempt
         language: 'vi',
         speed: 'normal',        // 'fast' | 'normal' | 'cautious'
+        outputFormats: ['png'], // formats: 'png', 'jpg'/'jpeg', 'webp'
+        jpgQuality: 85,
+        webpQuality: 80,
     };
 
     // ═══════════════════════════════════════════════════════════════════════
@@ -233,10 +240,16 @@ class BrowserImageGenerator extends EventEmitter {
      * @param {object} [options]
      * @param {function} [options.onProgress] - Callback({current, total, name, status})
      * @param {AbortSignal} [options.signal] - AbortController signal
+     * @param {string[]} [options.outputFormats] - Override output formats for this batch
+     * @param {number} [options.jpgQuality] - Override JPEG quality for this batch
+     * @param {number} [options.webpQuality] - Override WebP quality for this batch
      * @returns {Promise<{successCount: number, totalCount: number, rateLimitRetries: number, skippedCount: number}>}
      */
     async generateBatch(prompts, outputDir, options = {}) {
-        const { onProgress, signal } = options;
+        const { onProgress, signal, outputFormats: batchFormats, jpgQuality: batchJpgQuality, webpQuality: batchWebpQuality } = options;
+        if (batchFormats) this.outputFormats = batchFormats;
+        if (batchJpgQuality) this.jpgQuality = batchJpgQuality;
+        if (batchWebpQuality) this.webpQuality = batchWebpQuality;
         fs.mkdirSync(outputDir, { recursive: true });
 
         await this.ensureChromeRunning(false);
@@ -292,13 +305,12 @@ class BrowserImageGenerator extends EventEmitter {
                     fs.writeFileSync(outputPath, buffer);
                     const sizeKB = (buffer.length / 1024).toFixed(0);
                     this._log(`💾 Saved: ${fileName} (${sizeKB}KB)`);
+                    await this._convertOutputFormats(buffer, outputPath);
                     successCount++;
                     success = true;
                     newSuccessCount++;
                     this._emitProgress(onProgress, { current: i + 1, total: prompts.length, name: p.name, status: 'done', file: fileName });
 
-                    // Lightweight anti-rate-limit: simulate mic use
-                    await this._simulateMicUse(page).catch(() => {});
                 } catch (err) {
                     if (err.message === 'RATE_LIMITED') {
                         attempts++;
@@ -566,19 +578,56 @@ class BrowserImageGenerator extends EventEmitter {
     async _captureImage(page) {
         this._log('  ⏳ Capturing image...');
 
-        // Strategy 1: Download button → CDN URL
         try {
-            await page.evaluate(() => {
-                const img = Array.from(document.querySelectorAll('img')).find(i => {
-                    if (!i.complete) return false;
-                    if (i.naturalWidth < 300 || i.naturalHeight < 300) return false;
-                    const ratio = Math.max(i.naturalWidth, i.naturalHeight) / Math.min(i.naturalWidth, i.naturalHeight);
-                    if (ratio > 3.0) return false;
-                    return !(i.src || '').toLowerCase().includes('favicon');
-                });
-                if (img) img.dispatchEvent(new MouseEvent('mouseenter', { bubbles: true }));
+            const imgInfo = await page.evaluate(() => {
+                const imgs = Array.from(document.querySelectorAll('img'));
+                const img = imgs[imgs.length - 1];
+                if (!img || !img.complete) return null;
+                const w = img.naturalWidth;
+                const h = img.naturalHeight;
+                if (w < 300 || h < 300) return null;
+                const ratio = Math.max(w, h) / Math.min(w, h);
+                if (ratio > 3.0) return null;
+                const src = img.src || '';
+                if (src.includes('favicon')) return null;
+                const rect = img.getBoundingClientRect();
+                return {
+                    src: src,
+                    cdnSrc: src.includes('googleusercontent.com') ? src : null,
+                    x: rect.left + rect.width / 2,
+                    y: rect.top + rect.height / 2
+                };
             });
-            await this._sleep(2000);
+
+            if (imgInfo && imgInfo.cdnSrc) {
+                const buffer = await this._fetchImageBuffer(page, imgInfo.cdnSrc);
+                if (buffer) {
+                    this._log('  ✅ Captured via CDN URL from img.src');
+                    return buffer;
+                }
+            }
+        } catch (err) {
+            this._log(`  ⚠️ Direct CDN fetch failed: ${err.message}`);
+        }
+
+        try {
+            const hoverPos = await page.evaluate(() => {
+                const imgs = Array.from(document.querySelectorAll('img'));
+                const img = imgs[imgs.length - 1];
+                if (!img || !img.complete) return null;
+                const w = img.naturalWidth;
+                const h = img.naturalHeight;
+                if (w < 300 || h < 300) return null;
+                const ratio = Math.max(w, h) / Math.min(w, h);
+                if (ratio > 3.0) return null;
+                if ((img.src || '').includes('favicon')) return null;
+                const rect = img.getBoundingClientRect();
+                return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+            });
+            if (hoverPos) {
+                await page.mouse.move(hoverPos.x, hoverPos.y);
+                await this._sleep(2000);
+            }
 
             const cdnUrl = await new Promise((resolve, reject) => {
                 const handler = (resp) => {
@@ -592,7 +641,10 @@ class BrowserImageGenerator extends EventEmitter {
 
                 page.evaluate(() => {
                     const btns = Array.from(document.querySelectorAll('button'));
-                    const dl = btns.find(b => b.getAttribute('aria-label') === 'Download full size image');
+                    const dl = btns.find(b => {
+                        const label = (b.getAttribute('aria-label') || '').toLowerCase();
+                        return label.includes('download') && label.includes('full');
+                    });
                     if (dl) dl.click();
                 }).catch(() => {});
 
@@ -611,7 +663,7 @@ class BrowserImageGenerator extends EventEmitter {
             this._log(`  ⚠️ Download button failed: ${err.message}`);
         }
 
-        // Strategy 2: Element screenshot
+        // Element screenshot fallback
         try {
             const imgElement = await page.evaluateHandle(() => {
                 const imgs = Array.from(document.querySelectorAll('img')).filter(img => {
@@ -635,6 +687,37 @@ class BrowserImageGenerator extends EventEmitter {
         }
 
         return null;
+    }
+
+    /**
+     * Convert the PNG buffer to configured output formats (jpg, webp) via sharp.
+     * @private
+     */
+    async _convertOutputFormats(buffer, outputPath) {
+        const baseName = outputPath.replace(/\.png$/i, '');
+        if (baseName === outputPath) return;
+
+        for (const fmt of this.outputFormats || ['png']) {
+            const f = fmt.toLowerCase().trim();
+            if (f === 'png') continue;
+
+            const ext = f === 'jpeg' ? 'jpg' : f;
+            const outPath = `${baseName}.${ext}`;
+
+            try {
+                if (f === 'jpg' || f === 'jpeg') {
+                    await sharp(buffer).jpeg({ quality: this.jpgQuality }).toFile(outPath);
+                } else if (f === 'webp') {
+                    await sharp(buffer).webp({ quality: this.webpQuality }).toFile(outPath);
+                } else {
+                    continue;
+                }
+                const stat = fs.statSync(outPath);
+                this._log(`  Exported: ${path.basename(outPath)} (${(stat.size / 1024).toFixed(0)}KB)`);
+            } catch (err) {
+                this._log(`  Export ${fmt} failed: ${err.message}`);
+            }
+        }
     }
 
     /**
@@ -874,31 +957,6 @@ class BrowserImageGenerator extends EventEmitter {
         } catch {
             return false;
         }
-    }
-
-    /**
-     * Simulate clicking the microphone button to create human-activity signal.
-     * @private
-     */
-    async _simulateMicUse(page) {
-        try {
-            const micClicked = await page.evaluate(() => {
-                const buttons = Array.from(document.querySelectorAll('button, [role="button"]'));
-                const mic = buttons.find(el => {
-                    const label = (el.getAttribute('aria-label') || '').toLowerCase();
-                    const text = (el.innerText || '').toLowerCase();
-                    return label.includes('microphone') || label.includes('mic') || text.includes('microphone');
-                });
-                if (mic) { mic.click(); return true; }
-                return false;
-            });
-            if (micClicked) {
-                await this._sleep(this._randomInt(2000, 4000));
-                await page.keyboard.press('Escape');
-                await this._sleep(1000);
-                this._log('  🎤 Mic simulation done');
-            }
-        } catch {}
     }
 
     /**

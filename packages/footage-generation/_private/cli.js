@@ -43,6 +43,17 @@ async function main() {
         process.exit(1);
     }
 
+    // Parse optional flags
+    const formatIdx = process.argv.indexOf('--formats');
+    const formatsStr = formatIdx >= 0 ? process.argv[formatIdx + 1] : null;
+    const outputFormats = formatsStr ? formatsStr.split(',').map(s => s.trim()).filter(Boolean) : null;
+
+    const jpgQIdx = process.argv.indexOf('--jpg-quality');
+    const jpgQuality = jpgQIdx >= 0 ? parseInt(process.argv[jpgQIdx + 1], 10) : null;
+
+    const webpQIdx = process.argv.indexOf('--webp-quality');
+    const webpQuality = webpQIdx >= 0 ? parseInt(process.argv[webpQIdx + 1], 10) : null;
+
     const resolvedPromptsFile = path.resolve(promptsFile);
     const resolvedOutputDir = outputDir
         ? path.resolve(outputDir)
@@ -60,10 +71,15 @@ async function main() {
     }
 
     console.log(`📋 Found ${prompts.length} prompts`);
+    const activeFormats = outputFormats || ['png'];
+    console.log(`🖼️  Output formats: ${activeFormats.join(', ')}${jpgQuality ? ` (JPEG quality: ${jpgQuality})` : ''}${webpQuality ? ` (WebP quality: ${webpQuality})` : ''}`);
     console.log(`📂 Output: ${resolvedOutputDir}\n`);
 
     const gen = new BrowserImageGenerator({
         logger: { info: (msg) => console.log(msg) },
+        ...(outputFormats ? { outputFormats } : {}),
+        ...(jpgQuality ? { jpgQuality } : {}),
+        ...(webpQuality ? { webpQuality } : {}),
     });
 
     // Progress callback
