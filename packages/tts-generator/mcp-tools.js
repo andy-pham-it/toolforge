@@ -32,33 +32,49 @@ const generateTTSDef = {
             tags:     { type: 'string', description: 'Comma-separated audio tags for expressiveness (e.g. "determination,positive,whispers")' },
             style_prompt: { type: 'string', description: 'Optional style/tone guidance for audio tag injection. E.g. "slow, philosophical tone for deep segments, energetic for storytelling parts"' },
             tag_backend: { type: 'string', enum: ['google-api', 'gemini-web'], description: 'AI backend for audio tag injection: "google-api" (Gemini REST API, requires API key) or "gemini-web" (Puppeteer + gemini.google.com, requires Chrome running)', default: undefined },
+            segments:     { type: 'array', description: 'Pre-tagged segments from inject_tts_tags. If provided, overrides script-based auto-segmentation; tag_backend is ignored.' },
             segment_delay: { type: 'number', description: 'Delay in milliseconds between segment generations (default: 5000). Helps avoid rate limiting', default: undefined },
         },
-        required: ['script', 'title'],
+        required: [],
     },
 };
 
 async function generateTTSHandler(llm, args) {
-    const { script, title, voice = 'auto', api_mode = 'interactions', live_model, mode = 'batch', language = 'auto', pace = 'normal', tags = '', style_prompt, tag_backend, segment_delay } = args;
+    const { script, title, segments: preTaggedSegments, voice = 'auto', api_mode = 'interactions', live_model, mode = 'batch', language = 'auto', pace = 'normal', tags = '', style_prompt, tag_backend, segment_delay } = args;
 
-    // Input validation
-    if (!script || typeof script !== 'string' || script.trim().length === 0) {
-        throw new Error('generate_tts: "script" must be a non-empty string');
-    }
-    if (!title || typeof title !== 'string' || title.trim().length === 0) {
-        throw new Error('generate_tts: "title" must be a non-empty string');
+    // Input validation: need either script+title OR pre-tagged segments
+    const hasPreTagged = preTaggedSegments && Array.isArray(preTaggedSegments) && preTaggedSegments.length > 0;
+    if (!hasPreTagged) {
+        if (!script || typeof script !== 'string' || script.trim().length === 0) {
+            throw new Error('generate_tts: "script" must be a non-empty string (or provide "segments")');
+        }
+        if (!title || typeof title !== 'string' || title.trim().length === 0) {
+            throw new Error('generate_tts: "title" must be a non-empty string (or provide "segments")');
+        }
     }
 
     const audioTags = tags
         ? tags.split(',').map(t => t.trim()).filter(Boolean)
         : [];
 
-    // 1. Plan: segment the script using the MCP runtime LLM
     const genAI = module.exports._pluginConfig?.apiKey
         ? new GoogleGenAI({ apiKey: module.exports._pluginConfig.apiKey })
         : null;
     const planner = new TTSPlanner({ llm, genai: genAI });
-    const plan = await planner.plan(script, title, { voice, language, pace });
+
+    // 1. Plan: segment the script or use pre-tagged segments
+    let plan;
+    if (hasPreTagged) {
+        plan = {
+            segments: preTaggedSegments.map(s => ({
+                ...s,
+                voice: s.voice || (voice !== 'auto' ? voice : s.voice || 'auto'),
+            })),
+            metadata: { totalEstimatedDuration: 0, voiceCount: 0, languages: ['auto'] },
+        };
+    } else {
+        plan = await planner.plan(script, title, { voice, language, pace });
+    }
 
     // 2. Apply user's audio tags + resolve voice = "auto" to a real voice
     let resolvedSegments = plan.segments.map(s => {
@@ -78,8 +94,8 @@ async function generateTTSHandler(llm, args) {
         };
     });
 
-    // 2.5. Inject audio tags via AI reasoning model
-    if (tag_backend) {
+    // 2.5. Inject audio tags via AI reasoning model (skip if pre-tagged segments provided)
+    if (tag_backend && !hasPreTagged) {
         try {
             const tagged = await planner.injectTags(resolvedSegments, script, {
                 backend: tag_backend,
@@ -195,6 +211,26 @@ const listTTSVoicesDef = {
     },
 };
 
+// ---------------------------------------------------------------------------
+// inject_tts_tags
+// ---------------------------------------------------------------------------
+const injectTTSTagsDef = {
+    name: 'inject_tts_tags',
+    description: 'Analyze and enhance a podcast script with AI-generated audio tags for TTS expressiveness. Returns both a tagged script string (with [tag] markers) and structured tagged segments — preview and/or edit before generating audio.',
+    inputSchema: {
+        type: 'object',
+        properties: {
+            script:       { type: 'string', description: 'Full podcast script to analyze and tag. If provided without segments, auto-segments via LLM.' },
+            segments:     { type: 'array', description: 'Pre-segmented array from plan(). Overrides script-based auto-segmentation. Items: {id, text, title, voice, pace, audioTags, language, estimatedDuration}.' },
+            title:        { type: 'string', description: 'Episode title (required if script is provided for auto-segmentation)' },
+            style_prompt: { type: 'string', description: 'Optional style/tone guidance for tag injection' },
+            tag_backend:  { type: 'string', enum: ['google-api', 'gemini-web'], description: 'AI backend for tag injection', default: 'google-api' },
+            model:        { type: 'string', description: 'Gemini model override (e.g. "gemini-3.1-flash-lite")' },
+        },
+        required: [],
+    },
+};
+
 async function listTTSVoicesHandler(llm, args) {
     const voiceList = Object.entries(VOICES).map(([name, meta]) => ({
         name,
@@ -209,6 +245,40 @@ async function listTTSVoicesHandler(llm, args) {
 }
 
 // ---------------------------------------------------------------------------
+// inject_tts_tags handler
+// ---------------------------------------------------------------------------
+async function injectTTSTagsHandler(llm, args) {
+    const { script, segments, title, style_prompt, tag_backend = 'google-api', model } = args;
+
+    // Validate: need at least script or segments
+    if (!script && (!segments || !Array.isArray(segments) || segments.length === 0)) {
+        throw new Error('inject_tts_tags: either "script" or "segments" must be provided');
+    }
+    if (script && !title) {
+        throw new Error('inject_tts_tags: "title" is required when "script" is provided');
+    }
+
+    // Build input for planner
+    const input = segments || script;
+    const effectiveTitle = title || '';
+
+    // Create planner (genai null — planner will create default from env)
+    const planner = new TTSPlanner({ llm, genai: null });
+
+    const result = await planner.injectTagsToScript(input, effectiveTitle, {
+        backend: tag_backend,
+        stylePrompt: style_prompt || '',
+        model,
+    });
+
+    return {
+        tagged_script: result.tagged_script,
+        tagged_segments: result.tagged_segments,
+        metadata: result.metadata,
+    };
+}
+
+// ---------------------------------------------------------------------------
 // Exports
 // ---------------------------------------------------------------------------
 module.exports = function (config = {}) {
@@ -219,6 +289,7 @@ module.exports = function (config = {}) {
     module.exports._pluginConfig = config;
     return [
         { definition: generateTTSDef, handler: generateTTSHandler },
+        { definition: injectTTSTagsDef, handler: injectTTSTagsHandler },
         { definition: listTTSVoicesDef, handler: listTTSVoicesHandler },
     ];
 };

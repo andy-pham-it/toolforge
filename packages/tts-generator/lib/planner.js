@@ -87,7 +87,7 @@ class TTSPlanner {
                 return new LLMClient({
                     provider: 'gemini',
                     apiKey: process.env.GEMINI_API_KEY,
-                    model: 'gemini-2.5-flash-lite',
+                    model: 'gemini-3.1-flash-lite',
                 });
             }
             if (process.env.OPENAI_API_KEY) {
@@ -241,6 +241,89 @@ class TTSPlanner {
     }
 
     /**
+     * Inject tags into a script (or pre-segmented segments) and return
+     * both a human-readable tagged script string and structured tagged segments.
+     *
+     * @param {string|Array} scriptOrSegments - Full script text OR array of segments from plan()
+     * @param {string} title - Episode title (required if auto-segmenting a string)
+     * @param {Object} [options]
+     * @param {string} [options.backend='google-api'] - Tag injection backend
+     * @param {string} [options.stylePrompt=''] - Style/tone guidance
+     * @param {string} [options.model] - Gemini model override
+     * @param {AbortSignal} [options.signal] - Cancellation signal
+     * @param {string} [options.voice='auto'] - Voice override for plan()
+     * @param {string} [options.language='auto'] - Language override for plan()
+     * @param {string} [options.pace='normal'] - Pace override for plan()
+     * @returns {Promise<{tagged_script: string, tagged_segments: Array, metadata: Object}>}
+     */
+    async injectTagsToScript(scriptOrSegments, title, options = {}) {
+        // Validate input
+        if (typeof scriptOrSegments === 'string') {
+            if (!scriptOrSegments.trim()) {
+                throw new Error('TTSPlanner.injectTagsToScript: scriptOrSegments must be a non-empty string or array');
+            }
+        } else if (Array.isArray(scriptOrSegments)) {
+            if (scriptOrSegments.length === 0) {
+                throw new Error('inject_tts_tags: no segments to tag');
+            }
+        } else {
+            throw new Error('inject_tts_tags: invalid input — must be a string or array of segments');
+        }
+
+        const { backend = 'google-api', stylePrompt = '', model, signal, voice, language, pace } = options;
+        const originalScript = typeof scriptOrSegments === 'string' ? scriptOrSegments : (options.originalScript || '');
+
+        // Step 1: Auto-segment if given a string
+        let segments, metadata;
+        if (typeof scriptOrSegments === 'string') {
+            try {
+                const planResult = await this.plan(scriptOrSegments, title, { voice, language, pace });
+                segments = planResult.segments;
+                metadata = planResult.metadata;
+            } catch (err) {
+                throw new Error(`inject_tts_tags: script auto-segmentation failed — ${err.message}`);
+            }
+        } else {
+            segments = scriptOrSegments;
+            metadata = {};
+        }
+
+        // Step 2: Inject tags
+        let enhanced;
+        try {
+            enhanced = await this.injectTags(segments, originalScript, {
+                backend,
+                stylePrompt,
+                model,
+                signal,
+            });
+        } catch (err) {
+            throw new Error(`inject_tts_tags: tag injection failed — ${err.message}`);
+        }
+
+        // Step 3: Reconstruct tagged script string
+        const taggedScript = this._reconstructTaggedScript(enhanced);
+
+        return {
+            tagged_script: taggedScript,
+            tagged_segments: enhanced,
+            metadata,
+        };
+    }
+
+    /**
+     * Reconstruct a full tagged script string from enhanced segments.
+     * Each segment's text (with [tag] markers) joined by double newlines.
+     * @private
+     */
+    _reconstructTaggedScript(enhancedSegments) {
+        return enhancedSegments
+            .map(s => s.text || '')
+            .filter(Boolean)
+            .join('\n\n');
+    }
+
+    /**
      * Compute character offset sourceRef for each segment.
      * @private
      */
@@ -274,7 +357,7 @@ class TTSPlanner {
             );
         }
 
-        const effectiveModel = model || 'gemini-2.5-flash';
+        const effectiveModel = model || 'gemini-3.1-flash-lite';
 
         const userPrompt = [
             originalScript ? `Full script context:\n${originalScript}\n` : '',

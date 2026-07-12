@@ -269,3 +269,31 @@ describe('TTSPlanner', () => {
         });
     });
 });
+
+describe('TTSPlanner.injectTagsToScript', () => {
+    it('should reject empty input', async () => {
+        const planner = new TTSPlanner({ llm: null });
+        await assert.rejects(
+            () => planner.injectTagsToScript('', 'Test'),
+            /scriptOrSegments must be a non-empty string or array/
+        );
+    });
+
+    it('should reject non-string non-array input', async () => {
+        const planner = new TTSPlanner({ llm: null });
+        await assert.rejects(
+            () => planner.injectTagsToScript(123, 'Test'),
+            /must be a string or array/
+        );
+    });
+
+    it('should reconstruct tagged_script from segments with tags', () => {
+        const planner = new TTSPlanner({ llm: null });
+        const segments = [
+            { id: 1, text: '[slow][philosophical] Hello world', audioTags: ['slow', 'philosophical'] },
+            { id: 2, text: '[fast][excited] Second part', audioTags: ['fast', 'excited'] },
+        ];
+        const result = planner._reconstructTaggedScript(segments);
+        assert.equal(result, '[slow][philosophical] Hello world\n\n[fast][excited] Second part');
+    });
+});
