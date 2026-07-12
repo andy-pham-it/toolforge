@@ -25,7 +25,7 @@
     "@andy-toolforge/book-writing": "^1.0.0",
     "@andy-toolforge/pm-support": "^1.0.0",
     "@andy-toolforge/coding-support": "^1.0.0",
-    "@andy-toolforge/tts-generator": "^0.4.0",
+    "@andy-toolforge/tts-generator": "^0.5.0",
     "@andy-toolforge/voice-assistant": "^0.1.0"
   },
   "keywords": [
