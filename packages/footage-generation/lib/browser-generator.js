@@ -602,8 +602,18 @@ class BrowserImageGenerator extends EventEmitter {
             if (imgInfo && imgInfo.cdnSrc) {
                 const buffer = await this._fetchImageBuffer(page, imgInfo.cdnSrc);
                 if (buffer) {
-                    this._log('  ✅ Captured via CDN URL from img.src');
-                    return buffer;
+                    try {
+                        const meta = await sharp(buffer).metadata();
+                        const minDim = Math.min(meta.width || 0, meta.height || 0);
+                        if (minDim >= 1024) {
+                            this._log(`  ✅ Captured via CDN URL (${meta.width}\u00d7${meta.height})`);
+                            return buffer;
+                        }
+                        this._log(`  \u23a0 CDN URL returned thumbnail (${meta.width}\u00d7${meta.height}), trying download button...`);
+                    } catch {
+                        this._log('  \u23a0 Could not verify CDN resolution, accepting buffer');
+                        return buffer;
+                    }
                 }
             }
         } catch (err) {
@@ -655,10 +665,11 @@ class BrowserImageGenerator extends EventEmitter {
             });
 
             const buffer = await this._fetchImageBuffer(page, cdnUrl);
-            if (buffer) {
+            if (buffer && await this._isResolutionAcceptable(buffer, 1024)) {
                 this._log('  ✅ Captured via download button');
                 return buffer;
             }
+            this._log('  ⚠️ Download button returned small image, trying next strategy...');
         } catch (err) {
             this._log(`  ⚠️ Download button failed: ${err.message}`);
         }
@@ -679,14 +690,32 @@ class BrowserImageGenerator extends EventEmitter {
             });
             if (imgElement) {
                 const buffer = await imgElement.screenshot({ type: 'png' });
-                this._log('  ✅ Captured via element screenshot');
-                return buffer;
+                if (buffer && await this._isResolutionAcceptable(buffer, 1024)) {
+                    this._log('  ✅ Captured via element screenshot');
+                    return buffer;
+                }
+                this._log('  ⚠️ Element screenshot too small, continuing...');
             }
         } catch (err) {
             this._log(`  ⚠️ Element screenshot failed: ${err.message}`);
         }
 
         return null;
+    }
+
+    async _isResolutionAcceptable(buffer, minDim) {
+        try {
+            const meta = await sharp(buffer).metadata();
+            const minDimension = Math.min(meta.width || 0, meta.height || 0);
+            if (minDimension >= minDim) {
+                this._log(`  ✓ Resolution OK (${meta.width}\u00d7${meta.height})`);
+                return true;
+            }
+            this._log(`  \u23a0 Resolution too small (${meta.width}\u00d7${meta.height}), need >= ${minDim}px`);
+            return false;
+        } catch {
+            return true;
+        }
     }
 
     /**
@@ -727,27 +756,45 @@ class BrowserImageGenerator extends EventEmitter {
     async _captureFromLibrary(page, originalPrompt) {
         try {
             await page.goto('https://gemini.google.com/library', { waitUntil: 'domcontentloaded', timeout: 30000 });
-            await this._sleep(5000);
+            await this._sleep(6000);
 
-            const clicked = await page.evaluate(() => {
-                const card = document.querySelector('.library-item-card, [class*="library-item"]');
-                if (card) { card.click(); return true; }
-                const img = document.querySelector('img[src*="gg/AE"]');
-                if (img) { img.click(); return true; }
+            const opened = await page.evaluate(() => {
+                const sections = Array.from(document.querySelectorAll('[class*="section"], section, [class*="block"]'));
+                for (const section of sections) {
+                    if (section.innerText?.toLowerCase().includes('media')) {
+                        const img = section.querySelector('img[src*="gg/"]');
+                        if (img) { img.click(); return true; }
+                    }
+                }
+                const fallback = document.querySelector('img[src*="gg/AE"], img[src*="gg/"]');
+                if (fallback) { fallback.click(); return true; }
                 return false;
             });
 
-            if (!clicked) {
+            if (!opened) {
                 this._log('  ⚠️ No library items found');
                 return null;
             }
-            await this._sleep(3000);
+            await this._sleep(4000);
 
-            // Try download button in library
+            const imgSrc = await page.evaluate(() => {
+                const imgs = Array.from(document.querySelectorAll('img[src*="googleusercontent.com"]'));
+                const big = imgs.find(i => (i.naturalWidth || 0) > 100 && (i.naturalHeight || 0) > 100);
+                return big ? big.src : null;
+            });
+            if (imgSrc) {
+                this._log(`  Found image in detail view: ${imgSrc.slice(0, 80)}...`);
+                const buffer = await this._fetchImageBuffer(page, imgSrc);
+                if (buffer && await this._isResolutionAcceptable(buffer, 768)) {
+                    this._log('  ✅ Captured via library detail view');
+                    return buffer;
+                }
+            }
+
             const cdnUrl = await new Promise((resolve, reject) => {
                 const handler = (resp) => {
                     const ct = resp.headers()['content-type'] || '';
-                    if (ct.startsWith('image/') && resp.url().includes('googleusercontent.com')) {
+                    if (ct.startsWith('image/')) {
                         page.off('response', handler);
                         resolve(resp.url());
                     }
@@ -755,12 +802,14 @@ class BrowserImageGenerator extends EventEmitter {
                 page.on('response', handler);
 
                 page.evaluate(() => {
-                    let btn = Array.from(document.querySelectorAll('button'))
-                        .find(b => b.getAttribute('aria-label')?.toLowerCase().includes('download'));
-                    if (!btn) {
-                        btn = Array.from(document.querySelectorAll('button'))
-                            .find(b => b.querySelector('[class*="download"], mat-icon[fonticon="download"], svg'));
-                    }
+                    const btns = Array.from(document.querySelectorAll('button'));
+                    const btn = btns.find(b => {
+                        const label = (b.getAttribute('aria-label') || '').toLowerCase();
+                        return label.includes('download') && label.includes('full');
+                    }) || btns.find(b => {
+                        const label = (b.getAttribute('aria-label') || '').toLowerCase();
+                        return label.includes('download');
+                    });
                     if (btn) btn.click();
                 }).catch(() => {});
 
@@ -771,10 +820,11 @@ class BrowserImageGenerator extends EventEmitter {
             });
 
             const buffer = await this._fetchImageBuffer(page, cdnUrl);
-            if (buffer) {
-                this._log('  ✅ Captured via library');
+            if (buffer && await this._isResolutionAcceptable(buffer, 768)) {
+                this._log('  ✅ Captured via library download button');
                 return buffer;
             }
+            this._log('  ⚠️ Library download image too small');
         } catch (err) {
             this._log(`  ⚠️ Library capture failed: ${err.message}`);
         }
