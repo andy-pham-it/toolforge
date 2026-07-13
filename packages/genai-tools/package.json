@@ -1,0 +1,17 @@
+{
+  "name": "@andy-toolforge/genai-tools",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Google GenAI SDK tools: search grounding, structured extraction",
+  "main": "lib/index.js",
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "@google/genai": "^2.10.0",
+    "@andy-toolforge/core": "^1.0.0"
+  },
+  "scripts": {
+    "test": "node --test lib/**/*.test.js"
+  }
+}

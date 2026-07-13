@@ -5,6 +5,7 @@
   "workspaces": [
     "packages/core",
     "packages/footage-generation",
+    "packages/genai-tools",
     "packages/seo-generation",
     "packages/book-writing",
     "packages/pm-support",
