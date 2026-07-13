@@ -15,6 +15,7 @@
     "packages/content-operations",
     "packages/content-research",
     "packages/tts-generator",
-    "packages/voice-assistant"
+    "packages/voice-assistant",
+    "packages/vn-stock"
   ]
 }
