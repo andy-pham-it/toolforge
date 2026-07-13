@@ -14,12 +14,18 @@ class StockDB {
         if (this._connecting) return this._connecting;
         this._connecting = (async () => {
             if (this.db) return this.db;
-            this.client = new MongoClient(this.uri, {
-                maxPoolSize: 10,
-                serverSelectionTimeoutMS: 5000,
-            });
-            await this.client.connect();
-            this.db = this.client.db(DB_NAME);
+            try {
+                this.client = new MongoClient(this.uri, {
+                    maxPoolSize: 10,
+                    serverSelectionTimeoutMS: 5000,
+                });
+                await this.client.connect();
+                this.db = this.client.db(DB_NAME);
+            } catch (err) {
+                if (this.client) await this.client.close().catch(() => {});
+                this.client = null;
+                throw new Error(`Failed to connect to MongoDB: ${err.message}`);
+            }
             return this.db;
         })();
         return this._connecting;
