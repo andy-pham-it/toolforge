@@ -323,7 +323,7 @@ class SignalDetector {
         // Bearish reversal: prev was bullish (close > open), current is bearish (close < open)
         if (prevClose > prevOpen && close < open && bodyRatio >= 0.5) {
             return this._signal('PRICE_REVERSAL', 'bearish', Math.min(bodyRatio * 0.7, 1),
-                `Bearish reversal — prev bearish candle followed by bullish candle`, candle,
+                `Bearish reversal — prev bullish candle followed by bearish candle`, candle,
                 { close, open, prevClose, prevOpen, bodyRatio });
         }
         return null;
