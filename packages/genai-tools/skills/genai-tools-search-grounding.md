@@ -14,15 +14,15 @@ Uses Gemini's built-in Google Search grounding to answer questions with citation
 - The question is best answered by searching (not by the model's training data alone)
 
 **Model selection:**
-- `gemini-2.5-flash` (default) — better reasoning, good for complex questions
-- `gemini-3.1-flash-lite` — faster and cheaper, good for simple lookups
+- `gemini-3.1-flash-lite` (default) — faster, cheaper, free-tier quota
+- `gemini-2.5-flash` — stronger reasoning, good for complex questions
 
 **Output format:**
 ```json
 {
   "answer": "...",
   "citations": [{ "title": "...", "uri": "...", "snippet": "..." }],
-  "model": "gemini-2.5-flash"
+  "model": "gemini-3.1-flash-lite"
 }
 ```
 
@@ -43,15 +43,15 @@ Uses Gemini's `responseSchema` feature to extract structured JSON data from unst
 - You want type-safe structured output from free-form content
 
 **Model selection:**
-- `gemini-2.5-flash` (default) — best schema adherence, handles complex schemas
-- `gemini-3.1-flash-lite` — fast extraction for simple schemas
+- `gemini-3.1-flash-lite` (default) — fast extraction, free-tier quota
+- `gemini-2.5-flash` — better schema adherence for complex schemas
 - `gemma-4-9b-it` — lightweight option for basic extraction
 
 **Output format:**
 ```json
 {
   "data": { /* object conforming to provided schema */ },
-  "model": "gemini-2.5-flash"
+  "model": "gemini-3.1-flash-lite"
 }
 ```
 

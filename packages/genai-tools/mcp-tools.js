@@ -21,7 +21,7 @@ const searchGroundingDef = {
         type: 'object',
         properties: {
             query: { type: 'string', description: 'The question or topic to search for. Be specific for best results.' },
-            model: { type: 'string', description: 'Model override (default: gemini-2.5-flash). Also supports gemini-3.1-flash-lite for faster/cheaper responses.', default: 'gemini-2.5-flash' },
+            model: { type: 'string', description: 'Model override (default: gemini-3.1-flash-lite). Also supports gemini-2.5-flash for stronger reasoning.', default: 'gemini-3.1-flash-lite' },
         },
         required: ['query'],
     },
@@ -46,7 +46,7 @@ const extractStructuredDef = {
             content: { type: 'string', description: 'The text content to extract structured data from.' },
             schema: { type: 'object', description: 'JSON Schema describing the desired output shape. Example: {"type":"object","properties":{"title":{"type":"string"},"date":{"type":"string"},"amount":{"type":"number"}}}' },
             instruction: { type: 'string', description: 'Optional extraction instruction (e.g. "Extract key facts only" or "Extract all named entities"). Overrides the default "Extract structured data from this content according to the specified schema."' },
-            model: { type: 'string', description: 'Model override (default: gemini-2.5-flash). Also supports gemini-3.1-flash-lite, gemma-4-9b-it.', default: 'gemini-2.5-flash' },
+            model: { type: 'string', description: 'Model override (default: gemini-3.1-flash-lite). Also supports gemini-2.5-flash, gemma-4-9b-it.', default: 'gemini-3.1-flash-lite' },
         },
         required: ['content', 'schema'],
     },

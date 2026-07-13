@@ -1,13 +1,13 @@
 'use strict';
 
-const DEFAULT_MODEL = 'gemini-2.5-flash';
+const DEFAULT_MODEL = 'gemini-3.1-flash-lite';
 
 /**
  * Answer a query using Google Search–grounded Gemini.
  * @param {import('../genai-client').GenAIClient} client
  * @param {object} opts
  * @param {string} opts.query — The question to answer
- * @param {string} [opts.model] — Model name (default: gemini-2.5-flash)
+ * @param {string} [opts.model] — Model name (default: gemini-3.1-flash-lite)
  * @returns {Promise<{answer: string, citations: Array<{title: string, uri: string, snippet: string}>, model: string}>}
  */
 async function searchGrounding(client, { query, model = DEFAULT_MODEL }) {

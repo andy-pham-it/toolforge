@@ -1,6 +1,6 @@
 'use strict';
 
-const DEFAULT_MODEL = 'gemini-2.5-flash';
+const DEFAULT_MODEL = 'gemini-3.1-flash-lite';
 
 /**
  * Extract structured JSON from content using Gemini's responseSchema.
@@ -9,7 +9,7 @@ const DEFAULT_MODEL = 'gemini-2.5-flash';
  * @param {string} opts.content — The text content to extract from
  * @param {object} opts.schema — JSON Schema describing the desired output shape
  * @param {string} [opts.instruction] — Optional extraction instruction (e.g. "Extract key facts only")
- * @param {string} [opts.model] — Model name (default: gemini-2.5-flash)
+ * @param {string} [opts.model] — Model name (default: gemini-3.1-flash-lite)
  * @returns {Promise<{data: object, model: string}>}
  */
 async function extractStructured(client, { content, schema, instruction, model = DEFAULT_MODEL }) {
