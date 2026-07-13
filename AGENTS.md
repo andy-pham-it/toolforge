@@ -155,6 +155,7 @@ npm install <dep> -w @andy-toolforge/<pkg>
 | Competitor/SWOT/market research | `packages/ba-support/lib/` |
 | MCP server tools (media, SEO, Gemini) | `packages/mcp/lib/tools/` |
 | Add a new tool to the MCP server | `packages/mcp/lib/tools/<name>.js` |
+| Screen/filter/score VN stocks, detect signals | `packages/vn-stock/lib/` |
 | Add skill prompt files | `packages/<domain>/skills/` |
 | Publish a package | Run `npm publish -w @andy-toolforge/<pkg>` |
 
@@ -203,6 +204,10 @@ Exports by package (key symbols from Serena analysis):
 | `content-operations` | `ContentPatternLinter` | `lib/linter.js` | Check content quality & pattern compliance |
 | `mcp` | `MCPServer` | `lib/mcp-server.js` | MCP protocol server — registers tools, handles JSON-RPC |
 | `mcp` | `createServer(config)` | `lib/index.js` | Factory: creates MCPServer from config |
+| `vn-stock` | `StockDB` | `lib/db.js` | MongoDB connection, candle/intraday/fundamentals queries |
+| `vn-stock` | `StockScreener` | `lib/screener.js` | Filter stocks by technical conditions (daily + intraday) |
+| `vn-stock` | `StockScorer` | `lib/scorer.js` | Multi-factor scoring (technical, volume, momentum, fundamental) |
+| `vn-stock` | `SignalDetector` | `lib/signals.js` | 17 candlestick + indicator signal detection methods |
 | `tts-generator` | `TTSPlanner` | `lib/planner.js` | Script segmentation (LLM + regex fallback) |
 | `tts-generator` | `TTSGenerator` | `lib/generator.js` | Gemini TTS via Interactions REST API |
 | `tts-generator` | `LiveTTSGenerator` | `lib/live-generator.js` | Gemini TTS via Live WebSocket API |
