@@ -1,5 +1,6 @@
 const { describe, it, before, after } = require('node:test');
 const assert = require('node:assert');
+const path = require('path');
 
 const StockDB = require('./db');
 const StockScreener = require('./screener');
@@ -273,6 +274,48 @@ describe('Integration — StockDB + Screener + Scorer (MongoDB)', async () => {
             const scorer = new StockScorer();
             const results = await scorer.scoreAllIntraday({ interval: '15m', limit: 1 });
             assert.strictEqual(results.length, 1);
+        });
+    });
+
+    describe('IndicatorEngine — real Python (uv)', async () => {
+        const { IndicatorEngine } = require('./indicators');
+        const PROJECT_DIR = path.resolve(__dirname, '..', '..', '..', 'py-packages', 'vn-stock-indicators');
+
+        await it('compute RSI with real Python', async () => {
+            const engine = new IndicatorEngine({ projectDir: PROJECT_DIR, timeout: 30000 });
+            // Mixed up/down data to get varying RSI values
+            const close = [10,12,9,11,8,13,10,14,15,11,16,13,17,18,12,19,15,20,22,18];
+            const result = await engine.compute({ close }, ['rsi'], { rsi: [14] });
+            assert.ok(result);
+            assert.ok(Array.isArray(result.rsi));
+            assert.strictEqual(result.rsi.length, 20);
+            // First 14 values should be null (NaN-prefix)
+            for (let i = 0; i < 14; i++) {
+                assert.strictEqual(result.rsi[i], null, `rsi[${i}] should be null`);
+            }
+            // Remaining values should be non-null numbers
+            for (let i = 14; i < 20; i++) {
+                assert.ok(typeof result.rsi[i] === 'number' && result.rsi[i] > 0);
+            }
+        });
+
+        await it('compute multiple indicators', async () => {
+            const engine = new IndicatorEngine({ projectDir: PROJECT_DIR, timeout: 30000 });
+            const close = [10,12,11,13,14,13,15,16,15,17,18,17,19,20,21,20,22,23,22,24,25,24,26,27,28,27,29,30,29,31];
+            const result = await engine.compute({ close }, ['sma', 'ema'], { sma: [5], ema: [5] });
+            assert.ok(result.sma);
+            assert.ok(result.ema);
+            assert.strictEqual(result.sma.length, close.length);
+            assert.strictEqual(result.ema.length, close.length);
+        });
+
+        await it('handle unknown indicator gracefully', async () => {
+            const engine = new IndicatorEngine({ projectDir: PROJECT_DIR, timeout: 30000 });
+            const close = [1,2,3,4,5,6,7,8,9,10];
+            await assert.rejects(
+                () => engine.compute({ close }, ['NONEXISTENT']),
+                { code: 'PYTHON_ERROR' }
+            );
         });
     });
 });
