@@ -69,6 +69,10 @@ describe('Integration — StockDB + Screener + Scorer (MongoDB)', async () => {
             console.log('MongoDB not available — skipping integration tests');
             return;
         }
+        // Clean up leftover data from previous runs before inserting fresh data
+        for (const coll of ['stock_1d', 'intraday_indicators', 'stock_fundamentals']) {
+            await db.collection(coll).deleteMany({ symbol: { $regex: `^${TEST_PREFIX}` } });
+        }
         for (const doc of dailyDocs) {
             await db.collection('stock_1d').insertOne(doc);
         }
