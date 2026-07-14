@@ -6,7 +6,7 @@ from __future__ import annotations
 import importlib
 import json
 import sys
-from typing import Any
+from typing import Any, TextIO
 
 import numpy as np
 
@@ -167,7 +167,42 @@ def process_request(request: dict) -> dict:
     return results
 
 
+def main_json_line(
+    in_stream: TextIO = sys.stdin,
+    out_stream: TextIO = sys.stdout,
+    timeout: float = 30.0,
+) -> str | None:
+    """Read NDJSON, process each line, write NDJSON results.
+
+    Each input line is a JSON request object; each output line is the
+    corresponding result. An error on one line does not stop processing.
+    Returns None on normal exit, or an error message string on fatal failure.
+    """
+    for raw in in_stream:
+        raw = raw.strip()
+        if not raw:
+            continue
+        try:
+            request = json.loads(raw)
+        except json.JSONDecodeError:
+            out_stream.write(json.dumps({"error": "Invalid JSON input line"}) + "\n")
+            out_stream.flush()
+            continue
+        result = process_request(request)
+        out_stream.write(json.dumps(result) + "\n")
+        out_stream.flush()
+    return None
+
+
 def main() -> None:
+    if "--json-line" in sys.argv:
+        sys.argv.remove("--json-line")
+        err = main_json_line()
+        if err:
+            json.dump({"error": err}, sys.stdout)
+            sys.exit(1)
+        return
+
     try:
         raw = sys.stdin.read()
         if not raw.strip():

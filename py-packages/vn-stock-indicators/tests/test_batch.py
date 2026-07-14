@@ -98,3 +98,54 @@ def test_batch_bollinger_bands():
     assert "upper" in result["bollinger_bands"]
     assert "middle" in result["bollinger_bands"]
     assert "lower" in result["bollinger_bands"]
+
+
+def test_json_line_single():
+    from io import StringIO
+    from vn_stock_indicators.batch import main_json_line
+
+    close = list(range(1, 31))
+    inp = json.dumps({"close": close, "indicators": ["rsi"]})
+    out = StringIO()
+    err = main_json_line(StringIO(inp + "\n"), out, timeout=10)
+    assert err is None
+    lines = out.getvalue().strip().split("\n")
+    assert len(lines) == 1
+    result = json.loads(lines[0])
+    assert "rsi" in result
+    assert result["rsi"] is not None
+
+
+def test_json_line_multiple():
+    from io import StringIO
+    from vn_stock_indicators.batch import main_json_line
+
+    close1 = list(range(1, 31))
+    close2 = list(range(100, 115))
+    inp1 = json.dumps({"close": close1, "indicators": ["rsi"]})
+    inp2 = json.dumps({"close": close2, "indicators": ["sma"], "params": {"sma": {"period": 2}}})
+    out = StringIO()
+    err = main_json_line(StringIO(inp1 + "\n" + inp2 + "\n"), out, timeout=10)
+    assert err is None
+    lines = out.getvalue().strip().split("\n")
+    assert len(lines) == 2
+    r1, r2 = json.loads(lines[0]), json.loads(lines[1])
+    assert "rsi" in r1
+    assert "sma" in r2
+
+
+def test_json_line_error_isolation():
+    from io import StringIO
+    from vn_stock_indicators.batch import main_json_line
+
+    close = list(range(1, 31))
+    good = json.dumps({"close": close, "indicators": ["rsi"]})
+    bad = "not-json"
+    out = StringIO()
+    err = main_json_line(StringIO(good + "\n" + bad + "\n"), out, timeout=10)
+    assert err is None
+    lines = out.getvalue().strip().split("\n")
+    assert len(lines) == 2
+    r1, r2 = json.loads(lines[0]), json.loads(lines[1])
+    assert "rsi" in r1
+    assert "error" in r2
