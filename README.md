@@ -2,7 +2,7 @@
 
 [![npm (scoped)](https://img.shields.io/badge/npm-@andy--toolforge-red)](https://www.npmjs.com/org/andy-toolforge)
 
-**Monorepo chứa 10+ package npm dùng chung cho mọi dự án automation cá nhân.**
+**Monorepo chứa 11+ package npm dùng chung cho mọi dự án automation cá nhân.**
 Triết lý: **Không copy-paste code.** Thay vào đó, mọi dự án đều import từ `@andy-toolforge/*` và được cập nhật qua `npm update`.
 
 Toolforge giải quyết vấn đề gì?
@@ -65,6 +65,13 @@ Toolforge không chỉ là "thư viện LLM" — nó là **hệ sinh thái autom
 - Sinh dependency graph
 - Complexity report (functions, decisions, nesting depth)
 
+### 📈 Stock Screening & Scoring (vn-stock)
+- **StockDB** — Kết nối MongoDB chứa dữ liệu cổ phiếu VN (daily, intraday, fundamentals)
+- **StockScreener** — Lọc cổ phiếu theo điều kiện kỹ thuật (RSI oversold, EMA cross, volume spike)
+- **StockScorer** — Chấm điểm đa yếu tố 0-100 (technical 40%, volume 20%, momentum 20%, fundamental 20%)
+- **SignalDetector** — Phát hiện 16+ tín hiệu giao dịch: engulfing, morning/evening star, RSI overbought/oversold, Bollinger squeeze/breakout, MACD cross/divergence, volume surge/divergence, ATR spike, support/resistance breakout
+- **MCP Tools** — 4 tools được auto-discover: `toolforge_vn_stock_screen`, `toolforge_vn_stock_info`, `toolforge_vn_stock_score`, `toolforge_vn_stock_score_intraday`
+
 ---
 
 ## Packages
@@ -80,6 +87,7 @@ Toolforge không chỉ là "thư viện LLM" — nó là **hệ sinh thái autom
 | `@andy-toolforge/book-writing` | [![npm](https://img.shields.io/npm/v/@andy-toolforge/book-writing)](https://npmjs.com/package/@andy-toolforge/book-writing) | Viết sách: outline → chapter → review → export | Authors |
 | `@andy-toolforge/pm-support` | [![npm](https://img.shields.io/npm/v/@andy-toolforge/pm-support)](https://npmjs.com/package/@andy-toolforge/pm-support) | Task tracking, reports, invoices | PMs |
 | `@andy-toolforge/coding-support` | [![npm](https://img.shields.io/npm/v/@andy-toolforge/coding-support)](https://npmjs.com/package/@andy-toolforge/coding-support) | Code analysis, dead code, complexity | Developers |
+| `@andy-toolforge/vn-stock` | [![npm](https://img.shields.io/npm/v/@andy-toolforge/vn-stock)](https://npmjs.com/package/@andy-toolforge/vn-stock) | Stock screening, scoring, signal detection | Investors |
 | `@andy-toolforge/mcp` | [![npm](https://img.shields.io/npm/v/@andy-toolforge/mcp)](https://npmjs.com/package/@andy-toolforge/mcp) | MCP server — plugin discovery | AI agents |
 
 ---
@@ -170,6 +178,44 @@ const review = await writer.reviewConsistency({ title: outline.title, chapters }
 const book = await writer.exportFormat({ title: outline.title, chapters }, 'html');
 ```
 
+### 📈 Sàn lọc Cổ phiếu VN (vn-stock)
+
+```
+Daily/intraday candles (MongoDB)
+  → StockScreener: screenDaily() / screenIntraday() theo RSI, EMA, volume
+  → StockScorer: scoreAll() / scoreAllIntraday() → ranked 0-100
+  → SignalDetector: detectAll() / detectAllIntraday() → engulfing, cross, breakout...
+  → Kết hợp: screen → score → detect → watchlist
+```
+
+```javascript
+const { StockScreener, StockScorer, SignalDetector } = require('@andy-toolforge/vn-stock');
+
+// Bước 1: Lọc cổ phiếu RSI oversold + EMA uptrend
+const screener = new StockScreener();
+const candidates = await screener.screenDaily({
+    filters: [
+        { field: 'rsi', operator: 'lt', value: 35 },
+        { field: 'ema20', operator: 'gt', compareToField: 'ema50' },
+    ],
+    sortBy: 'rsi',
+    limit: 20,
+});
+
+// Bước 2: Chấm điểm đa yếu tố
+const scorer = new StockScorer();
+const ranked = await scorer.scoreAll({ limit: 10 });
+
+// Bước 3: Phát hiện tín hiệu giao dịch
+const detector = new SignalDetector();
+for (const { symbol } of candidates) {
+    const signals = await detector.detectAll(symbol);
+    if (signals.filter(s => s.direction === 'bullish').length >= 2) {
+        console.log(`${symbol}: ${signals.length} signals detected`);
+    }
+}
+```
+
 ---
 
 ## Architecture
@@ -188,6 +234,7 @@ const book = await writer.exportFormat({ title: outline.title, chapters }, 'html
 │ book-writing    │
 │ pm-support      │
 │ coding-support  │
+│ vn-stock        │
 └─────────────────┘
        ↓
 @andy-toolforge/mcp            ←  Tự động phát hiện mcp-tools.js từ domain packages
@@ -219,7 +266,7 @@ const server = createServer({ provider: 'gemini', apiKey: process.env.GEMINI_API
 server.start(); // stdio transport
 ```
 
-Hiện tại có **20+ tools** được auto-discover từ 6 domain packages. Xem chi tiết tại [packages/mcp/README.md](./packages/mcp/README.md).
+Hiện tại có **24+ tools** được auto-discover từ 7 domain packages. Xem chi tiết tại [packages/mcp/README.md](./packages/mcp/README.md).
 
 ---
 
