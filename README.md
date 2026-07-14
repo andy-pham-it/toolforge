@@ -72,6 +72,12 @@ Toolforge không chỉ là "thư viện LLM" — nó là **hệ sinh thái autom
 - **SignalDetector** — Phát hiện 16+ tín hiệu giao dịch: engulfing, morning/evening star, RSI overbought/oversold, Bollinger squeeze/breakout, MACD cross/divergence, volume surge/divergence, ATR spike, support/resistance breakout
 - **MCP Tools** — 4 tools được auto-discover: `toolforge_vn_stock_screen`, `toolforge_vn_stock_info`, `toolforge_vn_stock_score`, `toolforge_vn_stock_score_intraday`
 
+### 🐍 Python Technical Indicators (vn-stock-indicators)
+- **`py-packages/vn-stock-indicators/`** — Pure NumPy technical indicators cho stock analysis
+- **29 indicators** across 5 categories: Trend (10), Momentum (6), Volatility (4), Volume (4), Price Action (5)
+- **Batch CLI** — JSON stdin/stdout, có thể gọi từ JS subprocess (`child_process.execFile`)
+- **Python 3.14+**, UV package manager, stateless pure functions
+
 ---
 
 ## Packages
@@ -295,6 +301,8 @@ log.info('LLM reply', { reply });
 
 ## Development
 
+### Node.js (npm workspaces)
+
 ```bash
 # Clone & install
 git clone <repo-url>
@@ -311,6 +319,30 @@ npm test -w @andy-toolforge/core
 mkdir packages/<name>
 # ... code ...
 # Thêm vào workspaces trong root package.json
+```
+
+### Python (uv workspace)
+
+Python packages nằm trong `py-packages/` (monorepo uv workspace):
+
+```bash
+# Python package hiện tại
+cd py-packages/vn-stock-indicators
+uv sync          # cài deps (numpy)
+uv sync --group dev   # thêm pytest
+
+# Test
+uv run pytest -v
+
+# Lint
+uv run ruff check src/
+
+# Batch CLI (JSON stdin → stdout)
+echo '{"close": [81,82,83,84,85], "indicators": ["rsi"], "params": {"rsi":{"period":3}}}' \
+  | uv run python -m vn_stock_indicators.batch
+
+# Từ root — chạy trong member package
+uv run --directory py-packages/vn-stock-indicators pytest -v
 ```
 
 ### CI/CD
