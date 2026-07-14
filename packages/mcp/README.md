@@ -3,7 +3,7 @@
 [![npm](https://img.shields.io/npm/v/@andy-toolforge/mcp)](https://npmjs.com/package/@andy-toolforge/mcp)
 [![License](https://img.shields.io/npm/l/@andy-toolforge/mcp)](https://github.com/andy-pham-it/toolforge)
 
-**MCP (Model Context Protocol) server** cho hệ sinh thái @andy-toolforge. Expose 20+ tools qua MCP protocol để AI agents có thể sử dụng trực tiếp. Thuộc hệ sinh thái [toolforge](https://github.com/andy-pham-it/toolforge).
+**MCP (Model Context Protocol) server** cho hệ sinh thái @andy-toolforge. Expose 25+ tools qua MCP protocol để AI agents có thể sử dụng trực tiếp. Thuộc hệ sinh thái [toolforge](https://github.com/andy-pham-it/toolforge).
 
 ## Tính năng
 
@@ -18,7 +18,7 @@
 npm install @andy-toolforge/mcp
 ```
 
-Sẽ tự động cài kèm `@andy-toolforge/core` + `@andy-toolforge/footage-generation` + `@andy-toolforge/content-research`.
+Sẽ tự động cài kèm `@andy-toolforge/core` + `@andy-toolforge/footage-generation` + `@andy-toolforge/content-research` + `@andy-toolforge/vn-stock`.
 
 ## Usage
 
@@ -295,6 +295,15 @@ Built-in LLM router tool. Mô tả task bằng ngôn ngữ tự nhiên, server t
 | `toolforge_book_review` | Review manuscript for consistency |
 | `toolforge_book_export` | Export to markdown/plain/html |
 
+### Từ vn-stock (4 tools)
+
+| Tool | Description |
+|------|-------------|
+| `toolforge_vn_stock_screen` | Screen VN stocks by technical conditions (daily) |
+| `toolforge_vn_stock_info` | Get full symbol info (daily + intraday + fundamentals) |
+| `toolforge_vn_stock_score` | Rank VN stocks by multi-factor score (0–100) |
+| `toolforge_vn_stock_score_intraday` | Rank stocks by intraday score (15m/1h) |
+
 ### Built-in (1 tool)
 
 | Tool | Description |
@@ -307,6 +316,7 @@ Built-in LLM router tool. Mô tả task bằng ngôn ngữ tự nhiên, server t
 # Install thêm package → tools tự động xuất hiện
 npm install @andy-toolforge/ba-support   # +5 tools (competitor, pricing, SWOT, trends, report)
 npm install @andy-toolforge/book-writing # +4 tools (outline, write, review, export)
+npm install @andy-toolforge/vn-stock     # +4 tools (screen, info, score, score_intraday)
 # Không cần config lại MCP server — plugin discovery tự động
 ```
 
