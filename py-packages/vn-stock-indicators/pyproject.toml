@@ -1,0 +1,16 @@
+[project]
+name = "vn-stock-indicators"
+version = "0.1.0"
+description = "Technical indicator calculations for VN stock market — pure numpy"
+requires-python = ">=3.14"
+dependencies = [
+    "numpy>=2.0",
+]
+optional-dependencies = { pandas = ["pandas>=2.0"], dev = ["pytest>=8"] }
+
+[build-system]
+requires = ["setuptools>=75"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
