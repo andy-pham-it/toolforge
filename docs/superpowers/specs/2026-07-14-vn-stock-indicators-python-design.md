@@ -139,7 +139,7 @@ Không implement trong phase này — spec này chỉ cho Python package.
 | `macd(close, fast, slow, signal)` | 12, 26, 9 | {macd, signal, histogram} | MACD |
 | `adx(high, low, close, period)` | period=14 | {adx, plus_di, minus_di} | Average Directional Index |
 | `psar(high, low, accel, max_accel)` | 0.02, 0.2 | {psar, direction} | Parabolic SAR |
-| `ichimoku(high, low, close, ...)` | 9, 26, 52 | {tenkan, kijun, senkou_a, senkou_b, chikou} | Ichimoku Cloud |
+| `ichimoku(high, low, close, tenkan_period, kijun_period, senkou_period)` | 9, 26, 52 | {tenkan, kijun, senkou_a, senkou_b, chikou} | Ichimoku Cloud |
 
 ### 4.2. Momentum (6)
 
@@ -246,20 +246,17 @@ dev = ["pytest>=8", "pytest-benchmark"]
 
 ```bash
 # Setup
-cd py-packages/vn-stock-indicators
-uv venv
-uv sync
+cd py-packages/vn-stock-indicators && uv venv && uv sync
 
 # Test
-uv run pytest
+cd py-packages/vn-stock-indicators && uv run pytest
 
 # Single indicator via CLI
-echo '{"close": [81,82,83,84,85], "indicators": ["rsi"]}' \
-  | uv run --directory py-packages/vn-stock-indicators python -m vn_stock_indicators.batch
+cd py-packages/vn-stock-indicators && echo '{"close": [81,82,83,84,85], "indicators": ["rsi"]}' \
+  | uv run python -m vn_stock_indicators.batch
 
-# Lint (uv tool)
-uv tool install ruff
-uv run ruff check src/
+# Lint
+cd py-packages/vn-stock-indicators && uv run ruff check src/
 ```
 
 ---
