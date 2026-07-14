@@ -7,11 +7,12 @@
 ```
 packages/vn-stock/
   lib/
-    index.js     — Entry: exports { StockDB, StockScreener, StockScorer, SignalDetector }
+    index.js     — Entry: exports { StockDB, StockScreener, StockScorer, SignalDetector, IndicatorEngine, IndicatorEngineError }
     db.js        — StockDB  MongoDB connection & collection helpers
     screener.js  — StockScreener  Filter/screen stocks by technical conditions
     scorer.js    — StockScorer  Multi-factor scoring engine (technical, volume, momentum, fundamental)
-    signals.js   — SignalDetector  Detect 17 technical signals (trend, momentum, volatility, volume, flow, price action)
+    signals.js    — SignalDetector  Detect 17 technical signals (trend, momentum, volatility, volume, flow, price action)
+    indicators.js — IndicatorEngine  Python subprocess bridge for technical indicator calculation
   skills/
     postinstall.js
     vn-stock-screener.md
@@ -26,6 +27,8 @@ packages/vn-stock/
 | `StockScreener` | `lib/screener.js` | Filter stocks by indicator conditions, multi-timeframe screening |
 | `StockScorer` | `lib/scorer.js` | Score stocks 0–100 across four factors (technical, volume, momentum, fundamental) |
 | `SignalDetector` | `lib/signals.js` | Detect 17 technical signals (trend, momentum, volatility, volume, flow, price action) |
+| `IndicatorEngine` | `lib/indicators.js` | Python subprocess bridge — compute 29 indicators via `vn-stock-indicators` CLI |
+| `IndicatorEngineError` | `lib/indicators.js` | Error class with `code` property for Python/bridge error handling |
 
 ## Usage
 
@@ -101,6 +104,36 @@ const grouped = detector.getSignalsGrouped(candle, prevCandle);
 const custom = new SignalDetector({
     rsi: { oversold: 25, overbought: 75 },
     volume: { spikeRatio: 3.0 },
+});
+```
+
+### Indicator Calculation (IndicatorEngine)
+
+```javascript
+const { IndicatorEngine } = require('@andy-toolforge/vn-stock');
+const engine = new IndicatorEngine();
+
+// Spawn mode (one-off calculation)
+const result = await engine.compute({
+    indicators: ['sma', 'ema', 'rsi', 'macd', 'bbands'],
+    ohlcv: { open: [...], high: [...], low: [...], close: [...], volume: [...] },
+    params: { sma: [20, 50], ema: [20], rsi: [14] },
+});
+// → { sma: {...}, ema: {...}, rsi: {...}, macd: {...}, bbands: {...} }
+
+// Pool mode (reuse Python process for multiple calls)
+const pool = new IndicatorEngine({ mode: 'pool', pythonPath: 'uv' });
+await pool.connect();
+const r1 = await pool.compute({ indicators: ['sma'], ohlcv: {...}, params: { sma: [20] } });
+const r2 = await pool.compute({ indicators: ['rsi'], ohlcv: {...}, params: { rsi: [14] } });
+await pool.disconnect();
+
+// Fetch from MongoDB + compute
+const mongo = new IndicatorEngine({ mongoUri: 'mongodb://localhost:27017' });
+const fromDb = await mongo.fetchAndCompute({
+    symbol: 'FPT', source: 'daily',
+    indicators: ['sma', 'ema', 'rsi'],
+    params: { sma: [20, 50], ema: [20], rsi: [14] },
 });
 ```
 
