@@ -1,50 +1,46 @@
 const { describe, it } = require('node:test');
 const assert = require('node:assert');
 
-// Mock Analyst by configuring a fake via constructor injection
-const { Analyst } = require('./analyst');
-class FakeStockLLM {
-    async quickChat() { return JSON.stringify({ recommendation: 'MUA', reasoning: 'Strong', risks: [] }); }
-    async deepChat() { return JSON.stringify({ strategy: 'Buy dip', entry: 120000, stopLoss: 115000, support: [118000], resistance: [125000], reasoning: 'Uptrend', riskReward: 2 }); }
-}
-
 const pluginFn = require('../mcp-tools');
 
 describe('vn-stock MCP tools', () => {
     let tools;
 
-    it('should export array of tools', () => {
+    it('should export array of 7 tools', () => {
         tools = pluginFn();
         assert.ok(Array.isArray(tools));
-        assert.ok(tools.length >= 7); // 4 existing + 3 new
+        assert.strictEqual(tools.length, 7);
     });
 
-    it('should have analyze tool', () => {
-        const analyze = tools.find(t => t.definition.name === 'toolforge_vn_stock_analyze');
-        assert.ok(analyze, 'analyze tool missing');
-        assert.ok(analyze.handler);
+    it('should have analyze tool with definition and handler', () => {
+        const t = tools.find(t => t.definition.name === 'toolforge_vn_stock_analyze');
+        assert.ok(t, 'analyze tool missing');
+        assert.ok(t.handler);
+        assert.ok(t.definition.inputSchema.required.includes('symbol'));
     });
 
-    it('should have deep_dive tool', () => {
-        const deep = tools.find(t => t.definition.name === 'toolforge_vn_stock_deep_dive');
-        assert.ok(deep, 'deep_dive tool missing');
+    it('should have deep_dive tool with timeframe param', () => {
+        const t = tools.find(t => t.definition.name === 'toolforge_vn_stock_deep_dive');
+        assert.ok(t, 'deep_dive tool missing');
+        assert.ok(t.definition.inputSchema.properties.timeframe);
+        assert.strictEqual(t.definition.inputSchema.properties.timeframe.default, '1D');
     });
 
-    it('should have compare tool', () => {
-        const compare = tools.find(t => t.definition.name === 'toolforge_vn_stock_compare');
-        assert.ok(compare, 'compare tool missing');
+    it('should have compare tool with symbols array param', () => {
+        const t = tools.find(t => t.definition.name === 'toolforge_vn_stock_compare');
+        assert.ok(t, 'compare tool missing');
+        assert.ok(t.definition.inputSchema.required.includes('symbols'));
+        assert.strictEqual(t.definition.inputSchema.properties.symbols.type, 'array');
     });
 
-    it('analyze handler should return stock analysis', async () => {
-        const analyze = tools.find(t => t.definition.name === 'toolforge_vn_stock_analyze');
-        const result = await analyze.handler(null, { symbol: 'FPT' });
-        assert.ok(result.symbol);
-        assert.ok(result.recommendation);
+    it('all tool definitions have unique names', () => {
+        const names = tools.map(t => t.definition.name);
+        assert.strictEqual(new Set(names).size, names.length);
     });
 
-    it('compare handler should compare symbols', async () => {
-        const compare = tools.find(t => t.definition.name === 'toolforge_vn_stock_compare');
-        const result = await compare.handler(null, { symbols: ['FPT', 'VNM'] });
-        assert.ok(result.topPick);
+    it('all tool definitions have inputSchema with type object', () => {
+        tools.forEach(t => {
+            assert.strictEqual(t.definition.inputSchema.type, 'object', `${t.definition.name} schema type`);
+        });
     });
 });

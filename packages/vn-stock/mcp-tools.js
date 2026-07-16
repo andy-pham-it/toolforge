@@ -3,8 +3,7 @@
  * Loaded automatically by @andy-toolforge/mcp discovery mechanism.
  */
 
-const { StockScreener, StockScorer } = require('./lib/index');
-const { Analyst } = require('./lib/analyst');
+const { StockScreener, StockScorer, Analyst } = require('./lib');
 
 const screenDefinition = {
     name: 'toolforge_vn_stock_screen',

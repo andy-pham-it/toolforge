@@ -16,9 +16,10 @@ class Analyst {
     /**
      * Analyze a single stock symbol.
      * @param {string} symbol
+     * @param {string} [timeframe='1D'] - Timeframe for analysis ('1D', '1h', '15m')
      * @returns {Promise<object>} { symbol, signals, score, recommendation, analysis, risks }
      */
-    async analyzeSymbol(symbol) {
+    async analyzeSymbol(symbol, timeframe = '1D') {
         const db = new StockDB();
         try {
             await db.connect();
@@ -55,7 +56,8 @@ class Analyst {
             try {
                 const raw = await this.llm.quickChat(systemPrompt, userContent);
                 analysis = JSON.parse(raw);
-            } catch {
+            } catch (err) {
+                console.warn('analyst:analyzeSymbol LLM parse failed for %s — %s', symbol, err.message);
                 analysis = { recommendation: this._fallbackRecommendation(scoreResult.total), reasoning: 'Based on technical analysis only', risks: [] };
             }
 
@@ -74,6 +76,7 @@ class Analyst {
                 reasoning: analysis.reasoning || '',
                 risks: analysis.risks || [],
                 fundamentals: info.fundamentals,
+                currentPrice: (info.daily?.close || info.intraday?.close) || 0,
             };
         } finally {
             await db.close();
@@ -83,11 +86,12 @@ class Analyst {
     /**
      * Compare multiple symbols.
      * @param {string[]} symbols
+     * @param {string} [timeframe='1D'] - Timeframe for analysis
      * @returns {Promise<object>} { comparison, topPick }
      */
-    async compareSymbols(symbols) {
+    async compareSymbols(symbols, timeframe = '1D') {
         const results = await Promise.allSettled(
-            symbols.map(s => this.analyzeSymbol(s))
+            symbols.map(s => this.analyzeSymbol(s, timeframe))
         );
         const analyzed = results
             .filter(r => r.status === 'fulfilled' && r.value && !r.value.error)
@@ -104,7 +108,8 @@ class Analyst {
         try {
             const raw = await this.llm.quickChat(systemPrompt, userContent);
             aiComparison = JSON.parse(raw);
-        } catch {
+        } catch (err) {
+            console.warn('analyst:compareSymbols LLM parse failed — %s', err.message);
             aiComparison = { summary: 'Comparison based on technical scores', reasoning: '' };
         }
 
@@ -141,7 +146,8 @@ class Analyst {
             try {
                 const raw = await this.llm.quickChat(systemPrompt, userContent);
                 analysis = JSON.parse(raw);
-            } catch {
+            } catch (err) {
+                console.warn('analyst:analyzeMarket LLM parse failed — %s', err.message);
                 analysis = { marketSummary: 'Market analysis based on technical scores', sentiment: 'Trung tính', notableStocks: [], advice: '' };
             }
 
@@ -193,7 +199,8 @@ class Analyst {
             try {
                 const raw = await this.llm.deepChat(systemPrompt, userContent);
                 analysis = JSON.parse(raw);
-            } catch {
+            } catch (err) {
+                console.warn('analyst:deepDiveStrategy LLM parse failed for %s — %s', symbol, err.message);
                 const price = candle.close || candle.price || 0;
                 analysis = {
                     strategy: 'Unable to generate deep analysis',
@@ -236,12 +243,12 @@ class Analyst {
                     symbol: h.symbol,
                     shares: h.shares,
                     avgPrice: h.avgPrice,
-                    currentPrice: null,
-                    pnl: null,
+                    currentPrice: analysis.currentPrice || null,
                     recommendation: analysis.recommendation,
                     score: analysis.score,
                 });
-            } catch {
+            } catch (err) {
+                console.warn('analyst:portfolioReview analyzeSymbol failed for %s — %s', h.symbol, err.message);
                 analyzed.push({ symbol: h.symbol, shares: h.shares, avgPrice: h.avgPrice, error: 'Analysis failed' });
             }
         }
@@ -255,9 +262,26 @@ class Analyst {
         try {
             const raw = await this.llm.quickChat(systemPrompt, userContent);
             assessment = JSON.parse(raw);
-        } catch {
+        } catch (err) {
+            console.warn('analyst:portfolioReview LLM parse failed — %s', err.message);
             assessment = { overallAssessment: 'Portfolio review based on technical analysis', concerns: [], suggestions: [], riskLevel: 'Trung bình' };
         }
+
+        // Calculate total portfolio value and P&L
+        let totalValue = 0;
+        let totalCost = 0;
+        analyzed.forEach(holding => {
+            if (holding.currentPrice !== null) {
+                const positionValue = holding.shares * holding.currentPrice;
+                const positionCost = holding.shares * holding.avgPrice;
+                totalValue += positionValue;
+                totalCost += positionCost;
+                holding.marketValue = positionValue;
+                holding.costBasis = positionCost;
+                holding.unrealizedPnL = positionValue - positionCost;
+                holding.unrealizedPnLPct = positionCost > 0 ? ((positionValue - positionCost) / positionCost) * 100 : 0;
+            }
+        });
 
         return {
             holdings: analyzed,
@@ -265,7 +289,10 @@ class Analyst {
             concerns: assessment.concerns || [],
             suggestions: assessment.suggestions || [],
             riskLevel: assessment.riskLevel || 'Trung bình',
-            totalValue: 0,
+            totalValue,
+            totalCost,
+            totalUnrealizedPnL: totalValue - totalCost,
+            totalUnrealizedPnLPct: totalCost > 0 ? ((totalValue - totalCost) / totalCost) * 100 : 0,
         };
     }
 
