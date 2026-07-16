@@ -25,6 +25,10 @@ coverage/
 # Tool runtime state
 .omo/
 
+# Python __pycache__ (compiled bytecode cache)
+__pycache__/
+*.pyc
+
 # Generated skill symlinks (created by postinstall scripts)
 .opencode/skills/
 
