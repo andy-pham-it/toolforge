@@ -1,6 +1,6 @@
 {
   "name": "@andy-toolforge/vn-stock",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Toolforge domain: VN stock screener and scanner — technical analysis, screening, scoring from MongoDB data",
   "main": "lib/index.js",
   "repository": {
