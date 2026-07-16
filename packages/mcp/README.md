@@ -325,7 +325,7 @@ npm install @andy-toolforge/vn-stock     # +4 tools (screen, info, score, score_
 ```javascript
 const { createServer, MCPServer } = require('@andy-toolforge/mcp');
 
-// createServer(config) — shorthand
+// createServer(config) — shorthand (backward-compatible)
 const server = createServer({
     apiKey: '...',      // required
     provider: 'gemini',  // 'gemini' | 'groq'
@@ -334,9 +334,21 @@ const server = createServer({
 });
 server.start();
 
+// createServer(config) — adapter chain (khuyên dùng)
+const { OpenAIAdapter } = require('@andy-toolforge/core');
+const { GenAIAdapter } = require('@andy-toolforge/genai-tools');
+const server2 = createServer({
+    adapters: [
+        new GenAIAdapter(process.env.GEMINI_API_KEY),
+        new OpenAIAdapter('groq', process.env.GROQ_API_KEY),
+    ],
+    discover: true,
+});
+server2.start();
+
 // MCPServer class — full control
-const server2 = new MCPServer({ ... });
-await server2.start();
+const server3 = new MCPServer({ ... });
+await server3.start();
 ```
 
 ## Related

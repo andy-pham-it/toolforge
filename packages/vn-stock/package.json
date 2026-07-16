@@ -1,6 +1,6 @@
 {
   "name": "@andy-toolforge/vn-stock",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "Toolforge domain: VN stock screener and scanner — technical analysis, screening, scoring from MongoDB data",
   "main": "lib/index.js",
   "repository": {
@@ -11,9 +11,9 @@
     "postinstall": "node skills/postinstall.js",
     "test": "node --test lib/*.test.js"
   },
-"dependencies": {
+  "dependencies": {
     "@andy-toolforge/core": "^1.0.0",
     "@andy-toolforge/genai-tools": "^0.1.0",
     "mongodb": "^6.0.0"
-}
+  }
 }

@@ -3,7 +3,7 @@
 [![npm](https://img.shields.io/npm/v/@andy-toolforge/core)](https://npmjs.com/package/@andy-toolforge/core)
 [![License](https://img.shields.io/npm/l/@andy-toolforge/core)](https://github.com/andy-pham-it/toolforge)
 
-**Toolforge foundation package.** Cung cấp 4 dịch vụ nền tảng: LLM client, browser automation, structured logger, và job queue. Tất cả domain packages (`footage-generation`, `ba-support`, `book-writing`, ...) đều dựa trên package này.
+**Toolforge foundation package.** Cung cấp 4 dịch vụ nền tảng: LLM client (multi-provider với adapter chain & fallback), browser automation, structured logger, và job queue. Tất cả domain packages (`footage-generation`, `ba-support`, `book-writing`, ...) đều dựa trên package này.
 
 > ⚠️ **Quan trọng:** Core KHÔNG chứa domain-specific logic (không có `analyzeScript`, `generateXxx`). Những method đó nằm trong domain package's LLMClient subclass.
 
@@ -19,9 +19,11 @@ npm install @andy-toolforge/core
 
 ### LLMClient
 
-Generic LLM client với multi-provider routing. Supports Gemini, Groq, OpenAI qua unified API.
+Generic LLM client với multi-provider routing & fallback. Supports Gemini, Groq, OpenAI qua unified API.
 
-**Constructor params:**
+#### Constructor
+
+**Cách 1 (backward-compatible):** Provider + API key đơn
 
 | Param | Type | Default | Mô tả |
 |-------|------|---------|-------|
@@ -31,21 +33,30 @@ Generic LLM client với multi-provider routing. Supports Gemini, Groq, OpenAI q
 | `maxRetries` | number | `3` | Số lần retry tối đa |
 | `baseDelay` | number | `2000` | Base delay cho exponential backoff (ms) |
 
+**Cách 2 (khuyên dùng):** Priority-ordered adapter chain — tự động fallback khi adapter đầu fail
+
+| Param | Type | Default | Mô tả |
+|-------|------|---------|-------|
+| `adapters` | `ProviderAdapter[]` | (required) | Array adapter theo thứ tự ưu tiên |
+| `maxRetries` | number | `3` | Số lần retry tối đa |
+| `baseDelay` | number | `2000` | Base delay cho exponential backoff (ms) |
+
 **Phương thức:**
 
 | Method | Params | Returns | Mô tả |
 |--------|--------|---------|-------|
-| `chat()` | `systemPrompt, userPrompt, jsonMode?, fetchFn?` | `Promise<string>` | Gửi chat completion. Nếu `jsonMode=true` yêu cầu JSON response |
+| `chat()` | `systemPrompt, userPrompt, jsonMode?, fetchFn?` | `Promise<string>` | Gửi chat completion với adapter chain. Tự động fallback nếu adapter đầu fail |
 
 **Providers hỗ trợ:**
 
-| Provider | API Key Env | Model mặc định | Khi nào dùng |
-|----------|-------------|----------------|--------------|
-| **Gemini** | `GEMINI_API_KEY` | `gemini-2.0-flash` | Mặc định. Tốc độ cao, free tier hào phóng |
-| **Groq** | `GROQ_API_KEY` | `llama-3.3-70b-versatile` | Inference cực nhanh. Tốt cho real-time |
-| **OpenAI** | `OPENAI_API_KEY` | Provider default | Khi cần GPT-4 quality |
+| Provider | Adapter | API Key Env | Model mặc định |
+|----------|---------|-------------|---------------|
+| **Gemini** | `OpenAIAdapter` | `GEMINI_API_KEY` | `gemini-2.0-flash` |
+| **Gemini (SDK)** | `GenAIAdapter` | `GEMINI_API_KEY` | `gemini-2.5-flash` |
+| **Groq** | `OpenAIAdapter` | `GROQ_API_KEY` | `llama-3.3-70b-versatile` |
+| **OpenAI** | `OpenAIAdapter` | `OPENAI_API_KEY` | Provider default |
 
-**Ví dụ cơ bản:**
+**Ví dụ — backward-compatible (cách 1):**
 
 ```javascript
 const { LLMClient } = require('@andy-toolforge/core');
@@ -55,18 +66,25 @@ const llm = new LLMClient({
     apiKey: process.env.GEMINI_API_KEY,
 });
 
-// Chat thông thường
 const reply = await llm.chat('Bạn là trợ lý tiếng Việt', 'Xin chào!');
 console.log(reply);
+```
 
-// JSON mode — response sẽ là JSON string
-const json = await llm.chat(
-    'Return JSON with { name, age }',
-    'Tôi tên là An, 25 tuổi',
-    true   // jsonMode
-);
-const data = JSON.parse(json);
-console.log(data.name); // "An"
+**Ví dụ — adapter chain với fallback (cách 2, khuyên dùng):**
+
+```javascript
+const { LLMClient, OpenAIAdapter } = require('@andy-toolforge/core');
+const { GenAIAdapter } = require('@andy-toolforge/genai-tools');
+
+const llm = new LLMClient({
+    adapters: [
+        new GenAIAdapter(process.env.GEMINI_API_KEY),     // 1st: Gemini SDK
+        new OpenAIAdapter('groq', process.env.GROQ_API_KEY), // 2nd: Groq fallback
+    ],
+});
+
+// Nếu Gemini fail → tự động fallback sang Groq
+const reply = await llm.chat('System prompt', 'User message');
 ```
 
 **Ví dụ với error handling:**
@@ -75,16 +93,61 @@ console.log(data.name); // "An"
 try {
     const reply = await llm.chat('System prompt', 'User message');
 } catch (err) {
-    if (err.message.includes('429')) {
-        // Rate limited — để LLMClient tự retry (mặc định 3 lần)
-        console.error('Still failing after retries, consider reducing rate');
+    if (err.message.includes('All adapters failed')) {
+        // Tất cả providers trong chain đều fail
+        console.error('All providers unavailable:', err.message);
+    } else if (err.message.includes('429')) {
+        console.error('Rate limited after retries');
     } else if (err.message.includes('401')) {
-        console.error('Invalid API key — check your env vars');
+        console.error('Invalid API key');
     } else {
         console.error('LLM call failed:', err.message);
     }
 }
 ```
+
+---
+
+### ProviderAdapter (base class)
+
+Abstract base cho tất cả provider adapters. Triển khai `chat()` contract để LLMClient sử dụng trong adapter chain.
+
+**Methods:**
+
+| Method | Params | Returns | Mô tả |
+|--------|--------|---------|-------|
+| `chat()` | `{ systemPrompt, messages, jsonMode, fetchFn }` | `Promise<{ content, toolCalls, usage }>` | Gọi LLM, trả về normalized response |
+
+**Các adapter có sẵn:**
+
+| Adapter | Package | Mô tả |
+|---------|---------|-------|
+| `OpenAIAdapter` | `@andy-toolforge/core` | Fetch-based, cho Gemini/Groq/OpenAI endpoints |
+| `GenAIAdapter` | `@andy-toolforge/genai-tools` | Dùng `@google/genai` SDK |
+
+```javascript
+const { ProviderAdapter } = require('@andy-toolforge/core');
+
+class MyCustomAdapter extends ProviderAdapter {
+    async chat({ systemPrompt, messages, jsonMode, fetchFn }) {
+        // Triển khai provider-specific logic
+    }
+}
+```
+
+### OpenAIAdapter
+
+Fetch-based adapter — hỗ trợ Gemini, Groq, OpenAI qua OpenAI-compatible REST API.
+
+**Constructor:** `new OpenAIAdapter(provider, apiKey, model?)`
+
+| Param | Type | Mô tả |
+|-------|------|-------|
+| `provider` | string | `'gemini'` \| `'groq'` \| `'openai'` |
+| `apiKey` | string | API key |
+| `model` | string | (optional) Override model default |
+
+**Tự động retry:** Network errors + 429 (exponential backoff, max 3 lần).
 
 ---
 

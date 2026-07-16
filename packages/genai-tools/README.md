@@ -23,6 +23,7 @@ Requires `GEMINI_API_KEY` or `GOOGLE_API_KEY` environment variable.
 | Export | File | Purpose |
 |--------|------|---------|
 | `GenAIClient` | `lib/genai-client.js` | Gemini API client wrapper |
+| `GenAIAdapter` | `lib/genai-adapter.js` | ProviderAdapter — dùng `@google/genai` SDK trong LLMClient adapter chain |
 | `searchGrounding` | `lib/tools/search-grounding.js` | Google Search–grounded Q&A |
 | `extractStructured` | `lib/tools/extract-structured.js` | Structured JSON extraction via responseSchema |
 
@@ -69,6 +70,39 @@ console.log(result.data);
 ```
 
 ## API Reference
+
+### GenAIAdapter
+
+ProviderAdapter implementation wrapping `@google/genai` SDK. Dùng trong LLMClient adapter chain để gọi Gemini models qua GenAI SDK (không qua REST fetch).
+
+**Constructor:** `new GenAIAdapter(apiKey?)`
+
+| Parameter | Description |
+|-----------|-------------|
+| `apiKey` | Gemini API key. Falls back to `GEMINI_API_KEY` or `GOOGLE_API_KEY` env vars |
+
+**Ví dụ — dùng trong adapter chain:**
+
+```javascript
+const { LLMClient, OpenAIAdapter } = require('@andy-toolforge/core');
+const { GenAIAdapter } = require('@andy-toolforge/genai-tools');
+
+const llm = new LLMClient({
+    adapters: [
+        new GenAIAdapter(process.env.GEMINI_API_KEY),
+        new OpenAIAdapter('groq', process.env.GROQ_API_KEY),
+    ],
+});
+```
+
+**So sánh OpenAIAdapter vs GenAIAdapter (Gemini):**
+
+| | OpenAIAdapter | GenAIAdapter |
+|--|--------------|--------------|
+| Backend | OpenAI-compatible REST API | `@google/genai` SDK |
+| Tính năng | Tương thích Groq/OpenAI | Hỗ trợ Gemini-exclusive features |
+| Khi nào dùng | Gemini cơ bản + Groq/OpenAI fallback | Gemini-optimized, multi-modal |
+
 
 ### GenAIClient
 
