@@ -273,6 +273,9 @@ Package này tự động đăng ký 4 tools với `@andy-toolforge/mcp` qua cơ
 | `toolforge_vn_stock_info` | Lấy full info symbol (daily + intraday + fundamentals) |
 | `toolforge_vn_stock_score` | Xếp hạng tất cả stocks theo daily multi-factor score |
 | `toolforge_vn_stock_score_intraday` | Xếp hạng intraday (15m/1h), không có fundamental |
+| `toolforge_vn_stock_analyze` | AI analysis — recommendation, score, reasoning for a symbol |
+| `toolforge_vn_stock_deep_dive` | Deep dive — entry/exit, SL, support/resistance, risk/reward |
+| `toolforge_vn_stock_compare` | Compare multiple symbols — ranking, top pick, AI summary |
 
 ## Testing
 

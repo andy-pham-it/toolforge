@@ -29,6 +29,9 @@ packages/vn-stock/
 | `SignalDetector` | `lib/signals.js` | Detect 17 technical signals (trend, momentum, volatility, volume, flow, price action) |
 | `IndicatorEngine` | `lib/indicators.js` | Python subprocess bridge — compute 29 indicators via `vn-stock-indicators` CLI |
 | `IndicatorEngineError` | `lib/indicators.js` | Error class with `code` property for Python/bridge error handling |
+| `StockLLM` | `lib/llm.js` | LLM wrapper: quickChat (GenAIClient) + deepChat (LLMClient) |
+| `Analyst` | `lib/analyst.js` | 5 analysis methods: analyzeSymbol, compareSymbols, analyzeMarket, deepDiveStrategy, portfolioReview |
+| `RECOMMENDATIONS` | `lib/analyst.js` | `['MUA', 'BÁN', 'NẮM GIỮ', 'THEO DÕI']` |
 
 ## Usage
 
@@ -137,6 +140,36 @@ const fromDb = await mongo.fetchAndCompute({
 });
 ```
 
+### AI Analysis (Analyst)
+
+```javascript
+const { Analyst } = require('@andy-toolforge/vn-stock');
+const analyst = new Analyst();
+
+// Analyze a single symbol
+const result = await analyst.analyzeSymbol('FPT');
+console.log(result.recommendation, result.score, result.reasoning);
+
+// Compare multiple symbols
+const cmp = await analyst.compareSymbols(['FPT', 'VNM', 'HPG']);
+console.log('Top pick:', cmp.topPick.symbol);
+
+// Market overview
+const market = await analyst.analyzeMarket();
+console.log(market.sentiment, market.marketSummary);
+
+// Deep dive strategy
+const strat = await analyst.deepDiveStrategy('FPT', '1D');
+console.log('Entry:', strat.entry, 'SL:', strat.stopLoss, 'R/R:', strat.riskReward);
+
+// Portfolio review
+const portfolio = await analyst.portfolioReview([
+    { symbol: 'FPT', shares: 100, avgPrice: 110000 },
+    { symbol: 'VNM', shares: 50, avgPrice: 75000 },
+]);
+console.log(portfolio.overallAssessment, portfolio.riskLevel);
+```
+
 ## Scoring Factors
 
 | Factor | Weight | Indicators |
@@ -171,6 +204,9 @@ Registered automatically by `@andy-toolforge/mcp` discovery mechanism:
 | `toolforge_vn_stock_info` | Get full symbol info (daily + intraday + fundamentals) |
 | `toolforge_vn_stock_score` | Rank all stocks by daily multi-factor score (0-100) |
 | `toolforge_vn_stock_score_intraday` | Rank all stocks by intraday multi-factor score (no fundamental) |
+| `toolforge_vn_stock_analyze` | AI analysis of a symbol — recommendation, score, reasoning |
+| `toolforge_vn_stock_deep_dive` | Deep dive strategy — entry/exit, SL, support/resistance, R/R |
+| `toolforge_vn_stock_compare` | Compare multiple symbols — ranking, top pick, AI summary |
 
 ## Testing
 

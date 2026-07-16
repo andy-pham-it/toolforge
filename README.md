@@ -70,7 +70,7 @@ Toolforge không chỉ là "thư viện LLM" — nó là **hệ sinh thái autom
 - **StockScreener** — Lọc cổ phiếu theo điều kiện kỹ thuật (RSI oversold, EMA cross, volume spike)
 - **StockScorer** — Chấm điểm đa yếu tố 0-100 (technical 40%, volume 20%, momentum 20%, fundamental 20%)
 - **SignalDetector** — Phát hiện 16+ tín hiệu giao dịch: engulfing, morning/evening star, RSI overbought/oversold, Bollinger squeeze/breakout, MACD cross/divergence, volume surge/divergence, ATR spike, support/resistance breakout
-- **MCP Tools** — 4 tools được auto-discover: `toolforge_vn_stock_screen`, `toolforge_vn_stock_info`, `toolforge_vn_stock_score`, `toolforge_vn_stock_score_intraday`
+- **MCP Tools** — 7 tools được auto-discover: `toolforge_vn_stock_screen`, `toolforge_vn_stock_info`, `toolforge_vn_stock_score`, `toolforge_vn_stock_score_intraday`, `toolforge_vn_stock_analyze`, `toolforge_vn_stock_deep_dive`, `toolforge_vn_stock_compare`
 
 ### 🐍 Python Technical Indicators (vn-stock-indicators)
 - **`py-packages/vn-stock-indicators/`** — Pure NumPy technical indicators cho stock analysis
