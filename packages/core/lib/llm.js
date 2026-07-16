@@ -1,112 +1,87 @@
-const { fetch } = globalThis;
+'use strict';
 
-function sleep(ms) {
-    return new Promise(resolve => setTimeout(resolve, ms));
-}
+const OpenAIAdapter = require('./openai-adapter');
 
+/**
+ * Core LLM client with provider adapter chain.
+ *
+ * Supports two construction modes:
+ * 1. (Backward-compatible) `new LLMClient({ provider, apiKey, model })`
+ *    — creates a single OpenAIAdapter for that provider.
+ * 2. (Adapter mode) `new LLMClient({ adapters: [adapter1, adapter2, ...] })`
+ *    — uses the provided priority-ordered adapter list.
+ *    On failure, tries the next adapter in the chain.
+ *
+ * Domain subclasses (footage-generation, content-research) extend this class
+ * and call `this.chat()` / `this.chatJSON()` as before — nothing changes
+ * from their perspective. The adapter chain is transparent.
+ */
 class LLMClient {
-    constructor(config) {
-        this.provider = config.provider;
-        this.apiKey = config.apiKey;
-        this.model = config.model;
-        this.baseUrl = this._getBaseUrl(config.provider);
-        this.maxRetries = config.maxRetries ?? 3;
-        this.baseDelay = config.baseDelay ?? 2000;
-    }
+    /**
+     * @param {object} config
+     * @param {Array<import('./provider-adapter')>} [config.adapters] - Priority-ordered adapter list
+     * @param {string} [config.provider] - Backward-compat: provider name
+     * @param {string} [config.apiKey] - Backward-compat: API key
+     * @param {string} [config.model] - Backward-compat: model name
+     * @param {number} [config.maxRetries] - Backward-compat: per-adapter retries
+     * @param {number} [config.baseDelay] - Backward-compat: per-adapter backoff
+     */
+    constructor(config = {}) {
+        if (config.adapters) {
+            // Adapter mode: caller provides the full chain
+            this._adapters = config.adapters;
+        } else {
+            // Backward-compat mode: create single OpenAIAdapter
+            this._adapters = [
+                new OpenAIAdapter({
+                    provider: config.provider || 'groq',
+                    apiKey: config.apiKey,
+                    model: config.model,
+                    maxRetries: config.maxRetries,
+                    baseDelay: config.baseDelay,
+                }),
+            ];
+        }
 
-    _getBaseUrl(provider) {
-        const urls = {
-            groq: 'https://api.groq.com/openai/v1',
-            gemini: 'https://generativelanguage.googleapis.com/v1beta/openai',
-            openai: 'https://api.openai.com/v1',
-        };
-        return urls[provider] || urls.groq;
+        if (this._adapters.length === 0) {
+            throw new Error('LLMClient requires at least one provider adapter');
+        }
     }
 
     /**
-     * Determine if a response status is retryable.
-     * 429 = rate limit, 5xx = server error, 0+ network error.
+     * Send a chat completion request, trying adapters in priority order.
+     *
+     * @param {string} systemPrompt
+     * @param {string} userPrompt
+     * @param {boolean} [jsonMode=false]
+     * @param {function} [fetchFn] - Optional mock fetch for testing
+     * @returns {Promise<string>} response content
      */
-    _isRetryable(status) {
-        return status === 429 || (status >= 500 && status < 600);
-    }
-
-    /**
-     * Exponential backoff with full-jitter.
-     * Returns sleep duration in ms.
-     */
-    _backoff(attempt) {
-        const cap = 30000; // max 30s
-        const exp = Math.min(cap, this.baseDelay * Math.pow(2, attempt));
-        // full-jitter: random between 0 and exp
-        return Math.random() * exp;
-    }
-
     async chat(systemPrompt, userPrompt, jsonMode = false, fetchFn) {
-        let lastError = null;
-        const _fetch = fetchFn || globalThis.fetch;
+        let lastError;
 
-        for (let attempt = 0; attempt <= this.maxRetries; attempt++) {
+        for (let i = 0; i < this._adapters.length; i++) {
+            const adapter = this._adapters[i];
             try {
-                const response = await _fetch(`${this.baseUrl}/chat/completions`, {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${this.apiKey}`,
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        model: this.model,
-                        messages: [
-                            { role: 'system', content: systemPrompt },
-                            { role: 'user', content: userPrompt },
-                        ],
-                        response_format: jsonMode ? { type: 'json_object' } : undefined,
-                        temperature: 0.7,
-                    }),
+                const result = await adapter.chat({
+                    systemPrompt,
+                    userPrompt,
+                    jsonMode,
+                    fetchFn,
                 });
-
-                if (response.ok) {
-                    const data = await response.json();
-                    return data.choices[0].message.content;
-                }
-
-                // Non-ok status
-                const errText = await response.text();
-
-                if (this._isRetryable(response.status) && attempt < this.maxRetries) {
-                    const delay = this._backoff(attempt);
-                    console.warn(
-                        `LLM API (${response.status}) attempt ${attempt + 1}/${this.maxRetries + 1}, ` +
-                        `retrying in ${Math.round(delay)}ms...`
-                    );
-                    await sleep(delay);
-                    lastError = new Error(`LLM API Error (${response.status}): ${errText}`);
-                    continue;
-                }
-
-                throw new Error(`LLM API Error (${response.status}): ${errText}`);
-
+                return result.content;
             } catch (err) {
-                // Catch network/parse errors too
-                if (err.message && err.message.startsWith('LLM API Error')) {
-                    throw err; // already a final error or exhausted retries above
-                }
-                // Network error (fetch failed, JSON parse, etc.)
-                if (attempt < this.maxRetries) {
-                    const delay = this._backoff(attempt);
+                lastError = err;
+                if (i < this._adapters.length - 1) {
                     console.warn(
-                        `LLM network error (attempt ${attempt + 1}/${this.maxRetries + 1}): ${err.message}, ` +
-                        `retrying in ${Math.round(delay)}ms...`
+                        `[LLMClient] ${adapter.name} failed: ${err.message}. ` +
+                        `Falling back to next adapter (${i + 2}/${this._adapters.length})...`
                     );
-                    await sleep(delay);
-                    lastError = err;
-                    continue;
                 }
-                throw err;
             }
         }
 
-        throw lastError || new Error('LLM chat failed after max retries');
+        throw lastError || new Error('LLMClient.chat() failed: all adapters exhausted');
     }
 
     /**
@@ -130,6 +105,14 @@ class LLMClient {
         } catch (err) {
             throw new Error(`chatJSON: failed to parse LLM response as JSON: ${err.message}\nRaw: ${raw.slice(0, 500)}`);
         }
+    }
+
+    /**
+     * Access the adapter chain (for inspection / testing).
+     * @returns {Array<import('./provider-adapter')>}
+     */
+    get adapters() {
+        return this._adapters;
     }
 }
 

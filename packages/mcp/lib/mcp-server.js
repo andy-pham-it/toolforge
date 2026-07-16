@@ -1,4 +1,4 @@
-const { LLMClient } = require('@andy-toolforge/core');
+const { LLMClient, OpenAIAdapter } = require('@andy-toolforge/core');
 const path = require('path');
 const fs = require('fs');
 const readline = require('readline');
@@ -10,11 +10,33 @@ class MCPServer {
         this.provider = config.provider || 'gemini';
         this.config = config;
         this._llm = null;
-        this._currentModelIdx = 0;
 
-        // Model chain for automatic fallback
-        this.models = config.models || [config.model || (this.provider === 'groq' ? 'llama-3.3-70b-versatile' : 'gemini-3.1-flash-lite')];
-        if (typeof this.models === 'string') this.models = [this.models];
+        // Build adapter chain from config.
+        // Priority order:
+        //   1. config.adapters (explicit adapter objects — most flexible)
+        //   2. config.models (backward-compat: model-name chain, same provider)
+        //   3. config.model or default (single model)
+        if (config.adapters) {
+            // Caller provided pre-built adapter instances
+            this._adapterConfig = null;
+            this._adapterInstances = config.adapters;
+        } else if (config.models && config.models.length > 1) {
+            // Backward-compat model chain: create one OpenAIAdapter per model
+            this._adapterConfig = null;
+            this._adapterInstances = config.models.map(m => new OpenAIAdapter({
+                provider: this.provider,
+                apiKey: this.apiKey,
+                model: m,
+            }));
+        } else {
+            // Single model (backward-compat)
+            this._adapterConfig = {
+                provider: this.provider,
+                apiKey: this.apiKey,
+                model: config.model || (this.provider === 'groq' ? 'llama-3.3-70b-versatile' : 'gemini-3.1-flash-lite'),
+            };
+            this._adapterInstances = null;
+        }
 
         this._tools = {};
 
@@ -24,20 +46,23 @@ class MCPServer {
         this._tools['toolforge_suggest'] = this._createSuggestTool();
     }
 
-    /** Current model name from the chain */
+    /** Current model name (first adapter's model, for informational use) */
     get model() {
-        return this.models[this._currentModelIdx] || this.models[0];
+        if (this._adapterInstances && this._adapterInstances.length > 0) {
+            return this._adapterInstances[0].model;
+        }
+        return this._adapterConfig?.model || 'gemini-3.1-flash-lite';
     }
 
-    /** Lazily create LLMClient using current model (so tests can inject mock). Returns null if no API key configured. */
+    /** Lazily create LLMClient (so tests can inject mock). Returns null if no API key configured. */
     get llm() {
         if (!this.apiKey) return null;
         if (!this._llm) {
-            this._llm = new LLMClient({
-                provider: this.provider,
-                apiKey: this.apiKey,
-                model: this.model,
-            });
+            if (this._adapterInstances) {
+                this._llm = new LLMClient({ adapters: this._adapterInstances });
+            } else {
+                this._llm = new LLMClient(this._adapterConfig);
+            }
         }
         return this._llm;
     }
@@ -45,32 +70,6 @@ class MCPServer {
     /** Override LLM client (for tests) */
     set llm(client) {
         this._llm = client;
-    }
-
-    /** Switch to next model in chain (fallback on failure) */
-    _nextModel() {
-        this._currentModelIdx++;
-        if (this._currentModelIdx >= this.models.length) {
-            this._currentModelIdx = 0; // wrap around
-        }
-        this._llm = null; // force recreate on next get
-        console.warn(`[mcp] Falling back to model: ${this.model}`);
-    }
-
-    /** True if error looks retryable (rate-limit, quota, server 5xx) */
-    _isRetryableError(err) {
-        const msg = (err.message || '').toLowerCase();
-        const code = err.status || err.statusCode || 0;
-        return (
-            code === 429 || code === 500 || code === 502 || code === 503 ||
-            msg.includes('rate limit') ||
-            msg.includes('rate_limit') ||
-            msg.includes('quota') ||
-            msg.includes('429') ||
-            msg.includes('503') ||
-            msg.includes('resource exhausted') ||
-            msg.includes('too many requests')
-        );
     }
 
     /**
@@ -285,29 +284,21 @@ Respond with a JSON object:
             };
         }
 
-        const maxAttempts = this.models.length;
-        for (let attempt = 0; attempt < maxAttempts; attempt++) {
-            try {
-                const result = await tool.handler(this.llm, params.arguments || {});
-                return {
-                    jsonrpc: '2.0',
-                    id,
-                    result: {
-                        content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
-                    },
-                };
-            } catch (err) {
-                if (this._isRetryableError(err) && attempt < maxAttempts - 1) {
-                    console.warn(`[mcp] Tool "${params.name}" failed with ${err.message} — retrying with next model`);
-                    this._nextModel();
-                    continue;
-                }
-                return {
-                    jsonrpc: '2.0',
-                    id,
-                    error: { code: -32000, message: err.message, data: err.stack },
-                };
-            }
+        try {
+            const result = await tool.handler(this.llm, params.arguments || {});
+            return {
+                jsonrpc: '2.0',
+                id,
+                result: {
+                    content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+                },
+            };
+        } catch (err) {
+            return {
+                jsonrpc: '2.0',
+                id,
+                error: { code: -32000, message: err.message, data: err.stack },
+            };
         }
     }
 }
