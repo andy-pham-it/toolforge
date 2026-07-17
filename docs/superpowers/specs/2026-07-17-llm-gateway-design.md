@@ -29,8 +29,7 @@ packages/llm-gateway/
 │   │   ├── key-rotator.js    # KeyRotatorStage — try next key on 401
 │   │   ├── provider.js       # ProviderStage — wraps OpenAIAdapter / GenAIAdapter
 │   │   ├── cost-logger.js    # CostLoggerStage — token counting + cost record
-│   │   ├── circuit-breaker.js # CircuitBreakerStage — provider health tracking
-│   │   └── dry-run.js        # DryRunStage — simulation mode (cost/route only)
+│   │   └── circuit-breaker.js # CircuitBreakerStage — provider health tracking
 │   ├── http/
 │   │   ├── server.js         # Express server: /v1/chat/completions, /health, /readyz
 │   │   └── middleware.js     # cors, body-parser, request-id, request-cancellation
@@ -89,21 +88,26 @@ ctx = {
 
 ```js
 class Pipeline {
-  constructor(stages = []) { this._stages = stages; }
+  constructor(stages = []) { this._stages = stages; this._inflight = new Set(); }
   use(stage) { this._stages.push(stage); return this; }
+  get inflightCount() { return this._inflight.size; }
+
   async execute(ctx) {
-    let i = 0;
-    const next = async () => {
-      if (i >= this._stages.length) return;
-      const stage = this._stages[i++];
-      await stage.execute(ctx, next);
-    };
-    if (ctx.stream) {
-      return this._executeStream(ctx, next);
+    const rid = ctx.requestId;
+    this._inflight.add(rid);
+    try {
+      let i = 0;
+      const next = async () => {
+        if (i >= this._stages.length) return;
+        const stage = this._stages[i++];
+        await stage.execute(ctx, next);
+      };
+      await next();
+      if (ctx.error) throw ctx.error;
+      return ctx.stream ? ctx.responseStream : ctx.response;
+    } finally {
+      this._inflight.delete(rid);
     }
-    await next();
-    if (ctx.error) throw ctx.error;
-    return ctx.response;
   }
 }
 ```
@@ -123,9 +127,32 @@ class Stage {
 
 Stages call `next()` to pass control downstream. They can:
 - Modify `ctx` before calling `next()` (set up)
-- Modify `ctx` after `next()` returns (teardown)
+- Modify `ctx` after `next()` returns (teardown/post-processing)
 - Skip `next()` entirely (short-circuit: cache hit, rate limited, dry run)
 - Set `ctx.error` and skip `next()` (fail fast)
+
+For streaming requests (`ctx.stream === true`), all stages still execute through the chain.
+Stream-sensitive stages handle it differently:
+- **CacheStage:** skip caching for streaming responses
+- **ProviderStage:** set `ctx.responseStream` then call `next()` — does NOT skip downstream
+- **CostLoggerStage:** wrap `ctx.responseStream` to log cost on stream-end event
+
+---
+
+## Pipeline Execution Order
+
+Stages execute in this order. Each stage either passes to the next via `next()` or short-circuits:
+
+```
+Request → AuthStage → RateLimitStage → CacheStage → RouterStage
+  → KeyRotatorStage → ProviderStage → CircuitBreakerStage → CostLoggerStage → Response
+```
+
+Key interactions:
+- **CacheStage** short-circuits (skips remaining stages) on cache hit
+- **RouterStage** consults **CircuitBreakerStage** state when selecting fallback providers — skips OPEN providers
+- **CircuitBreakerStage** records ProviderStage outcome post-execution (pre-checks are done by RouterStage)
+- **CostLoggerStage** always runs last, handles both sync and streaming paths
 
 ---
 
@@ -178,6 +205,30 @@ Maps model name → provider config via `model-map.js`:
 - **Edge case: Model collision** — if 2 providers both serve `llama-3-70b`, RouterStage uses `tiebreaker` strategy: `cost` (cheapest wins) or `latency` (fastest wins), configurable per model
 - **Edge case: Model alias** — `gpt-4-turbo` can be an alias pointing to same config as `gpt-4o`; resolved before routing
 - **Edge case: Unknown model** — error with available model list
+- **Dry run mode:** If `ctx.dryRun === true`, RouterStage resolves the model→provider route, computes estimated cost from pricing table, sets `ctx.response`, and skips `next()` — no downstream stages run, no API call made, no cost incurred
+
+```js
+async execute(ctx, next) {
+  const candidate = this._selectProvider(ctx.model, ctx.tenant);
+  if (!candidate) throw new ModelNotFoundError(ctx.model);
+
+  if (ctx.dryRun) {
+    ctx.response = {
+      model: ctx.model,
+      provider: candidate.provider,
+      adapter: candidate.adapter.constructor.name,
+      estimatedCost: this._estimateCost(ctx.model, candidate.provider),
+      cacheStatus: ctx.cached ? 'hit' : 'miss',
+    };
+    return; // skip next() — no API call
+  }
+
+  ctx.provider = candidate.provider;
+  ctx.adapter = candidate.adapter;
+  ctx.providerTimeout = candidate.timeoutMs;
+  await next();
+}
+```
 
 ### KeyRotatorStage
 
@@ -201,39 +252,93 @@ async execute(ctx, next) {
 }
 ```
 
-**Edge case: Streaming** — handled via special path:
+**Edge case: Streaming** — ProviderStage always calls `next()` so downstream stages (CostLoggerStage) still execute:
 
 ```js
 async execute(ctx, next) {
   if (ctx.stream) {
-    ctx.responseStream = adapter.chatStream({...});
-    // No next() call — stream goes directly to HTTP SSE
+    ctx.responseStream = adapter.chatStream({
+      messages: ctx.messages,
+      signal: ctx.abortSignal,     // request cancellation
+      timeout: ctx.providerTimeout, // per-provider timeout
+    });
+    // Still call next() — CostLoggerStage wraps the stream for end-of-stream logging
+    await next();
   } else {
-    await next(); // or do sync call
+    ctx.rawResponse = await adapter.chat({
+      messages: ctx.messages,
+      signal: ctx.abortSignal,
+      timeout: ctx.providerTimeout,
+    });
+    ctx.cost = { promptTokens, completionTokens, costUsd };
+    await next();
   }
 }
 ```
 
+### AbortSignal wiring
+
+- HTTP middleware creates `AbortController` per request, assigns `ctx.abortSignal`
+- On client disconnect (`req.on('close')`): abort controller is triggered
+- ProviderStage passes `ctx.abortSignal` to `.chat()` or `.chatStream()`
+- Existing adapters (`OpenAIAdapter`, `GenAIAdapter`) accept optional `{ signal }` parameter for `fetch()` / `@google/genai` cancellation
+- **Edge case:** Cancelling a streaming request mid-way → provider API call is aborted → cost savings
+
+### Per-provider timeout
+
+- Configurable via `gateway.json`: `{ providers: { gemini: { timeoutMs: 15000 }, groq: { timeoutMs: 30000 } } }`
+- RouterStage sets `ctx.providerTimeout` from matched provider config
+- ProviderStage passes timeout to adapter; if exceeded, throws `TimeoutError` which triggers fallback chain
+
 ### CircuitBreakerStage
 
+- Sits AFTER ProviderStage to record outcome (pre-checks done by RouterStage during fallback selection)
 - Tracks per-provider health: `{ [provider]: { failures, lastFailure, state: 'closed'|'open'|'half-open' } }`
 - **closed**: normal operation
 - **open**: after N failures in M minutes → reject immediately without calling adapter
 - **half-open**: after cooldown period, allow 1 probe request; success → close, failure → open again
 - Configurable: `{ threshold: 5, cooldownMs: 30000, halfOpenMaxRequests: 1 }`
+- Records only non-4xx failures (auth failures are handled by KeyRotatorStage, not circuit breaker)
+
+**RouterStage interaction:**
+
+```js
+// Inside RouterStage.execute()
+const candidates = this._resolveModel(ctx.model);
+for (const candidate of candidates) {
+  if (this._circuitBreakerState?.[candidate.provider] === 'open') {
+    continue; // skip dead provider, try next fallback
+  }
+  // route to this candidate
+  ctx.provider = candidate.provider;
+  ctx.adapter = candidate.adapter;
+  ctx.providerTimeout = candidate.timeoutMs;
+  break;
+}
+```
 
 ### CostLoggerStage
 
-- Post-processing stage (runs after ProviderStage on the way back)
+- Last stage in pipeline (post-processing, runs after all stages complete)
 - Computes cost from token counts using model pricing table
+- **For streaming:** wraps `ctx.responseStream` for end-of-stream cost accounting
+
+```js
+async execute(ctx, next) {
+  await next(); // wait for provider
+  if (ctx.stream && ctx.responseStream) {
+    // Wrap stream: count tokens on each chunk, log on stream end
+    ctx.responseStream = this._wrapStream(ctx.responseStream, ctx);
+  }
+  if (!ctx.stream) {
+    ctx.cost = { promptTokens, completionTokens, costUsd };
+    this._log(ctx);
+  }
+}
+```
+
 - Writes structured log: `{ requestId, tenant, model, provider, promptTokens, completionTokens, costUsd, cached, durationMs }`
 - **Edge case: Prompt content logging** — config flag `logPrompts: false` logs only token counts/metadata, never message content (PII safety)
-
-### DryRunStage
-
-- If `ctx.dryRun === true`, resolves route + cost but skips ProviderStage entirely
-- Returns: `{ model, provider, estimatedCost, cacheStatus }`
-- Implements `execute()` by calling RouterStage's logic inline, then skipping `next()`
 
 ---
 
@@ -280,16 +385,29 @@ Final chunk has `finish_reason: "stop"` and includes `usage`.
 **Graceful shutdown:**
 ```js
 const server = app.listen(port);
+
 process.on('SIGTERM', async () => {
-  server.close();                      // stop accepting new connections
-  await drainInFlight(30_000);         // wait up to 30s for in-flight requests
+  server.close(); // stop accepting new connections
+
+  // Drain in-flight requests via Pipeline's inflight tracking
+  const start = Date.now();
+  const maxWait = 30_000;
+  while (pipeline.inflightCount > 0 && (Date.now() - start) < maxWait) {
+    await new Promise(r => setTimeout(r, 200));
+  }
+
+  if (pipeline.inflightCount > 0) {
+    console.warn(`[gateway] ${pipeline.inflightCount} requests still in-flight after drain timeout`);
+  }
   process.exit(0);
 });
 ```
+- **Edge case:** Deploy during active traffic → in-flight requests complete naturally or time out; new connections rejected immediately
 
 **Request cancellation:**
-- Middleware attaches `req.on('close', ...)` → sets `ctx.cancelled = true`
-- ProviderStage checks `ctx.cancelled` between chunks; if true, aborts upstream fetch via `AbortController`
+- Middleware creates `AbortController` per request, assigns `ctx.abortSignal`
+- `req.on('close', ...)` triggers abort controller
+- ProviderStage passes `ctx.abortSignal` to adapter calls; streaming checks signal between chunks
 - **Edge case:** Client disconnects mid-stream → gateway cancels provider API call → saves cost
 
 **Rate limit headers:**
@@ -365,12 +483,15 @@ Each error includes `{ code, message, retryable, provider, model }` for structur
 | Router stage | Map known models, test collision resolution, fallback chain |
 | HTTP server | Supertest: POST /v1/chat/completions, /health, /readyz |
 | Streaming | HTTP streaming test: read SSE chunks |
-| Circuit breaker | Inject failures, verify open→half-open→closed cycle |
+| Circuit breaker | Inject failures, verify open→half-open→closed cycle; RouterStage skips OPEN providers |
 | Cache isolation | Two tenants, same model+messages → different cache keys |
-| Graceful shutdown | Mock in-flight, send SIGTERM, verify drain |
-| Request cancellation | Client disconnects mid-stream → verify AbortController called |
-| Dry run | dryRun: true → no API call, returns cost estimate |
-| Key rotation | Pool of 2 keys, 1st returns 401 → falls to 2nd |
+| Graceful shutdown | Mock in-flight request, send SIGTERM, verify drain loops until inflightCount=0 |
+| Request cancellation | Client disconnects mid-stream → verify AbortController.abort() called |
+| Dry run | dryRun: true → RouterStage returns route+cost estimate without calling next() |
+| Key rotation | Pool of 2 keys, 1st returns 401 → falls to 2nd; rollover marks primary degraded |
+| AbortSignal wiring | ProviderStage passes ctx.abortSignal to adapter.chat({ signal }) — verify cancellation |
+| Per-provider timeout | RouterStage sets ctx.providerTimeout; ProviderStage enforces it |
+| Streaming cost logging | CostLoggerStage wraps ctx.responseStream — verify cost logged on stream end |
 
 ---
 
