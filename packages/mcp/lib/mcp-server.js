@@ -3,6 +3,7 @@ const path = require('path');
 const fs = require('fs');
 const readline = require('readline');
 const mcpPkg = require('../package.json');
+const { queryCatalog, getPackageDetails } = require('./ecosystem-catalog');
 
 class MCPServer {
     constructor(config) {
@@ -44,6 +45,7 @@ class MCPServer {
             this._loadPluginTools();
         }
         this._tools['toolforge_suggest'] = this._createSuggestTool();
+        this._tools['toolforge_ecosystem'] = this._createEcosystemTool();
     }
 
     /** Current model name (first adapter's model, for informational use) */
@@ -186,6 +188,51 @@ Respond with a JSON object:
         return suggestTool;
     }
 
+    _createEcosystemTool() {
+        return {
+            definition: {
+                name: 'toolforge_ecosystem',
+                description: 'Explore the @andy-toolforge ecosystem — list/filter packages, get details about what each package provides, its key exports, and use cases. Helps decide which package to use for a given task.',
+                inputSchema: {
+                    type: 'object',
+                    properties: {
+                        action: {
+                            type: 'string',
+                            description: '"list" to browse packages (optionally filtered by "search"), "details" to get full info for a specific package',
+                            enum: ['list', 'details'],
+                        },
+                        search: {
+                            type: 'string',
+                            description: 'Search term to filter packages by name, description, exports, or use cases (case-insensitive)',
+                        },
+                        package: {
+                            type: 'string',
+                            description: 'Full package name (e.g. "@andy-toolforge/footage-generation") — required when action="details"',
+                        },
+                    },
+                    required: ['action'],
+                },
+            },
+            handler: async (_llm, args) => {
+                const { action, search, package: pkgName } = args || {};
+
+                if (action === 'details') {
+                    if (!pkgName) throw new Error('Missing required argument: package');
+                    const details = getPackageDetails(pkgName);
+                    if (!details) throw new Error(`Package not found: ${pkgName}`);
+                    return details;
+                }
+
+                const results = queryCatalog(search || '');
+                return {
+                    count: results.length,
+                    packages: results,
+                    usageTip: 'Call with action="details" and package="@andy-toolforge/<name>" to see full exports, deps, and use cases for a specific package.',
+                };
+            },
+        };
+    }
+
     /** Return tool definitions for tools/list */
     getToolList() {
         return Object.values(this._tools).map(t => t.definition);
@@ -275,8 +322,8 @@ Respond with a JSON object:
             return { jsonrpc: '2.0', id, error: { code: -32602, message: `Unknown tool: ${params.name}` } };
         }
 
-        // If no API key configured, return a clear error before trying tool handlers
-        if (!this.apiKey) {
+        // If no API key configured, only allow tools that don't need LLM
+        if (!this.apiKey && params.name !== 'toolforge_ecosystem') {
             return {
                 jsonrpc: '2.0',
                 id,

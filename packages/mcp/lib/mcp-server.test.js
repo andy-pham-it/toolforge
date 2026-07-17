@@ -449,7 +449,7 @@ describe('MCPServer', () => {
                 const names = Object.keys(server._tools);
                 // All tools now come from plugins (migrated from built-in).
                 // With discover=false, only toolforge_suggest should be present.
-                assert.equal(names.length, 1, `expected 1 tool (toolforge_suggest only), got ${names.length}`);
+                assert.equal(names.length, 2, `expected 2 built-in tools, got ${names.length}`);
                 assert(!names.includes('toolforge_content_research'), 'plugin tools should not load when discover=false');
             });
         });
