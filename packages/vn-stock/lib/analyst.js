@@ -11,6 +11,33 @@ const RECOMMENDATIONS = ['MUA', 'BÁN', 'NẮM GIỮ', 'THEO DÕI'];
 class Analyst {
     constructor(config = {}) {
         this.llm = config.llm || new StockLLM(config);
+        this._screener = config.screener || null;
+        this._scorer = config.scorer || null;
+        this._detector = config.detector || null;
+    }
+
+    /**
+     * Get or create a StockScreener instance.
+     * @returns {import('./screener')|object}
+     */
+    _getScreener() {
+        return this._screener || new StockScreener();
+    }
+
+    /**
+     * Get or create a StockScorer instance.
+     * @returns {import('./scorer')|object}
+     */
+    _getScorer() {
+        return this._scorer || new StockScorer();
+    }
+
+    /**
+     * Get or create a SignalDetector instance.
+     * @returns {import('./signals')|object}
+     */
+    _getDetector() {
+        return this._detector || new SignalDetector();
     }
 
     /**
@@ -23,14 +50,14 @@ class Analyst {
         const db = new StockDB();
         try {
             await db.connect();
-            const screener = new StockScreener();
+            const screener = this._getScreener();
             const info = await screener.getSymbolInfo(symbol);
             if (!info.daily && !info.intraday) {
                 return { symbol, error: `No data for ${symbol}`, recommendation: 'THEO DÕI' };
             }
 
             // Score
-            const scorer = new StockScorer();
+            const scorer = this._getScorer();
             const scoreResult = scorer.scoreCandle(
                 info.daily || info.intraday,
                 info.fundamentals,
@@ -38,7 +65,7 @@ class Analyst {
             );
 
             // Signals
-            const detector = new SignalDetector();
+            const detector = this._getDetector();
             const dailySignals = info.daily ? detector.getSignals(info.daily, null) : [];
             const groupedSignals = detector.getSignalsGrouped(dailySignals);
 
@@ -127,9 +154,9 @@ class Analyst {
      */
     async analyzeMarket() {
         const db = new StockDB();
-        const scorer = new StockScorer();
         try {
             await db.connect();
+            const scorer = this._getScorer();
             const scored = await scorer.scoreAll({ limit: 20 });
             const bullish = scored.filter(s => s.score >= 60);
             const bearish = scored.filter(s => s.score <= 40);
@@ -173,9 +200,9 @@ class Analyst {
      */
     async deepDiveStrategy(symbol, timeframe = '1D') {
         const db = new StockDB();
-        const screener = new StockScreener();
         try {
             await db.connect();
+            const screener = this._getScreener();
             const info = await screener.getSymbolInfo(symbol);
             if (!info.daily && !info.intraday) {
                 return { symbol, error: `No data for ${symbol}` };
