@@ -9,7 +9,8 @@
   },
   "scripts": {
     "test": "node --test lib/**/*.test.js",
-    "start": "node bin/cli.js"
+    "start": "node bin/cli.js",
+    "postinstall": "node skills/postinstall.js"
   },
   "dependencies": {
     "@andy-toolforge/core": "^1.2.0",

@@ -3,6 +3,7 @@
 const Pipeline = require('./pipeline');
 const Stage = require('./stage');
 const { Gateway, createGateway } = require('./gateway');
+const LLMClient = require('./llm');
 const ModelMap = require('./router/model-map');
 const FallbackChain = require('./router/fallback-chain');
 const MemoryStore = require('./cache/memory-store');
@@ -21,6 +22,7 @@ module.exports = {
   // High-level API
   Gateway,
   createGateway,
+  LLMClient,
 
   // Pipeline primitives
   Pipeline,

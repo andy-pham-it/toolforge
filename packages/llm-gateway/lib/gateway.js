@@ -72,7 +72,7 @@ class Gateway {
       'cost-logger': () => new CostLoggerStage({ logPrompts: this._config.logPrompts, pricing: this._config.pricing }),
     };
 
-    const order = stageNames || ['auth', 'rate-limit', 'cache', 'router', 'key-rotator', 'provider', 'circuit-breaker', 'cost-logger'];
+    const order = stageNames || ['auth', 'rate-limit', 'cache', 'router', 'key-rotator', 'circuit-breaker', 'provider', 'cost-logger'];
     for (const name of order) {
       if (builders[name]) {
         this._pipeline.use(builders[name]());
@@ -112,7 +112,13 @@ class Gateway {
 
   /** Health check info */
   get health() {
-    return { status: 'ok', uptime: process.uptime(), inflight: this._pipeline.inflightCount };
+    return {
+      status: 'ok',
+      uptime: process.uptime(),
+      inflight: this._pipeline.inflightCount,
+      models: this._modelMap.availableModels,
+      stages: this._pipeline._stages.map(s => s.constructor.name),
+    };
   }
 
   /** Wait for in-flight requests to drain */
