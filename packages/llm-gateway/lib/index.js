@@ -7,6 +7,7 @@ const LLMClient = require('./llm');
 const ModelMap = require('./router/model-map');
 const FallbackChain = require('./router/fallback-chain');
 const MemoryStore = require('./cache/memory-store');
+const MetricsCollector = require('./metrics/collector');
 
 // Stage exports for custom pipeline composition
 const AuthStage = require('./stages/auth');
@@ -27,6 +28,9 @@ module.exports = {
   // Pipeline primitives
   Pipeline,
   Stage,
+
+  // Metrics
+  MetricsCollector,
 
   // Router
   ModelMap,

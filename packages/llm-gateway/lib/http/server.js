@@ -14,6 +14,7 @@ class HTTPServer {
     this._gateway = gateway;
     this._port = opts.port != null ? opts.port : 3000;
     this._timeoutMs = opts.timeoutMs || 30000;
+    this._adminKey = opts.adminKey || '';
     this._server = null;
 
     const app = express();
@@ -25,6 +26,16 @@ class HTTPServer {
     app.get('/health', (req, res) => res.json(gateway.health));
     app.get('/readyz', (req, res) => res.json({ status: 'ready', gateway: true }));
 
+    // Prometheus metrics
+    app.get('/metrics', (req, res) => {
+      res.setHeader('Content-Type', 'text/plain; version=0.0.4');
+      res.send(gateway.metrics.formatPrometheus());
+    });
+
+    // Admin config (hot-reload)
+    app.get('/admin/config', this._handleGetConfig.bind(this));
+    app.put('/admin/config', this._handlePutConfig.bind(this));
+
     // List available models
     app.get('/v1/models', this._handleListModels.bind(this));
 
@@ -32,6 +43,30 @@ class HTTPServer {
     app.post('/v1/chat/completions', this._handleChat.bind(this));
 
     this._app = app;
+  }
+
+  _requireAdmin(req, res) {
+    const adminKey = this._adminKey;
+    if (!adminKey) return true;
+    const provided = req.headers['x-admin-key'] || req.query.adminKey;
+    if (provided === adminKey) return true;
+    res.status(403).json({ error: { message: 'Admin key required', code: 'FORBIDDEN' } });
+    return false;
+  }
+
+  _handleGetConfig(req, res) {
+    if (!this._requireAdmin(req, res)) return;
+    res.json(this._gateway.getConfig());
+  }
+
+  async _handlePutConfig(req, res) {
+    if (!this._requireAdmin(req, res)) return;
+    try {
+      await this._gateway.reloadConfig(req.body);
+      res.json({ status: 'ok', message: 'Config reloaded' });
+    } catch (err) {
+      res.status(400).json({ error: { message: err.message, code: 'INVALID_CONFIG' } });
+    }
   }
 
   _handleListModels(req, res) {

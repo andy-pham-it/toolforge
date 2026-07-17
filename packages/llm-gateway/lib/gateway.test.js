@@ -43,6 +43,53 @@ describe('Gateway', () => {
     assert.ok(gw.modelMap.availableModels.includes('gemini-flash'));
   });
 
+  it('getConfig masks API keys', () => {
+    const gw = createGateway({ apiKey: 'sk-test-secret-key-12345', keys: { 'sk-admin-key': { tenant: 'admin' } } });
+    const cfg = gw.getConfig();
+    assert.ok(cfg.apiKey.includes('****'));
+    assert.ok(!cfg.apiKey.includes('sk-test-secret-key-12345'));
+    assert.ok(Object.keys(cfg.keys)[0].includes('****'));
+  });
+
+  it('reloadConfig rebuilds pipeline', async () => {
+    const gw = createGateway({
+      apiKey: 'sk-test',
+      keys: { 'sk-test': { tenant: 'old' } },
+      models: { 'm1': { provider: 'mock', adapter: 'A' } },
+      createAdapter: () => ({ chat: async () => ({ content: 'old' }) }),
+    });
+    await gw.reloadConfig({
+      keys: { 'sk-new': { tenant: 'new' } },
+      models: { 'm2': { provider: 'mock', adapter: 'B' } },
+      createAdapter: () => ({ chat: async () => ({ content: 'reloaded' }) }),
+    });
+    const result = await gw.chat({
+      model: 'm2',
+      messages: [{ role: 'user', content: 'hi' }],
+      apiKey: 'sk-new',
+    });
+    assert.strictEqual(result.content, 'reloaded');
+  });
+
+  it('records metrics after chat', async () => {
+    const gw = createGateway({
+      apiKey: 'sk-test',
+      keys: { 'sk-test': { tenant: 'metrics-test' } },
+      models: { 'm1': { provider: 'mock', adapter: 'A' } },
+      createAdapter: () => ({
+        chat: async () => ({ content: 'ok', usage: { promptTokens: 5, completionTokens: 3, costUsd: 0.001 } }),
+      }),
+    });
+    await gw.chat({ model: 'm1', messages: [{ role: 'user', content: 'hi' }], apiKey: 'sk-test' });
+    const out = gw.metrics.formatPrometheus();
+    assert.ok(out.includes('llm_requests_total'));
+    assert.ok(out.includes('model="m1"'));
+    assert.ok(out.includes('status="success"'));
+    assert.ok(out.includes('llm_tokens_total'));
+    assert.ok(out.includes('llm_cost_usd_total'));
+    assert.ok(out.includes('llm_request_duration_seconds'));
+  });
+
   it('supports custom stage order', async () => {
     const gw = createGateway({
       apiKey: 'sk-test',

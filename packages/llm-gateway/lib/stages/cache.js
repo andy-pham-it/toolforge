@@ -6,10 +6,13 @@ const Stage = require('../stage');
 class CacheStage extends Stage {
   /**
    * @param {import('../cache/types').CacheStore} store
+   * @param {object} [opts]
+   * @param {import('../metrics/collector')} [opts.metrics]
    */
-  constructor(store) {
+  constructor(store, opts = {}) {
     super('cache');
     this._store = store;
+    this._metrics = opts.metrics || null;
   }
 
   /**
@@ -33,14 +36,13 @@ class CacheStage extends Stage {
     if (cached) {
       ctx.response = cached;
       ctx.cached = true;
-      // Short-circuit — skip downstream stages
+      this._metrics?.increment('llm_cache_requests_total', { status: 'hit' });
       return;
     }
 
-    // Cache miss — proceed downstream
+    this._metrics?.increment('llm_cache_requests_total', { status: 'miss' });
     await next();
 
-    // Store response if successful and non-streaming
     if (!ctx.error && ctx.response) {
       this._store.set(key, ctx.response);
     }

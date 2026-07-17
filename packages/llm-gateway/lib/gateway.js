@@ -12,6 +12,7 @@ const CostLoggerStage = require('./stages/cost-logger');
 const ModelMap = require('./router/model-map');
 const FallbackChain = require('./router/fallback-chain');
 const MemoryStore = require('./cache/memory-store');
+const MetricsCollector = require('./metrics/collector');
 
 /**
  * @typedef {import('./types').ChatRequest} ChatRequest
@@ -35,12 +36,14 @@ class Gateway {
    * @param {string} [config.apiKey] — default API key
    */
   constructor(config = {}) {
-    this._config = config;
+    this._config = { ...config };
     this._pipeline = new Pipeline();
     this._modelMap = config.models ? new ModelMap(config) : new ModelMap();
     this._fallbackChain = new FallbackChain(config);
     this._circuitBreakerState = new CircuitBreakerState(config.circuitBreaker);
     this._adapterFactory = config.createAdapter || this._defaultAdapterFactory;
+    this._metrics = new MetricsCollector();
+    this._cacheStore = config.cache?.store || new MemoryStore();
 
     this._registerStages(config.stages);
   }
@@ -56,7 +59,7 @@ class Gateway {
     const builders = {
       auth: () => new AuthStage({ keys: this._config.keys }),
       'rate-limit': () => new RateLimitStage({ buckets: this._config.rateLimits }),
-      cache: () => new CacheStage(this._config.cache?.store || new MemoryStore()),
+      cache: () => new CacheStage(this._cacheStore, { metrics: this._metrics }),
       router: () => {
         const rs = new RouterStage({
           modelMap: this._modelMap,
@@ -103,11 +106,83 @@ class Gateway {
     try {
       const result = await this._pipeline.execute(ctx);
       ctx._durationMs = Date.now() - ctx._startTime;
+      this._recordMetrics(ctx);
       return result;
     } catch (err) {
       ctx._durationMs = Date.now() - ctx._startTime;
+      this._recordMetrics(ctx, err);
       throw err;
     }
+  }
+
+  _recordMetrics(ctx, err) {
+    const model = ctx.model || 'unknown';
+    const provider = ctx.provider || 'unknown';
+    const status = err ? 'error' : ctx.cached ? 'cached' : 'success';
+
+    this._metrics.increment('llm_requests_total', { model, provider, status, tenant: ctx.tenant || 'default' });
+    this._metrics.observeDuration(model, provider, ctx._durationMs / 1000);
+
+    if (ctx.cost) {
+      this._metrics.recordTokens(model, ctx.cost.promptTokens, ctx.cost.completionTokens);
+      this._metrics.recordCost(model, ctx.cost.costUsd);
+    }
+
+    this._updateCircuitBreakerGauges();
+  }
+
+  _updateCircuitBreakerGauges() {
+    const states = this._circuitBreakerState.getAllStates();
+    for (const [provider, state] of Object.entries(states)) {
+      const val = state === 'closed' ? 0 : state === 'open' ? 1 : 0.5;
+      this._metrics.setGauge('llm_circuit_breaker_state', val, { provider });
+    }
+  }
+
+  getConfig() {
+    const sanitized = { ...this._config };
+    if (sanitized.apiKey) sanitized.apiKey = this._maskKey(sanitized.apiKey);
+    if (sanitized.keys) {
+      sanitized.keys = Object.fromEntries(
+        Object.entries(sanitized.keys).map(([k, v]) => [this._maskKey(k), { ...v, rotationKeys: v.rotationKeys?.map(rk => this._maskKey(rk)) }])
+      );
+    }
+    if (sanitized.keyPools) {
+      sanitized.keyPools = Object.fromEntries(
+        Object.entries(sanitized.keyPools).map(([prov, keys]) => [prov, keys.map(k => this._maskKey(k))])
+      );
+    }
+    return sanitized;
+  }
+
+  async reloadConfig(newConfig) {
+    await this._pipeline.drain(5000);
+
+    if (newConfig.stages) this._config.stages = newConfig.stages;
+    if (newConfig.models) this._config.models = newConfig.models;
+    if (newConfig.keys) this._config.keys = newConfig.keys;
+    if (newConfig.rateLimits) this._config.rateLimits = newConfig.rateLimits;
+    if (newConfig.keyPools) this._config.keyPools = newConfig.keyPools;
+    if (newConfig.pricing) this._config.pricing = newConfig.pricing;
+    if (newConfig.apiKey) this._config.apiKey = newConfig.apiKey;
+    if (newConfig.logPrompts !== undefined) this._config.logPrompts = newConfig.logPrompts;
+    if (newConfig.createAdapter) this._config.createAdapter = newConfig.createAdapter;
+
+    if (newConfig.models) {
+      this._modelMap = new ModelMap(this._config);
+    }
+
+    this._fallbackChain = new FallbackChain(this._config);
+
+    if (newConfig.createAdapter) this._adapterFactory = newConfig.createAdapter;
+
+    this._pipeline._stages = [];
+    this._registerStages(this._config.stages);
+  }
+
+  _maskKey(key) {
+    if (!key || key.length < 8) return key || '';
+    return key.slice(0, 4) + '****' + key.slice(-4);
   }
 
   /** Health check info */
@@ -119,6 +194,10 @@ class Gateway {
       models: this._modelMap.availableModels,
       stages: this._pipeline._stages.map(s => s.constructor.name),
     };
+  }
+
+  get metrics() {
+    return this._metrics;
   }
 
   /** Wait for in-flight requests to drain */

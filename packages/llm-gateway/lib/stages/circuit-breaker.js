@@ -62,6 +62,14 @@ class CircuitBreakerState {
   getState(provider) {
     return this._providers[provider]?.state || 'closed';
   }
+
+  getAllStates() {
+    const result = {};
+    for (const [provider, p] of Object.entries(this._providers)) {
+      result[provider] = p.state;
+    }
+    return result;
+  }
 }
 
 class CircuitBreakerStage extends Stage {
