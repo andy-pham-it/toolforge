@@ -186,7 +186,7 @@ await browser.close();
 ```
 
 **Lưu ý:**
-- Cần cài Puppeteer (`puppeteer` là peer dependency)
+- Puppeteer là optional dependency — nếu không cần browser automation, có thể bỏ qua (không gây lỗi install)
 - Trên macOS/Linux, Puppeteer tự động download Chromium
 - Gọi `close()` sau khi dùng xong để giải phóng tài nguyên
 

@@ -1,6 +1,6 @@
 {
   "name": "@andy-toolforge/core",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "Toolforge foundation: browser manager, LLM client, logger, job queue",
   "main": "lib/index.js",
   "repository": {
@@ -11,7 +11,9 @@
     "test": "node --test lib/*.test.js"
   },
   "dependencies": {
-    "puppeteer": "^25.1.0",
     "uuid": "^14.0.1"
+  },
+  "optionalDependencies": {
+    "puppeteer": "^25.1.0"
   }
 }

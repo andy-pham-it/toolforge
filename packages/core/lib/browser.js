@@ -1,10 +1,18 @@
-const puppeteer = require('puppeteer');
-
 class BrowserManager {
     static instance = null;
 
     static async getInstance() {
         if (!BrowserManager.instance) {
+            let puppeteer;
+            try {
+                puppeteer = require('puppeteer');
+            } catch (err) {
+                throw new Error(
+                    'puppeteer is not available. Install it with: npm install puppeteer\n' +
+                    'Or ensure it is in optionalDependencies if your platform supports it.\n' +
+                    'Original error: ' + err.message
+                );
+            }
             BrowserManager.instance = await puppeteer.launch({
                 headless: true,
                 args: [
