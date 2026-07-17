@@ -15,5 +15,8 @@
     "@andy-toolforge/core": "^1.0.0",
     "puppeteer": "^25.2.1",
     "sharp": "^0.35.2"
+  },
+  "peerDependencies": {
+    "@google/genai": "^2.10.0"
   }
 }
