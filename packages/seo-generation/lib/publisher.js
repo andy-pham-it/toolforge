@@ -26,59 +26,63 @@ class MultiPlatformPublisher {
 
         if (this.apiKeys.youtube) {
             try {
-                // YouTube Data API requires multipart upload for video files.
-                // Simplified implementation: send metadata only for draft creation.
-                // Full implementation would need resumable upload with video binary.
-                const requestBody = {
-                    snippet: {
-                        title: metadata.title,
-                        description: metadata.description || '',
-                        tags: metadata.tags || [],
-                    },
-                    status: {
-                        privacyStatus: metadata.privacyStatus || 'private',
-                    },
-                };
+                const fs = require('fs');
 
-                // Step 1: Create a resumable upload session
-                const res = await fetch(
+                // Step 1: Initiate resumable upload, get upload URL
+                const initRes = await fetch(
                     `https://www.googleapis.com/upload/youtube/v3/videos?part=snippet,status&uploadType=resumable`,
                     {
                         method: 'POST',
                         headers: {
                             Authorization: `Bearer ${this.apiKeys.youtube}`,
                             'Content-Type': 'application/json',
-                            'X-Upload-Content-Length': '0',
+                            'X-Upload-Content-Length': String((await fs.promises.stat(video)).size),
                         },
-                        body: JSON.stringify(requestBody),
+                        body: JSON.stringify({
+                            snippet: { title: metadata.title, description: metadata.description || '', tags: metadata.tags || [] },
+                            status: { privacyStatus: metadata.privacyStatus || 'private' },
+                        }),
                     },
                 );
+                if (!initRes.ok) throw new Error(`YouTube API returned ${initRes.status}`);
 
-                if (!res.ok) {
-                    throw new Error(`YouTube API returned ${res.status}`);
-                }
+                const uploadUrl = initRes.headers.get('Location');
+                if (!uploadUrl) throw new Error('No upload URL returned from YouTube');
 
-                const data = await res.json();
+                // Step 2: Upload video binary to the returned URL
+                const videoBuffer = await fs.promises.readFile(video);
+                const uploadRes = await fetch(uploadUrl, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'video/*',
+                        'Content-Length': String(videoBuffer.length),
+                    },
+                    body: videoBuffer,
+                });
+                if (!uploadRes.ok) throw new Error(`YouTube upload returned ${uploadRes.status}`);
+
+                const data = await uploadRes.json();
                 return { success: true, url: `https://youtu.be/${data.id}` };
             } catch (err) {
                 console.warn(`[MultiPlatformPublisher] YouTube REST API failed, falling back to browser: ${err.message}`);
             }
         }
 
-            try {
-                const page = await this.browser.newPage();
-                await page.goto('https://studio.youtube.com', { waitUntil: 'networkidle2' });
+        // Browser fallback (when REST API is unavailable or fails)
+        try {
+            const page = await this.browser.newPage();
+            await page.goto('https://studio.youtube.com', { waitUntil: 'networkidle2' });
 
-                const fileInput = await page.$('input[type="file"]');
-                if (fileInput) {
-                    await fileInput.uploadFile(video);
-                }
+            const fileInput = await page.$('input[type="file"]');
+            if (fileInput) {
+                await fileInput.uploadFile(video);
+            }
 
-                await page.type('#textbox', metadata.title);
-                await page.click('paper-button:contains("Next")');
+            await page.type('#textbox', metadata.title);
+            await page.click('paper-button:contains("Next")');
 
-                await page.close();
-                return { success: true, url: `https://youtu.be/placeholder-${Date.now()}` };
+            await page.close();
+            return { success: true, url: `https://youtu.be/placeholder-${Date.now()}` };
         } catch (err) {
             console.error(`[MultiPlatformPublisher] YouTube browser publish failed: ${err.message}`);
             return { success: false, error: `YouTube publish failed: ${err.message}` };
@@ -93,7 +97,7 @@ class MultiPlatformPublisher {
         if (this.apiKeys.wordpress && this.wordpressUrl) {
             try {
                 const wpUser = this.apiKeys.wordpress.split(':')[0];
-                const wpPass = this.apiKeys.wordpress.split(':')[1] || this.apiKeys.wordpress;
+                const wpPass = this.apiKeys.wordpress.split(':').slice(1).join(':') || this.apiKeys.wordpress;
 
                 const res = await fetch(`${this.wordpressUrl}/wp/v2/posts`, {
                     method: 'POST',
@@ -122,15 +126,16 @@ class MultiPlatformPublisher {
             }
         }
 
-            try {
-                const page = await this.browser.newPage();
-                await page.goto(`${this.wordpressUrl || 'http://localhost'}/wp-admin/post-new.php`, { waitUntil: 'networkidle2' });
+        // Browser fallback
+        try {
+            const page = await this.browser.newPage();
+            await page.goto(`${this.wordpressUrl || 'http://localhost'}/wp-admin/post-new.php`, { waitUntil: 'networkidle2' });
 
-                await page.type('#title', post.title);
-                await page.type('#content', post.content);
+            await page.type('#title', post.title);
+            await page.type('#content', post.content);
 
-                await page.close();
-                return { success: true, url: `${this.wordpressUrl || 'http://localhost'}/?p=draft` };
+            await page.close();
+            return { success: true, url: `${this.wordpressUrl || 'http://localhost'}/?p=draft` };
         } catch (err) {
             console.error(`[MultiPlatformPublisher] WordPress browser publish failed: ${err.message}`);
             return { success: false, error: `WordPress publish failed: ${err.message}` };
@@ -165,20 +170,21 @@ class MultiPlatformPublisher {
             }
         }
 
-            try {
-                const page = await this.browser.newPage();
-                await page.goto('https://www.facebook.com', { waitUntil: 'networkidle2' });
+        // Browser fallback
+        try {
+            const page = await this.browser.newPage();
+            await page.goto('https://www.facebook.com', { waitUntil: 'networkidle2' });
 
-                const hashtagStr = content.hashtags ? content.hashtags.map(t => `#${t}`).join(' ') : '';
-                const fullMessage = `${content.message}\n\n${hashtagStr}`.trim();
+            const hashtagStr = content.hashtags ? content.hashtags.map(t => `#${t}`).join(' ') : '';
+            const fullMessage = `${content.message}\n\n${hashtagStr}`.trim();
 
-                const postBox = await page.$('[role="textbox"]');
-                if (postBox) {
-                    await postBox.type(fullMessage);
-                }
+            const postBox = await page.$('[role="textbox"]');
+            if (postBox) {
+                await postBox.type(fullMessage);
+            }
 
-                await page.close();
-                return { success: true, postId: `fb-${Date.now()}` };
+            await page.close();
+            return { success: true, postId: `fb-${Date.now()}` };
         } catch (err) {
             console.error(`[MultiPlatformPublisher] Facebook browser publish failed: ${err.message}`);
             return { success: false, error: `Facebook publish failed: ${err.message}` };

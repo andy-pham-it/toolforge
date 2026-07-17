@@ -38,6 +38,12 @@ class BrowserManager {
             BrowserManager.instance = null;
         }
     }
+
+    // Instance methods delegating to static methods.
+    // Allows both BrowserManager.newPage() and new BrowserManager().newPage().
+    async getInstance() { return BrowserManager.getInstance(); }
+    async newPage() { return BrowserManager.newPage(); }
+    async close() { return BrowserManager.close(); }
 }
 
 module.exports = BrowserManager;
