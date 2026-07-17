@@ -1,0 +1,21 @@
+{
+  "name": "@andy-toolforge/llm-gateway",
+  "version": "0.1.0",
+  "description": "LLM API gateway — multi-provider routing, failover, rate limiting, key rotation, cost tracking, caching",
+  "main": "lib/index.js",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/andy-pham-it/toolforge.git"
+  },
+  "scripts": {
+    "test": "node --test lib/**/*.test.js",
+    "start": "node bin/cli.js"
+  },
+  "dependencies": {
+    "@andy-toolforge/core": "^1.2.0",
+    "express": "^4.21.0"
+  },
+  "bin": {
+    "llm-gateway": "./bin/cli.js"
+  }
+}

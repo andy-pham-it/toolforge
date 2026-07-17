@@ -16,6 +16,7 @@
     "packages/content-research",
     "packages/tts-generator",
     "packages/voice-assistant",
-    "packages/vn-stock"
+    "packages/vn-stock",
+    "packages/llm-gateway"
   ]
 }
