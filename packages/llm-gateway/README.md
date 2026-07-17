@@ -59,6 +59,52 @@ for await (const chunk of gw.chatStream({
 | Cost Logging | CostLoggerStage | Automatic per-request cost |
 | Provider Adapter | ProviderStage | `createAdapter(provider, model)` factory |
 
+## Architecture
+
+### Pipeline-of-Stages
+
+Every request flows through a chain of stages, each with a single responsibility. Stage order is fixed:
+
+```
+Request
+  │
+  ├─ ① AuthStage        — validate API key, extract tenant
+  ├─ ② RateLimitStage   — enforce per-tenant token bucket
+  ├─ ③ CacheStage       — return cached response if available
+  ├─ ④ RouterStage      — resolve model → provider + adapter; activate fallback chain
+  ├─ ⑤ FallbackChain    — try primary provider, fall through to alternatives on failure
+  ├─ ⑥ CircuitBreakerStage — track failures; open circuit if threshold exceeded
+  ├─ ⑦ ProviderStage    — call the LLM provider (sync or streaming)
+  └─ ⑧ CostLoggerStage  — log usage + compute cost
+  │
+Response
+```
+
+### Request / Response Object
+
+Each stage transforms a shared `request` object and/or the `response`:
+
+```
+Request: { model, messages, stream?, requestId, tenant?, signal? }
+Response: { content, usage: { promptTokens, completionTokens, costUsd }, cached? }
+```
+
+Stages before ProviderStage (Auth → Cache) operate on the request object. ProviderStage calls the actual LLM and produces the response. Stages after (CostLogger) decorate the response. The `next()` call passes control to the next stage; a stage can short-circuit (Cache hit, Circuit open, Rate limited) and return early.
+
+### Streaming Path
+
+When `request.stream = true`, ProviderStage returns an `AsyncIterable<{ content, done, usage? }>`. CacheStage bypasses caching for streaming requests (unless the entire response is buffered). The HTTP server delivers streaming via SSE (Server-Sent Events).
+
+### Gateway Class
+
+The `Gateway` class assembles the pipeline from config and exposes three methods:
+
+| Method | Description |
+|--------|-------------|
+| `gateway.chat(req)` | Sync completion — returns `Response` |
+| `gateway.chatStream(req)` | Streaming — returns `AsyncIterable` |
+| `gateway.health()` | Pipeline status — returns `{ status, models, stages }` |
+
 ## HTTP Server
 
 ```bash
