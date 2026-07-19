@@ -1,0 +1,24 @@
+{
+  "name": "@andy-toolforge/llm-gateway-core",
+  "version": "0.1.0",
+  "description": "Browser-compatible LLM gateway pipeline — zero-dependency routing, auth, rate-limit, caching, circuit-breaker, cost-logging",
+  "main": "lib/index.js",
+  "files": [
+    "lib/"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "test": "node --test 'lib/**/*.test.js'"
+  },
+  "keywords": [
+    "llm",
+    "gateway",
+    "pipeline",
+    "ai",
+    "openai",
+    "gemini"
+  ],
+  "license": "MIT"
+}

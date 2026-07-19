@@ -18,6 +18,7 @@
     "packages/voice-assistant",
     "packages/vn-stock",
     "packages/llm-gateway",
-    "packages/authoring"
+    "packages/authoring",
+    "packages/llm-gateway-core"
   ]
 }
