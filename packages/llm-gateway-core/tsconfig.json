@@ -1,0 +1,15 @@
+{
+  "compilerOptions": {
+    "allowJs": true,
+    "declaration": true,
+    "emitDeclarationOnly": true,
+    "outDir": ".",
+    "rootDir": ".",
+    "module": "commonjs",
+    "target": "es2020",
+    "strict": false,
+    "skipLibCheck": true
+  },
+  "include": ["lib/**/*.js"],
+  "exclude": ["lib/**/*.test.js"]
+}

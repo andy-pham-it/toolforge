@@ -1,5 +1,3 @@
-'use strict';
-
 /**
  * @typedef {Object} ChatRequest
  * @property {string} model
@@ -11,7 +9,6 @@
  * @property {string} [apiKey]
  * @property {AbortSignal} [signal]
  */
-
 /**
  * @typedef {Object} ChatResponse
  * @property {string} content
@@ -20,7 +17,6 @@
  * @property {boolean} [cached=false]
  * @property {Object<string,string>} [responseHeaders]
  */
-
 /**
  * @typedef {Object} PipelineContext
  * @property {string} model
@@ -49,5 +45,64 @@
  * @property {number} [_durationMs]
  * @property {object} [finalUsage]
  */
-
-module.exports = {};
+declare const _exports: {};
+export = _exports;
+export type ChatRequest = {
+    model: string;
+    messages: Array<{
+        role: string;
+        content: string;
+    }>;
+    stream?: boolean;
+    temperature?: number;
+    tenant?: string;
+    dryRun?: boolean;
+    apiKey?: string;
+    signal?: AbortSignal;
+};
+export type ChatResponse = {
+    content: string;
+    toolCalls?: any[];
+    usage?: {
+        promptTokens: number;
+        completionTokens: number;
+        costUsd: number;
+    };
+    cached?: boolean;
+    responseHeaders?: Record<string, string>;
+};
+export type PipelineContext = {
+    model: string;
+    messages: Array<{
+        role: string;
+        content: string;
+    }>;
+    stream?: boolean;
+    dryRun?: boolean;
+    tenant?: string;
+    apiKey?: string;
+    temperature?: number;
+    signal?: AbortSignal;
+    requestId: string;
+    responseHeaders?: Record<string, string>;
+    _startTime: number;
+    provider?: string;
+    _route?: object;
+    _adapterFactory?: Function;
+    _fallbackReason?: string;
+    _fallbackIndex?: number;
+    error?: Error;
+    response?: object;
+    responseStream?: AsyncIterable<any>;
+    cached?: boolean;
+    cost?: {
+        promptTokens: number;
+        completionTokens: number;
+        costUsd: number;
+        pending?: boolean;
+    };
+    roles?: string[];
+    _keyIndex?: number;
+    _durationMs?: number;
+    finalUsage?: object;
+};
