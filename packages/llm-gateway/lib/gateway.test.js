@@ -5,7 +5,7 @@ const { createGateway } = require('./gateway');
 
 describe('Gateway', () => {
   it('creates gateway and returns health', () => {
-    const gw = createGateway({ apiKey: 'sk-test' });
+    const gw = createGateway({ apiKey: 'sk-test', models: {}, createAdapter: () => ({}) });
     assert.ok(gw.health);
     assert.strictEqual(gw.health.status, 'ok');
   });
@@ -28,7 +28,7 @@ describe('Gateway', () => {
   });
 
   it('drain resolves', async () => {
-    const gw = createGateway({ apiKey: 'sk-test' });
+    const gw = createGateway({ apiKey: 'sk-test', models: {}, createAdapter: () => ({}) });
     await gw.drain(100);
     assert.ok(true);
   });
@@ -39,12 +39,13 @@ describe('Gateway', () => {
       models: {
         'gemini-flash': { provider: 'gemini', adapter: 'GenAIAdapter' },
       },
+      createAdapter: () => ({}),
     });
     assert.ok(gw.modelMap.availableModels.includes('gemini-flash'));
   });
 
   it('getConfig masks API keys', () => {
-    const gw = createGateway({ apiKey: 'sk-test-secret-key-12345', keys: { 'sk-admin-key': { tenant: 'admin' } } });
+    const gw = createGateway({ apiKey: 'sk-test-secret-key-12345', keys: { 'sk-admin-key': { tenant: 'admin' } }, createAdapter: () => ({}) });
     const cfg = gw.getConfig();
     assert.ok(cfg.apiKey.includes('****'));
     assert.ok(!cfg.apiKey.includes('sk-test-secret-key-12345'));

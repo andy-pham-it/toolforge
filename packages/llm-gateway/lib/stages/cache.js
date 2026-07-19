@@ -1,6 +1,5 @@
 'use strict';
 
-const crypto = require('crypto');
 const Stage = require('../stage');
 
 class CacheStage extends Stage {
@@ -16,12 +15,14 @@ class CacheStage extends Stage {
   }
 
   /**
-   * Generate cache key from context.
-   * Includes tenant ID for tenant isolation.
+   * Generate cache key from context using Web Crypto API.
+   * Includes tenant ID for tenant isolation. Browser-safe.
    */
-  _cacheKey(ctx) {
+  async _cacheKey(ctx) {
+    const encoder = new TextEncoder();
     const payload = `${ctx.tenant}|${ctx.model}|${JSON.stringify(ctx.messages)}`;
-    return crypto.createHash('md5').update(payload).digest('hex');
+    const hash = await crypto.subtle.digest('SHA-256', encoder.encode(payload));
+    return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join('');
   }
 
   async execute(ctx, next) {
@@ -31,7 +32,7 @@ class CacheStage extends Stage {
       return;
     }
 
-    const key = this._cacheKey(ctx);
+    const key = await this._cacheKey(ctx);
     const cached = this._store.get(key);
     if (cached) {
       ctx.response = cached;

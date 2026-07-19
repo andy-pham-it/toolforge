@@ -9,7 +9,7 @@ describe('CacheStage', () => {
     const store = new MemoryStore();
     const stage = new CacheStage(store);
     const ctx = { tenant: 't1', model: 'm1', messages: [{ role: 'user', content: 'hi' }] };
-    const key = stage._cacheKey(ctx);
+    const key = await stage._cacheKey(ctx);
     store.set(key, { content: 'cached-response' });
 
     let called = false;
@@ -24,7 +24,7 @@ describe('CacheStage', () => {
     const stage = new CacheStage(store);
     const ctx = { tenant: 't1', model: 'm1', messages: [{ role: 'user', content: 'hello' }], response: { content: 'fresh' } };
     await stage.execute(ctx, async () => {});
-    const key = stage._cacheKey(ctx);
+    const key = await stage._cacheKey(ctx);
     assert.deepStrictEqual(store.get(key), { content: 'fresh' });
   });
 

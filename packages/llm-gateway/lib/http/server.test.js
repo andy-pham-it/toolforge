@@ -13,7 +13,7 @@ describe('HTTPServer', () => {
   });
 
   it('starts and responds to /health', async () => {
-    const server = new HTTPServer(createGateway({ apiKey: 'sk-test' }), { port: 0 });
+    const server = new HTTPServer(createGateway({ apiKey: 'sk-test', models: {}, createAdapter: () => ({}) }), { port: 0 });
     servers.push(server);
     await server.start();
     const addr = server.address;
@@ -48,7 +48,7 @@ describe('HTTPServer', () => {
   });
 
   it('POST /v1/chat/completions returns 400 for missing model', async () => {
-    const server = new HTTPServer(createGateway({ apiKey: 'sk-test' }), { port: 0 });
+    const server = new HTTPServer(createGateway({ apiKey: 'sk-test', models: {}, createAdapter: () => ({}) }), { port: 0 });
     servers.push(server);
     await server.start();
     const addr = server.address;
@@ -88,7 +88,7 @@ describe('HTTPServer', () => {
   });
 
   it('GET /admin/config returns config with masked keys', async () => {
-    const server = new HTTPServer(createGateway({ apiKey: 'sk-test-secret', adminKey: 'admin' }), { port: 0, adminKey: 'admin' });
+    const server = new HTTPServer(createGateway({ apiKey: 'sk-test-secret', models: {}, createAdapter: () => ({}) }), { port: 0, adminKey: 'admin' });
     servers.push(server);
     await server.start();
     const addr = server.address;
@@ -101,7 +101,7 @@ describe('HTTPServer', () => {
   });
 
   it('GET /admin/config rejects without admin key', async () => {
-    const server = new HTTPServer(createGateway({ apiKey: 'sk-test' }), { port: 0, adminKey: 'secret' });
+    const server = new HTTPServer(createGateway({ apiKey: 'sk-test', models: {}, createAdapter: () => ({}) }), { port: 0, adminKey: 'secret' });
     servers.push(server);
     await server.start();
     const addr = server.address;
@@ -140,6 +140,7 @@ describe('HTTPServer', () => {
     const server = new HTTPServer(createGateway({
       apiKey: 'sk-test',
       models: { 'm1': { provider: 'test', adapter: 'A' } },
+      createAdapter: () => ({}),
     }), { port: 0 });
     servers.push(server);
     await server.start();

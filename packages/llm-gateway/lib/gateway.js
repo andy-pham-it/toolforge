@@ -36,23 +36,24 @@ class Gateway {
    * @param {string} [config.apiKey] — default API key
    */
   constructor(config = {}) {
+    if (!config.createAdapter) {
+      throw new Error(
+        'Gateway requires createAdapter(config). ' +
+        'Pass { createAdapter: (provider, apiKey) => adapter } to createGateway(). ' +
+        'Example: createGateway({ createAdapter: (p, k) => new OpenAIAdapter({ provider: p, apiKey: k }) })'
+      );
+    }
+
     this._config = { ...config };
     this._pipeline = new Pipeline();
     this._modelMap = config.models ? new ModelMap(config) : new ModelMap();
     this._fallbackChain = new FallbackChain(config);
     this._circuitBreakerState = new CircuitBreakerState(config.circuitBreaker);
-    this._adapterFactory = config.createAdapter || this._defaultAdapterFactory;
+    this._adapterFactory = config.createAdapter;
     this._metrics = new MetricsCollector();
     this._cacheStore = config.cache?.store || new MemoryStore();
 
     this._registerStages(config.stages);
-  }
-
-  _defaultAdapterFactory(provider, apiKey) {
-    // Lazy-require adapters to avoid forcing core dependency at load time
-    const core = require('@andy-toolforge/core');
-    if (provider === 'gemini') return new core.GenAIAdapter(apiKey);
-    return new core.OpenAIAdapter({ provider, apiKey });
   }
 
   _registerStages(stageNames) {
