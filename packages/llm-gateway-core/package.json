@@ -12,7 +12,7 @@
   },
   "scripts": {
     "test": "node --test 'lib/**/*.test.js'",
-    "prepack": "tsc --project tsconfig.json"
+    "build:types": "tsc --project tsconfig.json"
   },
   "keywords": [
     "llm",
