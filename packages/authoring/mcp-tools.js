@@ -36,7 +36,7 @@ const generateLessonDef = {
 
 async function generateLessonHandler(_llm, args) {
     const { topic, audience, objectives, language } = args;
-    return await generateLesson({ topic, audience, objectives, language });
+    return await generateLesson({ topic, audience, objectives, language, llm: _llm });
 }
 
 // ---------------------------------------------------------------------------
@@ -59,7 +59,7 @@ const scaffoldSeriesDef = {
 
 async function scaffoldSeriesHandler(_llm, args) {
     const { topic, outputDir, lessonCount, language } = args;
-    return await scaffoldSeries({ topic, outputDir, lessonCount, language });
+    return await scaffoldSeries({ topic, outputDir, lessonCount, language, llm: _llm });
 }
 
 // ---------------------------------------------------------------------------
