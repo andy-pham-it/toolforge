@@ -11,7 +11,25 @@
  *   validate_series           — Validate series structure, metadata, images, links
  */
 
+const { LLMClient } = require('@andy-toolforge/core');
 const { generateLesson, scaffoldSeries, embedImagesToMarkdown, validateSeries } = require('./lib');
+
+/**
+ * Resolve LLM client: use _llm from MCP server, or create from env GEMINI_API_KEY.
+ * This ensures tools work even when MCP server's LLM is not configured.
+ */
+function resolveLLM(_llm) {
+    if (_llm) return _llm;
+    const apiKey = process.env.GEMINI_API_KEY || process.env.GROQ_API_KEY;
+    if (apiKey) {
+        return new LLMClient({
+            provider: process.env.GEMINI_API_KEY ? 'gemini' : 'groq',
+            apiKey,
+            model: process.env.GEMINI_API_KEY ? 'gemini-3.1-flash-lite' : 'llama-3.3-70b-versatile',
+        });
+    }
+    return null;
+}
 
 // ---------------------------------------------------------------------------
 // generate_lesson
@@ -36,7 +54,8 @@ const generateLessonDef = {
 
 async function generateLessonHandler(_llm, args) {
     const { topic, audience, objectives, language } = args;
-    return await generateLesson({ topic, audience, objectives, language, llm: _llm });
+    const llm = resolveLLM(_llm);
+    return await generateLesson({ topic, audience, objectives, language, llm });
 }
 
 // ---------------------------------------------------------------------------
@@ -59,7 +78,8 @@ const scaffoldSeriesDef = {
 
 async function scaffoldSeriesHandler(_llm, args) {
     const { topic, outputDir, lessonCount, language } = args;
-    return await scaffoldSeries({ topic, outputDir, lessonCount, language, llm: _llm });
+    const llm = resolveLLM(_llm);
+    return await scaffoldSeries({ topic, outputDir, lessonCount, language, llm });
 }
 
 // ---------------------------------------------------------------------------
