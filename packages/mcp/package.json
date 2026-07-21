@@ -27,7 +27,8 @@
     "@andy-toolforge/coding-support": "^1.0.0",
     "@andy-toolforge/tts-generator": "^0.5.0",
     "@andy-toolforge/vn-stock": "^0.2.0",
-    "@andy-toolforge/voice-assistant": "^0.1.0"
+    "@andy-toolforge/voice-assistant": "^0.1.0",
+    "@andy-toolforge/authoring": "^0.1.0"
   },
   "keywords": [
     "mcp",
