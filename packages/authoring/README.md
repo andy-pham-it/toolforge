@@ -2,6 +2,8 @@
 
 > Lesson/curriculum authoring tools — generate lessons, scaffold series, embed images, validate structure.
 
+Requires Node.js 18+.
+
 ## Installation
 
 ```bash
