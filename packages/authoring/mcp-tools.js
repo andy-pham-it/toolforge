@@ -73,14 +73,15 @@ const embedImagesDef = {
         properties: {
             markdown: { type: 'string', description: 'Markdown content with image placeholders' },
             outputDir: { type: 'string', description: 'Directory to save generated images (default: ./images)' },
+            apiKey: { type: 'string', description: 'Gemini API key (defaults to GEMINI_API_KEY env var)' },
         },
         required: ['markdown'],
     },
 };
 
 async function embedImagesHandler(_llm, args) {
-    const { markdown, outputDir } = args;
-    return await embedImagesToMarkdown({ markdown, outputDir });
+    const { markdown, outputDir, apiKey } = args;
+    return await embedImagesToMarkdown({ markdown, outputDir, apiKey });
 }
 
 // ---------------------------------------------------------------------------
