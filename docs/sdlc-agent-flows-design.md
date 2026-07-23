@@ -1,15 +1,16 @@
 # SDLC Agent Flows — Design Document
 
 > Bản quyền thuộc @andy-toolforge
-> Trạng thái: **Refined** | Phiên bản: v2.4 | Ngày: 2026-07-24
-> Cập nhật: Hợp nhất MCP vào 1 package @andy-toolforge/sdlc-workflows (mcp-tools.js plugin), inline template fallback, manifest-based version drift detection (Approach B)
+> Trạng thái: **Refined** | Phiên bản: v2.5 | Ngày: 2026-07-24
+> Cập nhật: Fixes v2.5 — verify installSkills() signature, require.resolve fallback cho __dirname, try-catch MCP availability, satisfaction score confidence field, path resolution order clarified.
 
-> [!NOTE] **Design Decisions (v2.4)**
-> 1. **Package structure** (Issue A/D): Giữ 1 package `@andy-toolforge/sdlc-workflows` thay vì tách riêng MCP server. MCP tools là plugin tools (`mcp-tools.js`), auto-discovered bởi `@andy-toolforge/mcp`. Lý do: giảm config complexity cho end-user (1 `npm install` thay 2), template đọc từ `__dirname + '/templates/'`.
-> 2. **Template fallback** (Issue C): Mỗi SKILL.md nhúng sẵn inline template structure. Nếu MCP tool `sdlc_get_template` không available → dùng inline, không fail. Resolution order: local `.opencode/templates/` → MCP → inline.
-> 3. **Version drift** (Issue B): Approach B — `postinstall.js` copy templates + ghi version manifest `.opencode/manifests/sdlc-workflows.json`. `project-doc-health` detect drift. Lý do: chủ động hơn so với Approach A (chỉ cảnh báo).
+> [!NOTE] **Design Decisions (v2.5)**
+> 1. **Package structure** (Issue A/D): Giữ 1 package `@andy-toolforge/sdlc-workflows` thay vì tách riêng MCP server. MCP tools là plugin tools (`mcp-tools.js`), auto-discovered bởi `@andy-toolforge/mcp`. Lý do: giảm config complexity cho end-user (1 `npm install` thay 2), template đọc từ `__dirname + '/templates/'`. **Verified:** `__dirname` hoạt động đúng khi MCP load plugin tools qua `require(mcpToolsPath)`. Fallback: `require.resolve('@andy-toolforge/sdlc-workflows/mcp-tools.js')` nếu path sai.
+> 2. **Template fallback** (Issue C): Mỗi SKILL.md nhúng sẵn inline template structure. Nếu MCP tool `sdlc_get_template` không available → dùng inline, không fail. Resolution order: local `.opencode/templates/` → MCP → inline. **Detection:** AI dùng `try-catch` khi gọi MCP tool — nếu throws → fallback ngay. Xem Section 7.2 step 5.
+> 3. **Version drift** (Issue B): Approach B — `postinstall.js` copy templates + ghi version manifest `.opencode/manifests/sdlc-workflows.json`. `project-doc-health` detect drift. **Verified `installSkills()` signature:** `installSkills({ domain: string, sourceDir: string })` với `sourceDir` là absolute path. Symlinks .md files thành `.opencode/skills/<domain>-<filename>.md`.
 > 4. **Testing** (Issue E): 3 tầng — (1) structural YAML tests (review tay, Phase 1), (2) template correctness JS tests (Phase 2), (3) agent behavior không test trực tiếp, dùng retro feedback loop thay thế.
 > 5. **Cross-doc validation**: Dời lên Phase 1 (per-skill lightweight) thay vì đợi Phase 2 riêng.
+> 6. **Satisfaction score** (Issue D, new): sdlc-plan's "% requirements coverage" là **rough estimate** — LLM-based semantic comparison không chính xác tuyệt đối. Cần confidence field (high/medium/low) để user biết mức độ tin cậy. Xem Section 3.5.
 
 ---
 
@@ -630,7 +631,7 @@ PRD Feature X ──────► BRD Use Case Y ──────► ADR Com
 
 **Implementation (Phase 1 — lightweight per-skill):** Mỗi skill tự kiểm tra cross-ref ngay tại output:
 - `sdlc-prd`: Kiểm tra BRD đã tồn tại chưa → ghi chú `↗ BRD reference` nếu có
-- `sdlc-plan`: Satisfaction score ✅/⚠️/❌ cho từng feature PRD + use case BRD + component ADR
+- `sdlc-plan`: Satisfaction score ✅/⚠️/❌ cho từng feature PRD + use case BRD + component ADR. **Lưu ý:** Đây là **rough estimate** dựa trên LLM semantic comparison, không chính xác tuyệt đối. Kèm `confidence: high|medium|low` cho mỗi score để user biết mức độ tin cậy.
 - `sdlc-deploy`: Kiểm tra ADR đã tồn tại chưa → cảnh báo nếu thiếu context
 
 **Phase 2** (future): Skill riêng `/sdlc-validate` cho validation toàn chuỗi full.
@@ -697,6 +698,8 @@ packages/sdlc-workflows/                    # @andy-toolforge/sdlc-workflows (si
 ├── mcp-tools.js                           # Plugin tools — auto-discover bởi @andy-toolforge/mcp
 │                                          # Tools: sdlc_get_template, sdlc_list_templates, sdlc_get_standard
 ├── postinstall.js                         # installSkills() + sinh version manifest
+│                                          # Signature: installSkills({ domain: 'sdlc-workflows', sourceDir: path.join(__dirname, 'skills') })
+│                                          # Symlinks .md files → .opencode/skills/sdlc-workflows-<filename>.md
 ├── lib/                                   # Code thật (nếu cần — trống Phase 1)
 ├── skills/
 │   ├── project-init/
@@ -876,7 +879,7 @@ Thay vì tách riêng MCP server + mcp.json config, 3 template tools được im
 **Cách hoạt động:**
 1. `@andy-toolforge/mcp` auto-discover `mcp-tools.js` khi load plugin tools
 2. 3 tools trở thành MCP tools sẵn có — không cần `.opencode/mcp.json`
-3. Tools đọc templates/ trực tiếp từ package filesystem (runtime path = `__dirname + '/templates/'`)
+3. Tools đọc templates/ trực tiếp từ package filesystem (runtime path = `__dirname + '/templates/'`). **Verified:** `__dirname` hoạt động đúng khi MCP load plugin tools qua `require(mcpToolsPath)` — vì file được require trực tiếp từ chính package source. **Fallback:** Nếu path sai vì lý do runtime, dùng `require.resolve('@andy-toolforge/sdlc-workflows/mcp-tools.js')` để lấy đường dẫn chính xác.
 4. Installation giảm còn 1 package duy nhất: `@andy-toolforge/sdlc-workflows`
 
 **Inline fallback (khi MCP không available):**
@@ -1089,8 +1092,9 @@ Hoặc chạy: `/<command-name>`
 3. **Auto-detect**: Nếu file output đã tồn tại → hỏi "update (v<N+1>) hay tạo mới?"
 4. **Grounding**: <codebase scan để lấy context thực tế>
 5. **Get template**: Gọi `sdlc_get_template({ templateId })` qua MCP tool
-   - Nếu MCP không available → dùng **inline template sections** trong SKILL.md
-   - Nếu có local override ở `.opencode/templates/` → dùng local file
+   - **MCP detection:** Dùng `try-catch` khi gọi MCP tool. Nếu throws → fallback ngay. Không đoán availability — chỉ gọi và bắt lỗi.
+   - Nếu MCP không available (throw) → dùng **inline template sections** trong SKILL.md
+   - Nếu có local override ở `.opencode/templates/` → dùng local file (ưu tiên cao nhất)
 6. **Draft**: <viết document theo template>
 7. **Validate**: <kiểm tra principles, format, YAML frontmatter>
 8. **Output**: Ghi file + `git add` + `git commit` (nếu có git)
