@@ -1,17 +1,23 @@
 # SDLC Agent Flows — Design Document
 
 > Bản quyền thuộc @andy-toolforge
-> Trạng thái: **Refined** | Phiên bản: v2.1 | Ngày: 2026-07-23
-> Cập nhật: Tên package → @andy-toolforge/sdlc-workflows-workflows; skill install dùng postinstall.js; Agile-only Phase 1; cross-doc validation lightweight lên Phase 1
+> Trạng thái: **Refined** | Phiên bản: v2.2 | Ngày: 2026-07-23
+> Cập nhật: Tên package → @andy-toolforge/sdlc-workflows; skill install dùng postinstall.js; Agile-only Phase 1; cross-doc validation lightweight lên Phase 1; thêm lifecycle diagram, /project-onboard, /project-doc-health, skill test, auto-manifest
 
 ---
 
 ## Mục lục
 
 1. [Tổng quan](#1-tổng-quan)
+   - [SDLC Lifecycle — Thứ tự tự nhiên](#13-sdlc-lifecycle--thứ-tự-tự-nhiên)
 2. [Flow 1 — Project Init](#2-flow-1--project-init)
+   - [Flow 1b — Project Onboard](#27-flow-1b--project-onboard-dành-cho-existing-projects)
 3. [Flow 2 — SDLC Document Flows](#3-flow-2--sdlc-document-flows)
+   - [Cross-document Validation](#35-cross-document-validation)
+   - [Project Doc Health](#36-project-doc-health)
 4. [Template Architecture](#4-template-architecture)
+   - [Auto-generated Manifest](#42-manifest-auto-generated)
+   - [Skill Test Mechanism](#45-skill-test-mechanism)
 5. [Quyết định Kiến trúc: Skills-first, MCP later](#5-quyết-định-kiến-trúc-skills-first-mcp-later)
 6. [Lộ trình (Roadmap)](#6-lộ-trình-roadmap)
 7. [Bàn giao cho Toolforge Team](#7-bàn-giao-cho-toolforge-team)
@@ -31,14 +37,42 @@ Khi bắt đầu một dự án mới hoặc cần viết tài liệu SDLC (PRD,
 
 ### 1.2 Giải pháp
 
-Hai flow agentic, chạy trong OpenCode:
+Ba flow agentic, chạy trong OpenCode:
 
 | Flow | Đối tượng | Đầu ra |
-|---|---|---|---|
+|---|---|---|
 | `/project-init` | Developer khi start project mới | AGENTS.md, config.jsonc, default-flow skill |
+| `/project-onboard` | Developer với dự án đã có code | SDLC audit, gap analysis, doc import, context rules |
 | SDLC Docs (6 skills) | PM, BA, Architect, QA, DevOps, Developer | Tài liệu chuẩn + Implementation plan bridge |
 
-### 1.3 Nguyên tắc thiết kế
+### 1.3 SDLC Lifecycle — Thứ tự tự nhiên
+
+Các flow không chạy độc lập — chúng theo lifecycle tự nhiên của dự án:
+
+```
+Start Project
+  │
+  ├─ Chưa có code?       → /project-init     (setup AGENTS.md, config)
+  └─ Đã có code?         → /project-onboard  (scan, audit, import)
+
+Init completed
+  │
+  ├─ PM viết PRD         → /sdlc-prd         (product vision, features)
+  ├─ BA refine           → /sdlc-brd         (use cases, business rules)
+  ├─ Architect thiết kế  → /sdlc-arch        (system design, ADR)
+  ├─ QA lên test plan    → /sdlc-test-plan   (test cases, coverage)
+  ├─ Dev implement       → /sdlc-plan → code (spec → implementation bridge)
+  └─ Deploy              → /sdlc-deploy      (runbook, rollback plan)
+
+Maintain
+  ├─ Thay đổi spec       → /sdlc-prd --update (auto-detect, version bump)
+  ├─ Codebase thay đổi   → /project-doc-health (check cross-refs, stale docs)
+  └─ Onboard new member  → /project-onboard   (generate context docs)
+```
+
+Mỗi giai đoạn output của flow trước là input của flow sau, đảm bảo cross-ref không mâu thuẫn.
+
+### 1.4 Nguyên tắc thiết kế
 
 1. **Principle-first**: Mọi tài liệu phải được validate bởi principles gốc (Agile Manifesto, IEEE, ISO)
 2. **Cross-reference**: PRD → BRD → ADR → Test Plan → Deploy không mâu thuẫn
@@ -148,6 +182,78 @@ Thêm các câu:
 - [ ] Fallback: Khi user không trả lời hết câu hỏi → auto-detect từ git/fs/package.json
 - [ ] Upgrade: `/project-init --upgrade` cho phép chuyển Quick→Detailed, cập nhật tech stack
 - [ ] Large codebase scan: depth=3, exclude node_modules/.git/.next/dist, focus package.json/tsconfig/imports pattern
+
+### 2.7 Flow 1b — Project Onboard (dành cho existing projects)
+
+#### 2.7.1 Mục đích
+
+Khi developer chạy `/project-onboard` trong một repo đã có code, AI sẽ:
+
+1. **Discover**: Scan codebase structure, ngôn ngữ, framework, conventions
+2. **Audit**: Kiểm tra SDLC documents hiện có (nếu không có → gap analysis)
+3. **Import**: Đọc documents đã tồn tại, tạo YAML frontmatter + version history nếu thiếu
+4. **Delta gen**: Chỉ tạo documents còn thiếu (không làm lại cái đã có)
+5. **Context rules**: Sinh AGENTS.md rules dựa trên codebase thực tế (không interview)
+
+#### 2.7.2 So sánh với /project-init
+
+| Khía cạnh | `/project-init` | `/project-onboard` |
+|---|---|---|
+| Target | Repository mới, chưa có code | Repository đã có codebase |
+| Cách tiếp cận | Interview-based (hỏi ~6-14 câu) | Discovery-based (scan codebase) |
+| Output | AGENTS.md từ câu trả lời | AGENTS.md từ codebase analysis |
+| SDLC docs | Tạo mới toàn bộ | Audit + Import + Delta |
+| Template install | Có (detailed mode) | Có (nếu thiếu, auto-install) |
+
+#### 2.7.3 Discovery Process
+
+```
+/project-onboard
+  │
+  ├─ 1. Scan structure ──► package.json, tsconfig, Dockerfile, CI config
+  │      ├── Ngôn ngữ: TypeScript? Python? Go?
+  │      ├── Framework: Next.js? Express? FastAPI?
+  │      └── Pattern: Monorepo? Single? Microservices?
+  │
+  ├─ 2. Convention detection ──► Coding style, branch naming, commit messages
+  │      ├── Lint config: ESLint? Ruff? golangci-lint?
+  │      ├── Test framework: Jest? pytest? Vitest?
+  │      └── Commit style: Conventional Commits? Free-form?
+  │
+  ├─ 3. SDLC audit ──► Check docs/ directory
+  │      ├── PRD? BRD? ADR? Test Plan? Deploy Runbook?
+  │      ├── Có YAML frontmatter không? Version history?
+  │      └── Gap analysis: còn thiếu document nào?
+  │
+  ├─ 4. Import existing docs ──► Inject frontmatter + version
+  │      └── (không modify nội dung, chỉ metadata)
+  │
+  ├─ 5. Context rules ──► Sinh AGENTS.md rules
+  │      ├── Tech stack rules
+  │      ├── Coding conventions
+  │      └── SDLC template path
+  │
+  ├─ 6. Install skills ──► postinstall.js với installSkills()
+  │      └── SDLC skills + templates
+  │
+  └─ 7. Report ──► "Đã onboard. Phát hiện: [...]. Thiếu: [...]. Gợi ý: [...]"
+```
+
+#### 2.7.4 Interview (tối thiểu)
+
+Không như `/project-init` hỏi chi tiết, `/project-onboard` chỉ hỏi **1-2 câu confirm**:
+
+1. "Đã phát hiện project `<name>` với stack `<lang> + <framework>`. Có muốn tùy chỉnh rules gì không?" (Nếu không → auto-detect là đủ)
+2. "Phát hiện thiếu `<list>` documents. Có muốn tôi sinh không?" (Yes → gọi SDLC skill tương ứng)
+
+#### 2.7.5 Handoff Checklist
+
+- [ ] Skill: `project-onboard/SKILL.md` — discovery + audit + import + delta gen
+- [ ] Skill: `project-onboard/SKILL.md` — convention detection (lint, test, commit style)
+- [ ] Skill: `project-onboard/SKILL.md` — SDLC gap analysis
+- [ ] Skill: `project-onboard/SKILL.md` — AGENTS.md rule generation (từ scan, không interview)
+- [ ] Fallback: scan depth=3, exclude node_modules/.git/.next/.venv
+- [ ] Import: chỉ thêm metadata, không modify nội dung gốc
 
 ---
 
@@ -418,6 +524,43 @@ Nếu BRD reference một feature không có trong PRD → WARNING
 Nếu ADR reference một use case không có trong BRD → WARNING
 Nếu Test Plan test một component không có trong ADR → WARNING
 
+### 3.6 Project Doc Health
+
+#### 3.6.1 Mục đích
+
+Khi gọi `/project-doc-health`, AI scan `docs/` và báo cáo tình trạng SDLC documents.
+
+#### 3.6.2 Output
+
+```
+📋 SDLC Doc Health Report — <project>
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+PRD: ✅ v1.2.0 (updated 2026-07-22)
+BRD: ❌ Missing (gợi ý: chạy /sdlc-brd)
+ADR: ⚠️ v1.0.0 nhưng PRD đã update → có thể cần review
+Test Plan: ⚠️ Missing (chưa có QA phase?)
+Deploy: ❌ Missing (gợi ý: chạy /sdlc-deploy)
+
+Cross-ref:
+  PRD Feature "Auth"  → BRD: ❌ không có use case tương ứng
+  ADR Component "API" → Test Plan: ❌ không có test case
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```
+
+#### 3.6.3 Cách hoạt động
+
+1. Scan `docs/` tìm files match patterns: `prd*.md`, `brd*.md`, `adr*.md`, `test-plan*.md`, `deploy*.md`
+2. Parse YAML frontmatter → version, status, updated date
+3. Nếu không có frontmatter → ⚠️ "No versioning"
+4. Nếu cross-ref (keyword matching) không khớp → ❌
+5. Output 1 bảng ngắn
+
+#### 3.6.4 Handoff Checklist
+
+- [ ] Skill: `project-doc-health/SKILL.md` — scan docs, parse frontmatter, cross-ref check
+- [ ] Tool: `sdlc_health_check` MCP tool (optional — có thể làm trong skill trực tiếp)
+- [ ] Limit: scan depth=3, chỉ đọc files < 50KB để tránh context flooding
+
 ---
 
 ## 4. Template Architecture
@@ -465,24 +608,22 @@ packages/sdlc-workflows-mcp/                # @andy-toolforge/sdlc-workflows-mcp
             └── sre-runbook.md             # Phase 1
 ```
 
-### 4.2 Manifest (`index.json`)
+### 4.2 Manifest (Auto-generated)
 
-```json
-{
-  "version": "1.0.0",
-  "templates": {
-    "standards": {
-      "agile-scrum": { "path": "standards/agile-scrum.md", "type": "reference" }
-    },
-    "flows": {
-      "prd/agile": { "path": "flows/prd/agile-prd.md", "type": "document", "standard": "agile" }
-    }
-  },
-  "compatibility": {
-    "prd/agile → brd": "valid (Phase 2)"
-  }
-}
+Thay vì maintain `index.json` tay, `sdlc_list_templates` tool **scan `templates/` directory động**:
+
 ```
+sdlc_list_templates
+  → Glob: templates/**/*.md
+  → Parse: path components = {category}/{standard}-{flow}.md or {standard}.md
+  → Return: [{ id, name, standard, type, updatedAt }]
+```
+
+**Không cần index.json.** Thêm file `.md` mới vào `templates/` → tool thấy ngay lập tức.  
+`updatedAt` lấy từ file mtime — đủ cho Phase 1.  
+Version pinning dùng `sdlc.templateVersion` trong config (so sánh semver với `updatedAt` nếu cần).
+
+> **Lưu ý:** Nếu sau này số lượng templates > 20, có thể cache manifest vào JSON để tránh glob overhead. Phase 1 chưa cần.
 
 ### 4.3 Template Config trong OpenCode Config
 
@@ -515,6 +656,77 @@ Khi skill cần một template:
 2. @andy-toolforge/sdlc-workflows/templates/<path>   (package default)
 3. <project>/.opencode/config.jsonc → sdlc.templateVersion (version pin)
 ```
+
+### 4.5 Skill Test Mechanism
+
+#### 4.5.1 Vấn đề
+
+Skill files (SKILL.md) là markdown instructions cho AI agent. Không có cách test chúng trước khi ship. Rủi ro: skill bị lỗi instruction → AI hiểu sai → tài liệu sai format.
+
+#### 4.5.2 Giải pháp: Mỗi skill kèm test case
+
+```
+skills/
+├── sdlc-prd/
+│   ├── SKILL.md             # Skill instructions
+│   └── test/
+│       ├── basic-prd.yaml   # Test case: Agile PRD basic
+│       └── existing-doc.yaml# Test case: update existing doc
+└── project-init/
+    └── SKILL.md
+```
+
+**Test case format (YAML):**
+
+```yaml
+# test/basic-prd.yaml
+name: "Agile PRD — product vision basic"
+input:
+  mockAnswers:
+    - q: "Product vision?"
+      a: "Một nền tảng học online cho người Việt"
+    - q: "Target users?"
+      a: "Sinh viên đại học, người đi làm muốn học kỹ năng mới"
+    - q: "Core problem?"
+      a: "Thiếu nội dung tiếng Việt chất lượng cao"
+  templateId: "prd/agile"
+expectedOutput:
+  hasFrontmatter: true
+  requiredSections:
+    - "## 1. Vision"
+    - "## 3. Problem Statement"
+    - "## 5. Features"
+  mustNotContain:
+    - "[TBD]"
+    - "TODO"
+  crossRefValid: true
+```
+
+#### 4.5.3 Cách chạy test
+
+MCP tool `sdlc_validate_skill` (optional — Phase 1 có thể bỏ qua, dùng manual review):
+
+```
+sdlc_validate_skill
+  input:
+    skillPath: string       # Path tới SKILL.md
+    testCase: TestCase      # Test case YAML
+    mockInterview: bool     # Dùng mock answers thay vì gọi LLM
+  output:
+    valid: boolean
+    errors: string[]
+    warnings: string[]
+    generatedPreview: string  # Preview kết quả (nếu mock LLM)
+```
+
+**Phase 1:** Test cases là YAML files để review tay. `sdlc_validate_skill` là Phase 2.  
+**Phase 3:** Có thể chạy test tự động trong CI (GitHub Actions).
+
+#### 4.5.4 Handoff Checklist
+
+- [ ] Test case YAML cho mỗi skill (Phase 1 — tay)
+- [ ] `sdlc_validate_skill` MCP tool (Phase 2)
+- [ ] CI integration (Phase 3)
 
 ---
 
@@ -631,15 +843,18 @@ Skill cần template "prd/agile"
 | Task | Người thực hiện | Ước lượng |
 |---|---|---|
 | **Package**: `@andy-toolforge/sdlc-workflows` struct + `postinstall.js` (dùng `installSkills()`) | Toolforge | 1 giờ |
-| **MCP Server**: `@andy-toolforge/sdlc-workflows-mcp` — 3 tools serve template + standard reference | Toolforge | 4-6 giờ |
+| **MCP Server**: `@andy-toolforge/sdlc-workflows-mcp` — 3 tools serve template + standard reference (manifest auto-gen từ directory scan, không cần index.json tay) | Toolforge | 4-6 giờ |
 | **Templates**: agile-scrum.md, agile-prd.md (Agile-only Phase 1, IEEE reference notes trong SKILL.md) | Toolforge | 2 giờ |
 | **Skill**: `project-init/SKILL.md` — quick mode | Toolforge | 3 giờ |
 | **Skill**: `project-init/SKILL.md` — detailed mode (+ postinstall skill install) | Toolforge | 3 giờ |
+| **Skill**: `project-onboard/SKILL.md` — discovery-based onboard cho existing projects | Toolforge | 4 giờ |
+| **Skill**: `project-doc-health/SKILL.md` — scan docs, check frontmatter, cross-ref health | Toolforge | 2 giờ |
 | **Skill**: `sdlc-prd/SKILL.md` — Agile PRD (lightweight cross-ref validation built-in) | Toolforge | 3 giờ |
 | **Skill**: `sdlc-deploy/SKILL.md` — ITIL + SRE | Toolforge | 3 giờ |
 | **Skill**: `sdlc-plan/SKILL.md` — Spec→implementation bridge (+ cross-doc satisfaction score) | Toolforge | 3 giờ |
+| **Test cases**: YAML test case cho mỗi skill (tay, chưa tự động) | Toolforge | 2 giờ |
 
-**Tổng Phase 1**: ~22 giờ (2-3 days)
+**Tổng Phase 1**: ~30 giờ (3-4 days)
 
 ### Phase 2: Expansion (within 2 weeks)
 
@@ -650,10 +865,10 @@ Skill cần template "prd/agile"
 | **Skill**: `sdlc-arch` + templates (Arc42, C4) | 4-6 giờ |
 | **Skill**: `sdlc-test-plan` + templates (ISO 29119, IEEE 829) | 3-4 giờ |
 | **Skill**: `/sdlc-validate` — cross-document validation (PRD↔BRD↔ADR↔Test↔Deploy) | 4 giờ |
-| MCP: Manifest (`index.json`) + version checking | 2 giờ |
+| MCP: `sdlc_validate_skill` tool + test runner | 4 giờ |
 | Templates mở rộng cho BRD, Arch, Test Plan | 4 giờ |
 
-**Tổng Phase 2**: ~24-28 giờ
+**Tổng Phase 2**: ~26-30 giờ
 
 ### Phase 3: MCP Engine (when >15-20 templates)
 
@@ -677,26 +892,30 @@ packages/
 │   ├── postinstall.js                  [TASK-001] — dùng installSkills()
 │   └── skills/
 │       ├── project-init/SKILL.md       [TASK-002]
-│       ├── sdlc-prd/SKILL.md           [TASK-003]
-│       ├── sdlc-plan/SKILL.md          [TASK-004]
-│       └── sdlc-deploy/SKILL.md        [TASK-005]
+│       ├── project-onboard/SKILL.md    [TASK-003]
+│       ├── project-doc-health/SKILL.md [TASK-004]
+│       ├── sdlc-prd/SKILL.md           [TASK-005]
+│       ├── sdlc-plan/SKILL.md          [TASK-006]
+│       └── sdlc-deploy/SKILL.md        [TASK-007]
+│           └── test/                   # Test cases cho mỗi skill
+│               ├── basic-prd.yaml
+│               └── basic-deploy.yaml
 │
 └── sdlc-workflows-mcp/                 # @andy-toolforge/sdlc-workflows-mcp
-    ├── package.json                    [TASK-006]
+    ├── package.json                    [TASK-008]
     ├── index.ts                        # MCP server entry
     ├── tools/
-    │   ├── get_template.ts
-    │   ├── list_templates.ts
+    │   ├── get_template.ts             # Đọc từ templates/, không cần index.json
+    │   ├── list_templates.ts           # Auto-scan từ directory glob
     │   └── get_standard.ts
     └── templates/
-        ├── index.json
         ├── standards/
-        │   ├── agile-scrum.md          [TASK-007]
+        │   ├── agile-scrum.md          [TASK-009]
         │   └── itil-sre.md
         └── flows/
-            ├── prd/agile-prd.md        [TASK-007]
+            ├── prd/agile-prd.md        [TASK-009]
             └── deploy/
-                ├── itil-runbook.md     [TASK-007]
+                ├── itil-runbook.md     [TASK-009]
                 └── sre-runbook.md
 ```
 
