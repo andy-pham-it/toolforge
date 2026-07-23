@@ -4,6 +4,13 @@
 > Trạng thái: **Refined** | Phiên bản: v2.4 | Ngày: 2026-07-24
 > Cập nhật: Hợp nhất MCP vào 1 package @andy-toolforge/sdlc-workflows (mcp-tools.js plugin), inline template fallback, manifest-based version drift detection (Approach B)
 
+> [!NOTE] **Design Decisions (v2.4)**
+> 1. **Package structure** (Issue A/D): Giữ 1 package `@andy-toolforge/sdlc-workflows` thay vì tách riêng MCP server. MCP tools là plugin tools (`mcp-tools.js`), auto-discovered bởi `@andy-toolforge/mcp`. Lý do: giảm config complexity cho end-user (1 `npm install` thay 2), template đọc từ `__dirname + '/templates/'`.
+> 2. **Template fallback** (Issue C): Mỗi SKILL.md nhúng sẵn inline template structure. Nếu MCP tool `sdlc_get_template` không available → dùng inline, không fail. Resolution order: local `.opencode/templates/` → MCP → inline.
+> 3. **Version drift** (Issue B): Approach B — `postinstall.js` copy templates + ghi version manifest `.opencode/manifests/sdlc-workflows.json`. `project-doc-health` detect drift. Lý do: chủ động hơn so với Approach A (chỉ cảnh báo).
+> 4. **Testing** (Issue E): 3 tầng — (1) structural YAML tests (review tay, Phase 1), (2) template correctness JS tests (Phase 2), (3) agent behavior không test trực tiếp, dùng retro feedback loop thay thế.
+> 5. **Cross-doc validation**: Dời lên Phase 1 (per-skill lightweight) thay vì đợi Phase 2 riêng.
+
 ---
 
 ## Mục lục
@@ -675,6 +682,13 @@ Cross-ref:
 ## 4. Template Architecture
 
 ### 4.1 Package Structure
+
+> [!NOTE] **Issue A/D: Tại sao 1 package?**
+> Ban đầu design tách riêng `@andy-toolforge/sdlc-workflows-mcp` (TypeScript, Express server) + `@andy-toolforge/sdlc-workflows` (skills + templates). Lý do: separation of concerns, independent deploy.
+>
+> **Vấn đề:** Tách làm 2 package gây config complexity — user phải npm install 2 packages, cấu hình MCP riêng, và template path resolution giữa 2 packages phức tạp (`require.resolve()` cross-package). Đây là anti-pattern với Toolforge monorepo conventions.
+>
+> **Quyết định:** Hợp nhất vào 1 package. MCP tools là plugin tools (`mcp-tools.js`) auto-discovered bởi `@andy-toolforge/mcp`, template đọc từ `__dirname + '/templates/'`. Khi sau này cần MCP server riêng (scale), có thể tách ra — design pattern vẫn cho phép.
 
 ```
 packages/sdlc-workflows/                    # @andy-toolforge/sdlc-workflows (single package)
