@@ -1,8 +1,8 @@
 # SDLC Agent Flows — Design Document
 
 > Bản quyền thuộc @andy-toolforge
-> Trạng thái: **Refined** | Phiên bản: v2.3 | Ngày: 2026-07-23
-> Cập nhật: Thêm retrospective/lessons learned: /sdlc-retro skill riêng + optional Learn phase trong mỗi SDLC skill
+> Trạng thái: **Refined** | Phiên bản: v2.4 | Ngày: 2026-07-24
+> Cập nhật: Hợp nhất MCP vào 1 package @andy-toolforge/sdlc-workflows (mcp-tools.js plugin), inline template fallback, manifest-based version drift detection (Approach B)
 
 ---
 
@@ -18,7 +18,7 @@
 4. [Template Architecture](#4-template-architecture)
    - [Auto-generated Manifest](#42-manifest-auto-generated)
    - [Skill Test Mechanism](#45-skill-test-mechanism)
-5. [Quyết định Kiến trúc: Skills-first, MCP later](#5-quyết-định-kiến-trúc-skills-first-mcp-later)
+5. [Quyết định Kiến trúc: MCP qua plugin tools, inline fallback](#5-quyết-định-kiến-trúc-mcp-qua-plugin-tools-inline-fallback)
 6. [Lộ trình (Roadmap)](#6-lộ-trình-roadmap)
 7. [Bàn giao cho Toolforge Team](#7-bàn-giao-cho-toolforge-team)
 
@@ -181,7 +181,7 @@ Thêm các câu:
 - [ ] Skill: `project-init/SKILL.md` — cấu trúc interview tree (Quick + Detailed)
 - [ ] Skill: `project-init/SKILL.md` — skill install tự động qua `postinstall.js` (dùng `installSkills()` từ core)
 - [ ] Skill: `project-init/SKILL.md` — AGENTS.md template variants (NEW / EXISTING / MIGRATION)
-- [ ] MCP: Sinh `.opencode/mcp.json` với `@andy-toolforge/sdlc-workflows-mcp` config
+- [ ] MCP: Tools auto-discover qua `mcp-tools.js` plugin — không cần sinh `mcp.json`
 - [ ] Config: Sinh `.opencode/config.jsonc` với `sdlc.*` settings
 - [ ] Fallback: Khi user không trả lời hết câu hỏi → auto-detect từ git/fs/package.json
 - [ ] Upgrade: `/project-init --upgrade` cho phép chuyển Quick→Detailed, cập nhật tech stack
@@ -265,27 +265,48 @@ Không như `/project-init` hỏi chi tiết, `/project-onboard` chỉ hỏi **1
 
 ### 3.1 Kiến trúc tổng thể
 
-Mỗi flow là một SKILL.md riêng trong toolforge package:
+Mỗi flow là một SKILL.md riêng trong toolforge package. Toàn bộ package structure:
 
 ```
-@andy-toolforge/sdlc-workflows/skills/
-├── sdlc-prd/
-│   ├── SKILL.md              # Trigger: PM cần PRD
-│   └── context-rules.md      # Context injected khi skill chạy
-├── sdlc-brd/                 [Phase 2]
-│   └── SKILL.md
-├── sdlc-arch/                [Phase 2]
-│   └── SKILL.md
-├── sdlc-test-plan/           [Phase 2]
-│   └── SKILL.md
-├── sdlc-deploy/
-│   └── SKILL.md
-└── sdlc-retro/               # [Phase 1]
-    └── SKILL.md
+@andy-toolforge/sdlc-workflows/
+├── package.json
+├── index.js                    # Exports (nếu cần sau này)
+├── mcp-tools.js                # Plugin tools cho @andy-toolforge/mcp
+├── postinstall.js              # installSkills() — copy skills + sinh manifest
+├── lib/                        # Code thật (nếu cần sau này — trống Phase 1)
+├── skills/
+│   ├── project-init/
+│   │   ├── SKILL.md
+│   │   └── test/
+│   │       └── basic-init.yaml
+│   ├── project-onboard/
+│   │   └── SKILL.md
+│   ├── project-doc-health/
+│   │   └── SKILL.md
+│   ├── sdlc-prd/
+│   │   └── SKILL.md
+│   ├── sdlc-deploy/
+│   │   └── SKILL.md
+│   ├── sdlc-plan/
+│   │   └── SKILL.md
+│   └── sdlc-retro/
+│       └── SKILL.md
+├── templates/
+│   ├── standards/
+│   │   ├── agile-scrum.md
+│   │   └── itil-sre.md
+│   └── flows/
+│       ├── prd/agile-prd.md
+│       └── deploy/
+│           ├── itil-runbook.md
+│           └── sre-runbook.md
+└── test/                       # Integration tests (Phase 1+)
+    └── templates/
+        ├── basic-prd.yaml
+        └── basic-deploy.yaml
 ```
 
-> Lưu ý: Templates không nằm trong skills/ — chúng được serve bởi MCP server (xem Section 5.2).
-> AGENTS.md per-skill bị loại bỏ (OpenCode chỉ đọc root AGENTS.md). Thay bằng `context-rules.md` — skill inject nội dung file này vào prompt khi chạy.
+> Lưu ý: AGENTS.md per-skill bị loại bỏ (OpenCode chỉ đọc root AGENTS.md). Thay bằng `context-rules.md` — skill inject nội dung file này vào prompt khi chạy.
 
 ### 3.2 Flow chi tiết từng skill
 
@@ -647,6 +668,7 @@ Cross-ref:
 - [ ] Skill: `project-doc-health/SKILL.md` — scan docs, parse frontmatter, cross-ref check
 - [ ] Tool: `sdlc_health_check` MCP tool (optional — có thể làm trong skill trực tiếp)
 - [ ] Limit: scan depth=3, chỉ đọc files < 50KB để tránh context flooding
+- [ ] **Version drift check**: Đọc `.opencode/manifests/sdlc-workflows.json` → so sánh `installedVersion` với config's `sdlc.templateVersion`. Nếu mismatch → cảnh báo + gợi ý chạy `npm update @andy-toolforge/sdlc-workflows`
 
 ---
 
@@ -655,62 +677,69 @@ Cross-ref:
 ### 4.1 Package Structure
 
 ```
-packages/sdlc-workflows/                    # @andy-toolforge/sdlc-workflows
+packages/sdlc-workflows/                    # @andy-toolforge/sdlc-workflows (single package)
 ├── package.json
-├── index.js                               # Exports (nếu cần)
-├── postinstall.js                         # installSkills() — tự động cài skills
-└── skills/                                # Skill files (SKILL.md cho mỗi flow)
-    ├── project-init/
-    │   └── SKILL.md
-    ├── sdlc-prd/
-    │   └── SKILL.md                       # Phase 1 — Agile PRD + cross-ref
-    ├── sdlc-brd/                          # [Phase 2]
-    │   └── SKILL.md
-    ├── sdlc-arch/                         # [Phase 2]
-    │   └── SKILL.md
-    ├── sdlc-test-plan/                    # [Phase 2]
-    │   └── SKILL.md
-    ├── sdlc-deploy/
-    │   └── SKILL.md                       # Phase 1 — ITIL + SRE
-    └── sdlc-plan/
-        └── SKILL.md                       # Phase 1 — Implementation bridge
-
-packages/sdlc-workflows-mcp/                # @andy-toolforge/sdlc-workflows-mcp (server riêng)
-├── package.json
-├── index.ts                               # MCP server entry
-├── tools/
-│   ├── get_template.ts
-│   ├── list_templates.ts
-│   └── get_standard.ts
-└── templates/                             # Templates served by MCP
-    ├── index.json                         # Manifest
-    ├── standards/
-    │   ├── agile-scrum.md                 # Phase 1
-    │   └── itil-sre.md                    # Phase 1
-    └── flows/
-        ├── prd/
-        │   └── agile-prd.md               # Phase 1 (IEEE reference trong SKILL.md)
-        └── deploy/
-            ├── itil-runbook.md            # Phase 1
-            └── sre-runbook.md             # Phase 1
+├── index.js                               # Exports (nếu cần sau này)
+├── mcp-tools.js                           # Plugin tools — auto-discover bởi @andy-toolforge/mcp
+│                                          # Tools: sdlc_get_template, sdlc_list_templates, sdlc_get_standard
+├── postinstall.js                         # installSkills() + sinh version manifest
+├── lib/                                   # Code thật (nếu cần — trống Phase 1)
+├── skills/
+│   ├── project-init/
+│   │   └── SKILL.md
+│   ├── project-onboard/
+│   │   └── SKILL.md
+│   ├── project-doc-health/
+│   │   └── SKILL.md
+│   ├── sdlc-prd/
+│   │   └── SKILL.md                       # Phase 1 — Agile PRD + cross-ref
+│   ├── sdlc-deploy/
+│   │   └── SKILL.md                       # Phase 1 — ITIL + SRE
+│   ├── sdlc-plan/
+│   │   └── SKILL.md                       # Phase 1 — Implementation bridge
+│   └── sdlc-retro/
+│       └── SKILL.md
+├── templates/                             # Templates — serve trực tiếp từ mcp-tools.js
+│   ├── standards/
+│   │   ├── agile-scrum.md                 # Phase 1
+│   │   └── itil-sre.md                    # Phase 1
+│   └── flows/
+│       ├── prd/
+│       │   └── agile-prd.md               # Phase 1 (IEEE reference trong SKILL.md)
+│       └── deploy/
+│           ├── itil-runbook.md            # Phase 1
+│           └── sre-runbook.md             # Phase 1
+└── test/                                  # Integration tests
+    └── templates/
+        ├── basic-prd.yaml
+        └── basic-deploy.yaml
 ```
 
-### 4.2 Manifest (Auto-generated)
+### 4.2 Manifest (Auto-generated bởi postinstall.js)
 
-Thay vì maintain `index.json` tay, `sdlc_list_templates` tool **scan `templates/` directory động**:
+`postinstall.js` sinh file `.opencode/manifests/sdlc-workflows.json`:
 
+```json
+{
+  "package": "@andy-toolforge/sdlc-workflows",
+  "installedVersion": "1.0.0",
+  "installedAt": "2026-07-24T10:00:00Z",
+  "templates": [
+    { "id": "prd/agile", "name": "Agile PRD", "standard": "agile", "type": "flow" },
+    { "id": "deploy/itil", "name": "ITIL Runbook", "standard": "itil", "type": "flow" },
+    { "id": "deploy/sre", "name": "SRE Runbook", "standard": "sre", "type": "flow" },
+    { "id": "standards/agile-scrum", "name": "Agile Scrum", "standard": "agile", "type": "standard" },
+    { "id": "standards/itil-sre", "name": "ITIL SRE", "standard": "itil", "type": "standard" }
+  ]
+}
 ```
-sdlc_list_templates
-  → Glob: templates/**/*.md
-  → Parse: path components = {category}/{standard}-{flow}.md or {standard}.md
-  → Return: [{ id, name, standard, type, updatedAt }]
-```
 
-**Không cần index.json.** Thêm file `.md` mới vào `templates/` → tool thấy ngay lập tức.  
-`updatedAt` lấy từ file mtime — đủ cho Phase 1.  
-Version pinning dùng `sdlc.templateVersion` trong config (so sánh semver với `updatedAt` nếu cần).
+**`sdlc_list_templates` tool** đọc manifest này (không glob).  
+Thêm template mới → cần chạy `postinstall.js` lại (hoặc `npm update`).  
 
-> **Lưu ý:** Nếu sau này số lượng templates > 20, có thể cache manifest vào JSON để tránh glob overhead. Phase 1 chưa cần.
+**Version drift detection:** `project-doc-health` so sánh `installedVersion` trong manifest với config's `sdlc.templateVersion`. Nếu mismatch → cảnh báo.
+
+> **Phase 3:** Có thể chuyển sang glob-based dynamic scan khi templates > 20 và cần real-time. Phase 1 manifest-based đơn giản và đủ dùng.
 
 ### 4.3 Template Config trong OpenCode Config
 
@@ -817,75 +846,85 @@ sdlc_validate_skill
 
 ---
 
-## 5. Quyết định Kiến trúc: MCP nhẹ ngay Phase 1
+## 5. Quyết định Kiến trúc: MCP qua plugin tools, inline fallback
 
-### 5.1 Tại sao chọn MCP nhẹ ngay Phase 1
+### 5.1 Kiến trúc tổng thể
 
-Sau deep review, quyết định chuyển từ "skills-first, MCP later" → **MCP nhẹ Phase 1** vì:
+Thay vì tách riêng MCP server + mcp.json config, 3 template tools được implement như **plugin tools** trong `mcp-tools.js`:
 
-| Yếu tố | Skills-only (cũ) | MCP nhẹ Phase 1 (mới) |
-|---|---|---|
-| Template path resolution | ❌ Không khả thi — skill không biết package path | ✅ Skill gọi `sdlc_get_template` tool |
-| Template versioning | ❌ Không có | ✅ MCP quản lý version |
-| Template caching | ❌ | ✅ Có thể cache |
-| Complexity | Zero infra | MCP ~200 dòng code |
-| Skill install | Manual copy/symlink | /project-init chạy install |
-| Time-to-ship | 1-2 ngày (kèm path bugs) | ~2 ngày (sạch, đúng) |
+```
+@andy-toolforge/sdlc-workflows/mcp-tools.js
+  → sdlc_get_template({ templateId })
+  → sdlc_list_templates({ standard?, flow? })
+  → sdlc_get_standard({ standardId })
+```
 
-### 5.2 MCP Server Design
+**Cách hoạt động:**
+1. `@andy-toolforge/mcp` auto-discover `mcp-tools.js` khi load plugin tools
+2. 3 tools trở thành MCP tools sẵn có — không cần `.opencode/mcp.json`
+3. Tools đọc templates/ trực tiếp từ package filesystem (runtime path = `__dirname + '/templates/'`)
+4. Installation giảm còn 1 package duy nhất: `@andy-toolforge/sdlc-workflows`
+
+**Inline fallback (khi MCP không available):**
+Mỗi SKILL.md nhúng sẵn **template structure dạng markdown sections** ngay trong skill file:
+```
+## Template (inline fallback)
+
+Nếu không gọi được sdlc_get_template, dùng structure sau:
+
+# <Product Name> PRD
+## 1. Vision
+## 2. Target Users
+...
+```
+Skill dùng inline template làm default, gọi MCP tool để lấy template đầy đủ nếu available.
+
+### 5.2 MCP Tools Design
 
 ```yaml
-name: @andy-toolforge/sdlc-workflows-mcp
-type: template-serving (chưa có template engine)
-language: TypeScript (Bun)
+source: @andy-toolforge/sdlc-workflows/mcp-tools.js
+type: plugin tools (auto-discovered)
+language: JavaScript (CommonJS — phù hợp project convention)
 
 Tools:
   sdlc_get_template:
     input:
       templateId: string    # "prd/agile" | "deploy/itil" | "deploy/sre"
-      version?: string      # Semver range
     output:
       content: string       # Template markdown
-      metadata: { standard, version, updatedAt }
+      metadata: { standard, updatedAt }
 
   sdlc_list_templates:
     input:
-      standard?: string     # "agile" | "ieee" | "iso" | "arc42"
-      flow?: string         # "prd" | "brd" | "arch" | "test-plan" | "deploy"
+      standard?: string     # "agile" | "itil"
+      flow?: string         # "prd" | "deploy"
     output:
-      templates: [{ id, name, standard, version }]
+      templates: [{ id, name, standard, type }]
 
   sdlc_get_standard:
     input:
-      standardId: string    # "ieee-29148" | "iso-29119" | "arc42" | ...
+      standardId: string    # "agile-scrum" | "itil-sre"
     output:
-      sections: string[]    # Required sections for this standard
+      sections: string[]    # Required sections
       guidelines: string    # Reference guide
 ```
 
-**MCP Config** (`.opencode/mcp.json` — tự sinh bởi `/project-init`):
-```json
-{
-  "mcpServers": {
-    "@andy-toolforge/sdlc-workflows": {
-      "command": "npx",
-      "args": ["@andy-toolforge/sdlc-workflows-mcp"],
-      "env": {
-        "SDL_CACHE_DIR": ".opencode/sdlc-cache"
-      }
-    }
-  }
-}
-```
+**Không cần MCP config**. Package chỉ cần `npm install @andy-toolforge/sdlc-workflows` và postinstall.js tự chạy.  
+`@andy-toolforge/mcp` auto-discover tools từ `node_modules/@andy-toolforge/*/mcp-tools.js`.
 
-### 5.3 Template Resolution với MCP
+### 5.3 Template Resolution Order
 
 ```
 Skill cần template "prd/agile"
-  → gọi sdlc_get_template({ templateId: "prd/agile" })
-  → MCP check local override (.opencode/templates/)
-  → MCP fallback tới package templates
-  → return markdown
+  │
+  ├─ 1. local override? (.opencode/templates/<path>)
+  │      └─ Có → dùng file local
+  │
+  ├─ 2. MCP available? (@andy-toolforge/mcp đang chạy)
+  │      └─ Có → gọi sdlc_get_template({ templateId: "prd/agile" })
+  │
+  └─ 3. Inline fallback (SKILL.md có inline sections)
+         └─ Dùng cấu trúc mặc định trong SKILL.md
 ```
 
 ### 5.4 Config Settings
@@ -893,13 +932,13 @@ Skill cần template "prd/agile"
 ```jsonc
 {
   "sdlc": {
-    "templateVersion": "1.0.0",           // Pinned version (MCP validate)
+    "templateVersion": "1.0.0",           // Pinned version (so sánh với manifest)
     "standard": "agile",                   // "agile" | "ieee" | "hybrid"
     "mode": "hybrid",                      // Xem định nghĩa bên dưới
     "docPath": "docs/",                    // Output directory
     "language": "vi",                      // "vi" | "en" | "both"
     "validation": {
-      "crossRef": true,                    // Gọi /sdlc-validate
+      "crossRef": true,                    // Cross-ref check khi output
       "principleCheck": true,
       "versionHistory": true
     },
@@ -909,16 +948,18 @@ Skill cần template "prd/agile"
 ```
 
 **Mode definitions:**
-- `template`: AI nhận template từ MCP, điền nội dung theo sections, output đúng format
+- `template`: AI nhận template từ MCP tool, điền nội dung theo sections, output đúng format
 - `auto`: AI tự generate hoàn toàn từ context + interview (không cần template), dùng khi template quá cứng nhắc
-- `hybrid`: Gọi template từ MCP → AI generate theo template → AI tự do mở rộng thêm sections nếu cần (recommended default)
+- `hybrid`: Gọi template từ MCP tool → AI generate theo template → AI tự do mở rộng thêm sections nếu cần (recommended default)
 
-### 5.5 Kế hoạch mở rộng MCP
+**Version drift detection:** `project-doc-health` so sánh `sdlc.templateVersion` (config) với `installedVersion` (manifest). Nếu mismatch → cảnh báo user update package.
 
-| Phase | Scope | Tính năng MCP |
+### 5.5 Kế hoạch mở rộng
+
+| Phase | Scope | Tính năng MCP tools |
 |---|---|---|
-| **Phase 1** (nay) | 3 templates | `get_template`, `list_templates`, `get_standard` — serving thuần |
-| **Phase 2** | ~10 templates | + `validate_document` (structure check theo standard), version manifest |
+| **Phase 1** (nay) | 5 templates | `get_template`, `list_templates`, `get_standard` — serving thuần + inline fallback |
+| **Phase 2** | ~10 templates | + `validate_document` (structure check theo standard), manifest version check |
 | **Phase 3** | >15 templates | + Template engine (variables, sections, conditionals), centralized version mgmt |
 
 ---
@@ -929,21 +970,20 @@ Skill cần template "prd/agile"
 
 | Task | Người thực hiện | Ước lượng |
 |---|---|---|
-| **Package**: `@andy-toolforge/sdlc-workflows` struct + `postinstall.js` (dùng `installSkills()`) | Toolforge | 1 giờ |
-| **MCP Server**: `@andy-toolforge/sdlc-workflows-mcp` — 3 tools serve template + standard reference (manifest auto-gen từ directory scan, không cần index.json tay) | Toolforge | 4-6 giờ |
-| **Templates**: agile-scrum.md, agile-prd.md (Agile-only Phase 1, IEEE reference notes trong SKILL.md) | Toolforge | 2 giờ |
-| **Skill**: `project-init/SKILL.md` — quick mode | Toolforge | 3 giờ |
-| **Skill**: `project-init/SKILL.md` — detailed mode (+ postinstall skill install) | Toolforge | 3 giờ |
+| **Package**: `@andy-toolforge/sdlc-workflows` struct + `postinstall.js` (dùng `installSkills()`) + version manifest | Toolforge | 1.5 giờ |
+| **MCP tools**: `mcp-tools.js` — 3 tools (`sdlc_get_template`, `sdlc_list_templates`, `sdlc_get_standard`) serve template + standard reference, đọc templates/ từ filesystem, inline fallback | Toolforge | 3 giờ |
+| **Templates**: agile-scrum.md, agile-prd.md, itil-sre.md, itil-runbook.md, sre-runbook.md (Agile-only Phase 1, IEEE reference notes trong SKILL.md) | Toolforge | 2.5 giờ |
+| **Skill**: `project-init/SKILL.md` — quick + detailed mode (+ postinstall skill install) | Toolforge | 4 giờ |
 | **Skill**: `project-onboard/SKILL.md` — discovery-based onboard cho existing projects | Toolforge | 4 giờ |
-| **Skill**: `project-doc-health/SKILL.md` — scan docs, check frontmatter, cross-ref health | Toolforge | 2 giờ |
+| **Skill**: `project-doc-health/SKILL.md` — scan docs, check frontmatter, cross-ref health, version drift check | Toolforge | 2.5 giờ |
 | **Skill**: `sdlc-prd/SKILL.md` — Agile PRD (lightweight cross-ref validation built-in) | Toolforge | 3 giờ |
 | **Skill**: `sdlc-deploy/SKILL.md` — ITIL + SRE | Toolforge | 3 giờ |
 | **Skill**: `sdlc-plan/SKILL.md` — Spec→implementation bridge (+ cross-doc satisfaction score) | Toolforge | 3 giờ |
 | **Skill**: `sdlc-retro/SKILL.md` — Retrospective + lessons learned | Toolforge | 2 giờ |
-| **Learn phase**: Thêm optional Learn step vào workflow template (tất cả skills) | Toolforge | 1 giờ |
+| **Learn phase**: Thêm optional Learn step vào workflow template (tất cả skills) + inline template fallback | Toolforge | 1.5 giờ |
 | **Test cases**: YAML test case cho mỗi skill (tay, chưa tự động) | Toolforge | 2 giờ |
 
-**Tổng Phase 1**: ~33 giờ (4 days)
+**Tổng Phase 1**: ~32 giờ (4 days)
 
 ### Phase 2: Expansion (within 2 weeks)
 
@@ -974,43 +1014,37 @@ Skill cần template "prd/agile"
 #### Immediate (Phase 1):
 
 ```
-packages/
-├── sdlc-workflows/                     # @andy-toolforge/sdlc-workflows
-│   ├── package.json                    [TASK-001]
-│   ├── index.js                        # Exports (nếu cần)
-│   ├── postinstall.js                  [TASK-001] — dùng installSkills()
-│   └── skills/
-│       ├── project-init/SKILL.md       [TASK-002]
-│       ├── project-onboard/SKILL.md    [TASK-003]
-│       ├── project-doc-health/SKILL.md [TASK-004]
-│       ├── sdlc-prd/SKILL.md           [TASK-005]
-│       ├── sdlc-plan/SKILL.md          [TASK-006]
-│       ├── sdlc-retro/SKILL.md         [TASK-007]
-│       └── sdlc-deploy/SKILL.md        [TASK-008]
-│           └── test/                   # Test cases cho mỗi skill
-│               ├── basic-prd.yaml
-│               └── basic-deploy.yaml
-│
-│   Lessons directory (runtime, tạo bởi skill khi chạy):
-│   .opencode/lessons/
-│       └── <project>-retro-*.md
-│
-└── sdlc-workflows-mcp/                 # @andy-toolforge/sdlc-workflows-mcp
-    ├── package.json                    [TASK-009]
-    ├── index.ts                        # MCP server entry
-    ├── tools/
-    │   ├── get_template.ts             # Đọc từ templates/, không cần index.json
-    │   ├── list_templates.ts           # Auto-scan từ directory glob
-    │   └── get_standard.ts
-    └── templates/
-        ├── standards/
-        │   ├── agile-scrum.md          [TASK-010]
-        │   └── itil-sre.md
-        └── flows/
-            ├── prd/agile-prd.md        [TASK-010]
-            └── deploy/
-                ├── itil-runbook.md     [TASK-010]
-                └── sre-runbook.md
+packages/sdlc-workflows/                    # @andy-toolforge/sdlc-workflows (single package)
+├── package.json                            [TASK-001]
+├── index.js                                # Exports (nếu cần sau này)
+├── mcp-tools.js                            [TASK-002] — 3 plugin tools
+├── postinstall.js                          [TASK-001] — installSkills() + sinh manifest
+├── lib/                                    # Code thật (trống Phase 1)
+├── skills/
+│   ├── project-init/SKILL.md              [TASK-003]
+│   ├── project-onboard/SKILL.md           [TASK-004]
+│   ├── project-doc-health/SKILL.md        [TASK-005]
+│   ├── sdlc-prd/SKILL.md                  [TASK-006]
+│   ├── sdlc-plan/SKILL.md                 [TASK-007]
+│   ├── sdlc-retro/SKILL.md                [TASK-008]
+│   └── sdlc-deploy/SKILL.md               [TASK-009]
+├── templates/                              [TASK-010]
+│   ├── standards/
+│   │   ├── agile-scrum.md
+│   │   └── itil-sre.md
+│   └── flows/
+│       ├── prd/agile-prd.md
+│       └── deploy/
+│           ├── itil-runbook.md
+│           └── sre-runbook.md
+└── test/                                   [TASK-011] — YAML test cases
+    ├── basic-init.yaml
+    ├── basic-prd.yaml
+    └── basic-deploy.yaml
+
+Lessons directory (runtime, tạo bởi skill khi chạy):
+.opencode/lessons/
+    └── <project>-retro-*.md
 ```
 
 ### 7.2 SKILL.md Structure Template
@@ -1040,7 +1074,9 @@ Hoặc chạy: `/<command-name>`
 2. **Interview**: <các câu hỏi để gather context>
 3. **Auto-detect**: Nếu file output đã tồn tại → hỏi "update (v<N+1>) hay tạo mới?"
 4. **Grounding**: <codebase scan để lấy context thực tế>
-5. **Get template**: Gọi `sdlc_get_template({ templateId })` qua MCP
+5. **Get template**: Gọi `sdlc_get_template({ templateId })` qua MCP tool
+   - Nếu MCP không available → dùng **inline template sections** trong SKILL.md
+   - Nếu có local override ở `.opencode/templates/` → dùng local file
 6. **Draft**: <viết document theo template>
 7. **Validate**: <kiểm tra principles, format, YAML frontmatter>
 8. **Output**: Ghi file + `git add` + `git commit` (nếu có git)
