@@ -697,9 +697,12 @@ packages/sdlc-workflows/                    # @andy-toolforge/sdlc-workflows (si
 ├── index.js                               # Exports (nếu cần sau này)
 ├── mcp-tools.js                           # Plugin tools — auto-discover bởi @andy-toolforge/mcp
 │                                          # Tools: sdlc_get_template, sdlc_list_templates, sdlc_get_standard
-├── postinstall.js                         # installSkills() + sinh version manifest
+├── postinstall.js                         # installSkills() + copy templates + sinh version manifest
 │                                          # Signature: installSkills({ domain: 'sdlc-workflows', sourceDir: path.join(__dirname, 'skills') })
 │                                          # Symlinks .md files → .opencode/skills/sdlc-workflows-<filename>.md
+│                                          # Copy templates: COPY-IF-NOT-EXISTS (additive merge) — không overwrite user's local edits
+│                                          # Manifest: overwrite mỗi lần (metadata luôn fresh)
+│                                          # Phiên bản mới: user chạy `npm update` → manifest version bump → project-doc-health detect drift
 ├── lib/                                   # Code thật (nếu cần — trống Phase 1)
 ├── skills/
 │   ├── project-init/
@@ -752,7 +755,14 @@ packages/sdlc-workflows/                    # @andy-toolforge/sdlc-workflows (si
 ```
 
 **`sdlc_list_templates` tool** đọc manifest này (không glob).  
-Thêm template mới → cần chạy `postinstall.js` lại (hoặc `npm update`).  
+Thêm template mới → cần chạy `postinstall.js` lại (hoặc `npm update`).
+
+**Copy strategy — Additive merge:**
+- `postinstall.js` copy templates từ `packages/sdlc-workflows/templates/` vào `.opencode/templates/sdlc-workflows/`
+- **COPY-IF-NOT-EXISTS:** Chỉ copy nếu file đích chưa tồn tại. Nếu user đã modify template ở local override → không overwrite.
+- Manifest luôn **regenerate** (overwrite) — metadata không phải user content.
+- **Để restore fresh templates:** `rm -rf .opencode/templates/sdlc-workflows/ && npm install`
+- **Khi package update:** `npm update` → manifest version bump → `project-doc-health` detect drift → user quyết định có sync lại templates không.  
 
 **Version drift detection:** `project-doc-health` so sánh `installedVersion` trong manifest với config's `sdlc.templateVersion`. Nếu mismatch → cảnh báo.
 
@@ -883,15 +893,30 @@ Thay vì tách riêng MCP server + mcp.json config, 3 template tools được im
 4. Installation giảm còn 1 package duy nhất: `@andy-toolforge/sdlc-workflows`
 
 **Inline fallback (khi MCP không available):**
-Mỗi SKILL.md nhúng sẵn **template structure dạng markdown sections** ngay trong skill file:
+Mỗi SKILL.md nhúng sẵn **inline template structure** ngay trong skill file. Inline template là phiên bản **minimal** — chỉ có section headers + 1-2 câu mô tả mỗi section. Đủ để AI agent tạo ra document có cấu trúc khi không có MCP tools.
+
+**Scope của "minimal" inline template:**
+| Thuộc tính | Inline (SKILL.md) | Standalone (templates/) |
+|---|---|---|
+| Nội dung | Section headers + 1-2 câu mô tả mỗi section | Full template: example text, formatting instructions, placeholders có mô tả |
+| Dùng khi | MCP tool `sdlc_get_template` unavailable | MCP tool available (ưu tiên), hoặc user muốn template chi tiết |
+| Maintenance | Thay đổi khi skill workflow thay đổi | Thay đổi template độc lập với skill logic |
+| Fallback | Là chính nó | Nếu unavailable → AI fallback về inline |
+
 ```
 ## Template (inline fallback)
 
 Nếu không gọi được sdlc_get_template, dùng structure sau:
 
 # <Product Name> PRD
+
+> **Section mô tả:** 3-5 câu per section, tập trung vào mục đích của section đó, AI tự suy luận nội dung.
+
 ## 1. Vision
+Mô tả tầm nhìn sản phẩm — problem space, target outcome, business alignment.
+
 ## 2. Target Users
+User segments, personas, use cases. Ai là người dùng chính? Họ cần gì?
 ...
 ```
 Skill dùng inline template làm default, gọi MCP tool để lấy template đầy đủ nếu available.
