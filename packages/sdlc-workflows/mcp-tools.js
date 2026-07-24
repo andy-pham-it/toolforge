@@ -106,9 +106,10 @@ function scanMdFiles(dir) {
 
 async function listTemplatesHandler(_llm, args) {
     const { category } = args || {};
+    const cat = category || 'all';  // default to 'all' when not specified
 
-    const flows = category === 'all' || category === 'flows' ? scanMdFiles(FLOWS_DIR) : [];
-    const standards = category === 'all' || category === 'standards' ? scanMdFiles(STANDARDS_DIR) : [];
+    const flows = cat === 'all' || cat === 'flows' ? scanMdFiles(FLOWS_DIR) : [];
+    const standards = cat === 'all' || cat === 'standards' ? scanMdFiles(STANDARDS_DIR) : [];
 
     return {
         templates: { flows, standards },

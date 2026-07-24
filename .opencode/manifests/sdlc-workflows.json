@@ -1,6 +1,37 @@
 {
   "package": "@andy-toolforge/sdlc-workflows",
   "installedVersion": "0.1.0",
-  "installedAt": "2026-07-24T05:24:45.657Z",
-  "templates": []
+  "installedAt": "2026-07-24T05:33:46.987Z",
+  "templates": [
+    {
+      "id": "flows/deploy/itil-runbook",
+      "name": "itil-runbook",
+      "standard": "itil",
+      "type": "flow"
+    },
+    {
+      "id": "flows/deploy/sre-runbook",
+      "name": "sre-runbook",
+      "standard": "itil",
+      "type": "flow"
+    },
+    {
+      "id": "flows/prd/agile-prd",
+      "name": "agile-prd",
+      "standard": "agile",
+      "type": "flow"
+    },
+    {
+      "id": "standards/agile-scrum",
+      "name": "agile-scrum",
+      "standard": "agile",
+      "type": "standard"
+    },
+    {
+      "id": "standards/itil-sre",
+      "name": "itil-sre",
+      "standard": "itil",
+      "type": "standard"
+    }
+  ]
 }
