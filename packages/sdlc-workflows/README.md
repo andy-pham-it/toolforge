@@ -324,6 +324,7 @@ Run `npm install @andy-toolforge/sdlc-workflows` again to sync.
 
 | Version | Date | Highlights |
 |---------|------|------------|
+| 0.4.0 | 2026-07-24 | Comprehensive setup & migration guide |
 | 0.3.0 | 2026-07-24 | Template engine, version registry, skill search, glob scan, CI |
 | 0.2.0 | 2026-07-23 | 8 MCP tools, 10 templates, 10 skills, document validation |
 | 0.1.0 | 2026-07-22 | Initial release — basic skill files + templates |
