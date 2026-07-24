@@ -1,0 +1,18 @@
+name: "Cross-doc validation — basic"
+input:
+  mockAnswers:
+    - q: "Documents to validate?"
+      a: "docs/prd-elearning-v1.0.0.md, docs/brd-elearning-v1.0.0.md"
+    - q: "Standards?"
+      a: "agile, ieee-29148"
+  templateId: null
+expectedOutput:
+  hasFrontmatter: false
+  requiredSections:
+    - "## Summary"
+    - "## Cross-ref Issues"
+    - "## Recommendations"
+  mustNotContain:
+    - "[TBD]"
+    - "TODO"
+  crossRefValid: false

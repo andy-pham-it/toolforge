@@ -1,0 +1,20 @@
+name: "BRD — business requirements basic"
+input:
+  mockAnswers:
+    - q: "Business context?"
+      a: "Nền tảng e-learning cho kỹ năng công nghệ"
+    - q: "Key stakeholders?"
+      a: "Founder, content team, learners, investors"
+    - q: "Top 3 business requirements?"
+      a: "1. Course management system, 2. Payment integration, 3. Learning analytics"
+  templateId: "brd/ieee-29148"
+expectedOutput:
+  hasFrontmatter: true
+  requiredSections:
+    - "## 1. Business Context"
+    - "## 3. Business Requirements"
+    - "## 4. Use Cases"
+  mustNotContain:
+    - "[TBD]"
+    - "TODO"
+  crossRefValid: false

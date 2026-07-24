@@ -1,0 +1,20 @@
+name: "Architecture — basic system"
+input:
+  mockAnswers:
+    - q: "System purpose?"
+      a: "Nền tảng quản lý khóa học online"
+    - q: "Tech stack?"
+      a: "Next.js, PostgreSQL, Redis, AWS"
+    - q: "Key architectural decisions?"
+      a: "Microservices, event-driven, serverless deployment"
+  templateId: "arch/arc42"
+expectedOutput:
+  hasFrontmatter: true
+  requiredSections:
+    - "## 1. Introduction & Goals"
+    - "## 5. Building Block View"
+    - "## 9. Architecture Decisions"
+  mustNotContain:
+    - "[TBD]"
+    - "TODO"
+  crossRefValid: false

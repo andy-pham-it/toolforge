@@ -1,0 +1,20 @@
+name: "Test Plan — basic project"
+input:
+  mockAnswers:
+    - q: "Project scope?"
+      a: "E-learning platform MVP — course management, payment, user auth"
+    - q: "Test levels?"
+      a: "Unit (Jest), Integration (Supertest), E2E (Playwright)"
+    - q: "Environment?"
+      a: "Staging on Vercel + Railway, local Docker"
+  templateId: "test-plan/iso-29119"
+expectedOutput:
+  hasFrontmatter: true
+  requiredSections:
+    - "## 3. Test Strategy"
+    - "## 4. Test Environment"
+    - "## 9. Risks & Mitigation"
+  mustNotContain:
+    - "[TBD]"
+    - "TODO"
+  crossRefValid: false
