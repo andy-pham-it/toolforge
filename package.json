@@ -19,6 +19,7 @@
     "packages/vn-stock",
     "packages/llm-gateway",
     "packages/authoring",
-    "packages/llm-gateway-core"
+    "packages/llm-gateway-core",
+    "packages/sdlc-workflows"
   ]
 }
