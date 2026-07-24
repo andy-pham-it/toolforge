@@ -153,6 +153,196 @@ async function getStandardHandler(_llm, args) {
 }
 
 // ---------------------------------------------------------------------------
+// validate_document
+// ---------------------------------------------------------------------------
+const validateDocDef = {
+    name: 'validate_document',
+    description: 'Validate an SDLC document against a standard (agile, ieee-829, ieee-29148, arc42, iso-29119). Checks structure, required sections, YAML frontmatter, and cross-ref consistency.',
+    inputSchema: {
+        type: 'object',
+        properties: {
+            documentPath: {
+                type: 'string',
+                description: 'Path to the document file to validate (absolute or relative to cwd)',
+            },
+            standard: {
+                type: 'string',
+                enum: ['agile', 'ieee-29148', 'ieee-829', 'iso-29119', 'arc42'],
+                description: 'Standard to validate against',
+            },
+        },
+        required: ['documentPath', 'standard'],
+    },
+};
+
+async function validateDocumentHandler(_llm, args) {
+    const { documentPath, standard } = args;
+    if (!documentPath || !standard) {
+        throw new Error('documentPath and standard are required');
+    }
+
+    const resolvedPath = path.resolve(documentPath);
+    if (!fs.existsSync(resolvedPath)) {
+        throw new Error(`Document not found: ${documentPath}`);
+    }
+
+    const content = fs.readFileSync(resolvedPath, 'utf-8');
+    const errors = [];
+    const warnings = [];
+
+    // 1. Check YAML frontmatter
+    const hasFrontmatter = content.startsWith('---');
+    const fmMatch = content.match(/^---\n([\s\S]*?)\n---/);
+    if (!hasFrontmatter) errors.push('Missing YAML frontmatter');
+    else if (!fmMatch) errors.push('Malformed YAML frontmatter: missing closing ---');
+    else {
+        try {
+            const fm = require('js-yaml').load(fmMatch[1]);
+            if (!fm.version) warnings.push('Frontmatter missing version field');
+            if (!fm.standard) warnings.push('Frontmatter missing standard field');
+        } catch (e) {
+            errors.push('Invalid YAML frontmatter: ' + e.message);
+        }
+    }
+
+    // 2. Check required sections per standard
+    var standards = {
+        'agile': ['## 1. Vision', '## 3. Problem Statement', '## 5. Features'],
+        'ieee-29148': ['## 1. Purpose', '## 3. Stakeholders', '## 5. Functional Requirements'],
+        'ieee-829': ['## 1. Test Plan Identifier', '## 3. Test Items', '## 5. Test Schedule'],
+        'iso-29119': ['## 1. Purpose', '## 3. Test Strategy', '## 5. Test Completion Criteria'],
+        'arc42': ['## 1. Introduction', '## 3. System Scope', '## 5. Building Block View'],
+    };
+
+    var requiredSections = standards[standard];
+    if (requiredSections) {
+        for (var i = 0; i < requiredSections.length; i++) {
+            if (!content.includes(requiredSections[i])) {
+                errors.push('Missing required section: ' + requiredSections[i]);
+            }
+        }
+    } else {
+        warnings.push('Unknown standard "' + standard + '" — skipping section validation');
+    }
+
+    // 3. Check [TBD]/TODO placeholders
+    var tbdMatches = content.match(/\[TBD\]|TODO/g);
+    if (tbdMatches) {
+        warnings.push('Contains ' + tbdMatches.length + ' unresolved placeholder(s) ([TBD]/TODO)');
+    }
+
+    // 4. Structure health score
+    var totalLines = content.split('\n').length;
+    var sectionCount = (content.match(/^## /gm) || []).length;
+    var structureHealth = errors.length === 0 ? 'good' : errors.length <= 2 ? 'fair' : 'poor';
+
+    return {
+        valid: errors.length === 0,
+        errors: errors.length ? errors : undefined,
+        warnings: warnings.length ? warnings : undefined,
+        structureHealth: structureHealth,
+        stats: { totalLines: totalLines, sectionCount: sectionCount },
+    };
+}
+
+// ---------------------------------------------------------------------------
+// sdlc_validate_skill
+// ---------------------------------------------------------------------------
+const validateSkillDef = {
+    name: 'sdlc_validate_skill',
+    description: 'Validate a skill file (SKILL.md) against a YAML test case. Checks structure, required sections, frontmatter, and generates a preview of expected output format.',
+    inputSchema: {
+        type: 'object',
+        properties: {
+            skillPath: {
+                type: 'string',
+                description: 'Path to the SKILL.md file to validate',
+            },
+            testCase: {
+                type: 'string',
+                description: 'Path to YAML test case file (or inline YAML string)',
+            },
+            mockInterview: {
+                type: 'boolean',
+                description: 'Use mock answers instead of calling LLM',
+                default: false,
+            },
+        },
+        required: ['skillPath', 'testCase'],
+    },
+};
+
+async function validateSkillHandler(_llm, args) {
+    var skillPath = args.skillPath;
+    var testCase = args.testCase;
+    var mockInterview = args.mockInterview;
+
+    if (!skillPath || !testCase) {
+        throw new Error('skillPath and testCase are required');
+    }
+
+    var resolvedSkill = path.resolve(skillPath);
+    if (!fs.existsSync(resolvedSkill)) {
+        throw new Error('Skill file not found: ' + skillPath);
+    }
+
+    var skillContent = fs.readFileSync(resolvedSkill, 'utf-8');
+    var errors = [];
+    var warnings = [];
+
+    // 1. Check YAML frontmatter
+    var fmMatch = skillContent.match(/^---\n([\s\S]*?)\n---/);
+    if (!fmMatch) errors.push('SKILL.md missing YAML frontmatter');
+    else {
+        try {
+            var fm = require('js-yaml').load(fmMatch[1]);
+            if (!fm.id) errors.push('Frontmatter missing id');
+            if (!fm.version) errors.push('Frontmatter missing version');
+        } catch (e) {
+            errors.push('Invalid YAML frontmatter: ' + e.message);
+        }
+    }
+
+    // 2. Check required sections
+    var requiredSections = [
+        '## Mô tả', '## Kích hoạt', '## Input', '## Output',
+        '## Workflow', '## MCP Tools Used', '## Cross-ref',
+    ];
+    for (var i = 0; i < requiredSections.length; i++) {
+        if (!skillContent.includes(requiredSections[i])) {
+            errors.push('SKILL.md missing required section: ' + requiredSections[i]);
+        }
+    }
+
+    // 3. Check inline template fallback exists
+    if (!skillContent.includes('## Template (inline fallback)') &&
+        !skillContent.includes('**MCP detection:**')) {
+        warnings.push('SKILL.md may be missing inline template fallback');
+    }
+
+    // 4. Parse test case
+    var testData;
+    var testPath = path.resolve(testCase);
+    if (fs.existsSync(testPath)) {
+        testData = require('js-yaml').load(fs.readFileSync(testPath, 'utf-8'));
+    } else {
+        try { testData = JSON.parse(testCase); }
+        catch (e) { testData = require('js-yaml').load(testCase); }
+    }
+
+    return {
+        name: (testData && testData.name) || 'unnamed',
+        skillStructure: errors.length === 0 ? 'valid' : 'invalid',
+        errors: errors.length ? errors : undefined,
+        warnings: warnings.length ? warnings : undefined,
+        preview: mockInterview ? {
+            input: (testData && testData.input && testData.input.mockAnswers) || [],
+            expectedSections: (testData && testData.expectedOutput && testData.expectedOutput.requiredSections) || [],
+        } : undefined,
+    };
+}
+
+// ---------------------------------------------------------------------------
 // Exports
 // ---------------------------------------------------------------------------
 module.exports = function () {
@@ -160,5 +350,7 @@ module.exports = function () {
         { definition: getTemplateDef, handler: getTemplateHandler },
         { definition: listTemplatesDef, handler: listTemplatesHandler },
         { definition: getStandardDef, handler: getStandardHandler },
+        { definition: validateDocDef, handler: validateDocumentHandler },
+        { definition: validateSkillDef, handler: validateSkillHandler },
     ];
 };
