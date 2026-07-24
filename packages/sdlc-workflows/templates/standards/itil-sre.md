@@ -1,5 +1,8 @@
+---
 standard: itil-sre
 version: 1.0.0
+type: reference
+---
 
 # ITIL & SRE Reference
 

@@ -1,32 +1,46 @@
+---
 standard: sre
 version: 1.0.0
-
+variables:
+  - serviceName
+  - serviceOverview
+  - slis
+  - errorBudget
+  - deployment
+  - rollback
+  - monitoring
+  - incidentManagement
+  - capacity
+  - security
 ---
-# SRE Runbook: <Service Name>
+
+# SRE Runbook: {{ serviceName | default("<Service Name>") }}
 
 ## 1. Service Overview
-*Purpose, owner, stakeholders, SLO targets*
+{{ serviceOverview | default("*Purpose, owner, stakeholders, SLO targets*") }}
 
 ## 2. SLIs & SLOs
-*Service Level Indicators and Objectives*
+{{ slis | default("*Service Level Indicators and Objectives*") }}
 
 ## 3. Error Budget
-*Current budget status, consumption rate*
+{{ errorBudget | default("*Current budget status, consumption rate*") }}
 
 ## 4. Deployment Pipeline
-*CI/CD, environments, rollout automation*
+{{ deployment | default("*CI/CD, environments, rollout automation*") }}
 
 ## 5. Rollback Procedure
-*Automated rollback triggers, manual steps*
+{{ rollback | default("*Automated rollback triggers, manual steps*") }}
 
 ## 6. Monitoring & Alerting
-*Dashboard links, alert rules, on-call rotation*
+{{ monitoring | default("*Dashboard links, alert rules, on-call rotation*") }}
 
 ## 7. Incident Management
-*Severity definitions, escalation, postmortem process*
+{{ incidentManagement | default("*Severity definitions, escalation, postmortem process*") }}
 
 ## 8. Capacity Planning
-*Load metrics, growth projection, scaling triggers*
+{{ capacity | default("*Load metrics, growth projection, scaling triggers*") }}
 
 ## 9. Security & Compliance
-*Access control, audit trail, data classification*
+{{ security | default("*Access control, audit trail, data classification*") }}
+
+{% include "_footer" %}

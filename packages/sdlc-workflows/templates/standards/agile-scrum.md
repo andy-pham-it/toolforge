@@ -1,34 +1,38 @@
-standard: agile
+---
+standard: agile-scrum
 version: 1.0.0
+type: reference
+---
 
-# Agile Scrum Reference
+# Agile & Scrum Reference
 
-> **Phase 1 reference notes.** Full IEEE/IEC/ISO alignment targeted for Phase 2.
+> **Phase 1 reference notes.** Scrum Guide aligned.
 
-## Required Document Sections (Agile PRD)
+## Scrum Roles
 
-1. **Vision** — Product vision statement (1-2 sentences)
-2. **Target Audience** — User personas, segments
-3. **Problem Statement** — Current pain points, root cause
-4. **Success Metrics** — KPIs, OKRs, leading indicators
-5. **Epics & Features** — High-level capabilities (Epic → Feature breakdown)
-6. **User Stories** — Acceptance criteria per story
-7. **Release Criteria** — Definition of Done (DoD)
-8. **Risks & Dependencies** — Known blockers, external dependencies
-9. **Open Questions** — Items requiring further discovery
+1. **Product Owner** — Owns backlog, prioritizes work, represents stakeholders
+2. **Scrum Master** — Facilitates process, removes impediments, coaches team
+3. **Development Team** — Cross-functional, self-organizing, delivers increments
 
-## Agile Principles Applied
+## Scrum Events
 
-- Individuals and interactions over processes and tools
-- Working software over comprehensive documentation
-- Customer collaboration over contract negotiation
-- Responding to change over following a plan
+| Event | Timebox | Purpose |
+|---|---|---|
+| Sprint | 1-4 weeks | Deliver a potentially releasable increment |
+| Sprint Planning | Max 8h (4-week sprint) | Define sprint goal + backlog items |
+| Daily Scrum | 15 min | Inspect progress, adapt plan |
+| Sprint Review | Max 4h (4-week sprint) | Inspect increment, update backlog |
+| Sprint Retrospective | Max 3h (4-week sprint) | Inspect process, plan improvements |
 
-## Definition of Done Checklist
+## Scrum Artifacts
 
-- [ ] Code reviewed (at least 1 approval)
-- [ ] Unit tests passing
-- [ ] Integration tests passing
-- [ ] Documentation updated
-- [ ] Acceptance criteria met
-- [ ] No P0/P1 bugs
+- **Product Backlog**: Ordered list of everything needed in the product
+- **Sprint Backlog**: Items selected for sprint + plan to deliver them
+- **Increment**: Sum of all completed items meeting definition of done
+
+## Agile Principles
+
+1. Individuals and interactions over processes and tools
+2. Working software over comprehensive documentation
+3. Customer collaboration over contract negotiation
+4. Responding to change over following a plan

@@ -108,16 +108,19 @@ function renderTemplate(template, context, partials) {
   });
 
   // 2. Process {% for item in list %}...{% endfor %}
-  const forRe = /\{%\s*for\s+(\w[\w-]*)\s+in\s+(\w[\w-]*)\s*%\}([\s\S]*?)\{%\s*endfor\s*%\}/g;
-  result = result.replace(forRe, (_match, itemVar, listVar, body) => {
-    const list = resolveValue(context, listVar);
-    if (!Array.isArray(list) || list.length === 0) return '';
+  const forRe = /\{%\s*for\s+(\w[\w-]*)\s+in\s+(\w[\w-]*)\s*%\}([\s\S]*?)\{%\s*endfor\s*%\}/;
+  while (forRe.test(result)) {
+    result = result.replace(forRe, (_match, itemVar, listVar, body) => {
+      const list = resolveValue(context, listVar);
+      if (!Array.isArray(list) || list.length === 0) return '';
 
-    return list.map(item => {
-      const itemContext = Object.assign({}, context, { [itemVar]: item });
-      return renderTemplate(body, itemContext, partials);
-    }).join('');
-  });
+      return list.map((item, idx) => {
+        const loopContext = { index: idx + 1 };
+        const itemContext = Object.assign({}, context, { [itemVar]: item, loop: loopContext });
+        return renderTemplate(body, itemContext, partials);
+      }).join('');
+    });
+  }
 
   // 3. Process {% if var %}...{% else %}...{% endif %}
   const ifElseRe = /\{%\s*if\s+(\w[\w-]*)\s*%\}([\s\S]*?)\{%\s*else\s*%\}([\s\S]*?)\{%\s*endif\s*%\}/g;
