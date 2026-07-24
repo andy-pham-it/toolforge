@@ -1,8 +1,8 @@
 # SDLC Agent Flows — Design Document
 
 > Bản quyền thuộc @andy-toolforge
-> Trạng thái: **Refined** | Phiên bản: v2.5 | Ngày: 2026-07-24
-> Cập nhật: Fixes v2.5 — verify installSkills() signature, require.resolve fallback cho __dirname, try-catch MCP availability, satisfaction score confidence field, path resolution order clarified.
+> Trạng thái: **Refined** | Phiên bản: v3.0 | Ngày: 2026-07-24
+> Cập nhật: v3.0 — Phase 3 ✅ completed (template engine, version registry, skill discovery, glob scan, CI).
 
 > [!NOTE] **Design Decisions (v2.5)**
 > 1. **Package structure** (Issue A/D): Giữ 1 package `@andy-toolforge/sdlc-workflows` thay vì tách riêng MCP server. MCP tools là plugin tools (`mcp-tools.js`), auto-discovered bởi `@andy-toolforge/mcp`. Lý do: giảm config complexity cho end-user (1 `npm install` thay 2), template đọc từ `__dirname + '/templates/'`. **Verified:** `__dirname` hoạt động đúng khi MCP load plugin tools qua `require(mcpToolsPath)`. Fallback: `require.resolve('@andy-toolforge/sdlc-workflows/mcp-tools.js')` nếu path sai.
@@ -1041,11 +1041,20 @@ Skill cần template "prd/agile"
 
 **Tổng Phase 2**: ~26-30 giờ — ✅ Completed
 
-### Phase 3: MCP Engine (when >15-20 templates)
+### Phase 3: MCP Engine ✅ Completed
 
-- Template engine: variables interpolation, conditional sections, reusable blocks
-- Centralized version management
-- Skill discovery improvement
+| Task | Status | Ước lượng |
+|---|---|---|
+| Template engine (`lib/template-engine.js`) — variables `{{var}}`, `|default()`, conditionals `{% if %}`, loops `{% for %}`, includes `{% include %}` | ✅ Done | 8 giờ |
+| Version registry (`lib/version-registry.js`) — `checkManifest`, `diffTemplates`, `sdlc_check_version` MCP tool | ✅ Done | 4 giờ |
+| Skill discovery (`lib/skill-index.js`) — `buildIndex`, `searchSkills`, `sdlc_search_skills` MCP tool + keywords in all 11 skills | ✅ Done | 4 giờ |
+| MCP integration — `sdlc_render_template` tool, context-aware `sdlc_get_template` | ✅ Done | 3 giờ |
+| Template migration — all 10 templates to `{{var}}` syntax + YAML frontmatter + `{% include %}` partials | ✅ Done | 6 giờ |
+| Glob-based dynamic template scan — `globSync` replaces manual `readdirSync` recursion | ✅ Done | 2 giờ |
+| CI integration — `.github/workflows/sdlc-tests.yml` runs tests on PR | ✅ Done | 1 giờ |
+| Version bump 0.2.0→0.3.0 + design doc update | ✅ Done | 0.5 giờ |
+
+**Tổng Phase 3**: ~28.5 giờ — ✅ Completed
 
 ---
 

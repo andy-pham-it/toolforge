@@ -1,6 +1,6 @@
 {
   "name": "@andy-toolforge/sdlc-workflows",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": false,
   "description": "SDLC Agent Flows — skill files + MCP plugin tools for AI-driven SDLC document generation",
   "main": "index.js",
