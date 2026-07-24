@@ -13,11 +13,19 @@
 const fs = require('fs');
 const path = require('path');
 const { checkManifest } = require('./lib/version-registry');
+const { buildIndex, searchSkills } = require('./lib/skill-index');
 const pkg = require('./package.json');
 
 const TEMPLATES_DIR = path.join(__dirname, 'templates');
 const FLOWS_DIR = path.join(TEMPLATES_DIR, 'flows');
 const STANDARDS_DIR = path.join(TEMPLATES_DIR, 'standards');
+const SKILLS_DIR = path.join(__dirname, 'skills');
+
+let _skillIndex = null;
+function getSkillIndex() {
+  if (!_skillIndex) _skillIndex = buildIndex(SKILLS_DIR);
+  return _skillIndex;
+}
 
 // ---------------------------------------------------------------------------
 // sdlc_get_template
@@ -368,6 +376,40 @@ async function checkVersionHandler(_llm, args) {
 }
 
 // ---------------------------------------------------------------------------
+// sdlc_search_skills
+// ---------------------------------------------------------------------------
+const searchSkillsDef = {
+    name: 'sdlc_search_skills',
+    description: 'Search SDLC skills by keywords, triggers, or description. Returns matched skills with relevance scores.',
+    inputSchema: {
+        type: 'object',
+        properties: {
+            query: { type: 'string', description: 'Natural language search query' },
+            limit: { type: 'number', description: 'Max results (default: 10)', default: 10 },
+        },
+        required: ['query'],
+    },
+};
+
+async function searchSkillsHandler(_llm, args) {
+    const { query, limit } = args;
+    if (!query) throw new Error('query is required');
+    const index = getSkillIndex();
+    const results = searchSkills(index, query, { limit: limit || 10 });
+    return {
+        query,
+        totalResults: results.length,
+        results: results.map(r => ({
+            id: r.skill.id,
+            name: r.skill.name,
+            score: r.score,
+            description: r.skill.description,
+            triggers: r.skill.triggers,
+        })),
+    };
+}
+
+// ---------------------------------------------------------------------------
 // Exports
 // ---------------------------------------------------------------------------
 module.exports = function () {
@@ -378,5 +420,6 @@ module.exports = function () {
         { definition: validateDocDef, handler: validateDocumentHandler },
         { definition: validateSkillDef, handler: validateSkillHandler },
         { definition: checkVersionDef, handler: checkVersionHandler },
+        { definition: searchSkillsDef, handler: searchSkillsHandler },
     ];
 };

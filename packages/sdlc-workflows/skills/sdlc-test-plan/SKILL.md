@@ -59,6 +59,9 @@ Hoặc chạy: `/sdlc-test-plan`
 - Test items phải traceable đến features trong PRD
 - Risks phải được prioritize (Impact × Probability)
 
+## Keywords
+- test, plan, strategy, iso-29119, ieee-829, quality, assurance, environment
+
 ## MCP Tools Used
 - `sdlc_get_template({ templateId: 'test-plan/iso-29119' })`
 - `sdlc_get_template({ templateId: 'test-plan/ieee-829' })`

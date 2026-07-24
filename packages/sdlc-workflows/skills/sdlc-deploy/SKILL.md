@@ -48,6 +48,9 @@ Hoặc chạy: `/sdlc-deploy`
 ## 8. Runbook Type Notes
 ```
 
+## Keywords
+- deploy, deployment, runbook, operations, itil, sre, release
+
 ## MCP Tools Used
 - `sdlc_get_template({ templateId: 'deploy/itil-runbook' })`
 - `sdlc_get_template({ templateId: 'deploy/sre-runbook' })`

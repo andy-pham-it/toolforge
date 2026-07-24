@@ -54,6 +54,9 @@ Hoặc chạy: `/sdlc-prd`
 - Each feature must trace to a business goal
 - Success metrics must be measurable
 
+## Keywords
+- prd, product, requirements, document, vision, features, roadmap
+
 ## MCP Tools Used
 - `sdlc_get_template({ templateId: 'prd/agile-prd' })`
 - `sdlc_get_standard({ standardId: 'agile-scrum' })`

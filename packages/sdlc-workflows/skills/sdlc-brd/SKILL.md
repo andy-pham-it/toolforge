@@ -61,6 +61,9 @@ Hoặc chạy: `/sdlc-brd`
 - Use cases phải có pre/post conditions rõ ràng
 - Non-functional requirements phải có metric đo được
 
+## Keywords
+- brd, business, requirements, stakeholders, use cases, ieee-29148
+
 ## MCP Tools Used
 - `sdlc_get_template({ templateId: 'brd/ieee-29148' })`
 - `validate_document({ documentPath, standard: 'ieee-29148' })`

@@ -71,6 +71,9 @@ Hoặc chạy: `/project-init` hoặc `/project-init --upgrade`
 }
 ```
 
+## Keywords
+- project, init, initialization, setup, repository, dự án, khởi tạo
+
 ## MCP Tools Used
 - `sdlc_get_template` (nếu available)
 - `sdlc_list_templates` (để liệt kê templates cho user)

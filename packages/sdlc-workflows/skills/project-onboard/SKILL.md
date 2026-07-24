@@ -69,6 +69,9 @@ Khi nào dùng /project-onboard thay vì /project-init:
 - <actions>
 ```
 
+## Keywords
+- onboard, onboarding, existing, legacy, setup, orient, documentation
+
 ## MCP Tools Used
 - `sdlc_get_template` (nếu available)
 

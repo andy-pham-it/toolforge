@@ -55,6 +55,9 @@ Hoặc chạy: `/sdlc-plan`
 - <list>
 ```
 
+## Keywords
+- plan, planning, estimation, timeline, sprint, milestone, schedule
+
 ## MCP Tools Used
 - `sdlc_list_templates`
 - `sdlc_get_template`

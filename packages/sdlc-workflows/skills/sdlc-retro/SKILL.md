@@ -34,6 +34,9 @@ Hoặc chạy: `/sdlc-retro`
 7. **Output**: Ghi file + `git add` + `git commit`
 8. **Learn phase**: Ghi lessons vào `.opencode/lessons/<phase>-<date>.md`
 
+## Keywords
+- retro, retrospective, lessons, learned, review, improve, continuous
+
 ## MCP Tools Used
 - `sdlc_list_templates` (để tham khảo template list nếu cần)
 

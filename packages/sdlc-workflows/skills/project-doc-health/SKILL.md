@@ -48,6 +48,9 @@ Template drift:
     - Có → ghi vào `.opencode/lessons/project-doc-health-<date>.md`
     - Không → skip
 
+## Keywords
+- document, health, audit, check, quality, drift, version, outdated
+
 ## MCP Tools Used
 - `sdlc_list_templates` (để so sánh với installed templates)
 

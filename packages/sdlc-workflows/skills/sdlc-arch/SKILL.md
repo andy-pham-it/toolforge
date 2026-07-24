@@ -59,6 +59,9 @@ Hoặc chạy: `/sdlc-arch`
 - C4 diagrams phải consistent với building blocks
 - Deployment view phải khả thi với tech stack
 
+## Keywords
+- architecture, arc42, c4, design, system, building, block, deployment
+
 ## MCP Tools Used
 - `sdlc_get_template({ templateId: 'arch/arc42' })`
 - `sdlc_get_template({ templateId: 'arch/c4-model' })`

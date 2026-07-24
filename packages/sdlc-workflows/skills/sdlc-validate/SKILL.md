@@ -72,6 +72,9 @@ Hoặc chạy: `/sdlc-validate`
 - Score là rough estimate — dùng LLM semantic comparison
 - Recommendations phải actionable
 
+## Keywords
+- validate, cross-ref, consistency, check, audit, document, review
+
 ## MCP Tools Used
 - `validate_document({ documentPath, standard })`
 - `sdlc_get_template` (nếu cần template để so sánh format)
