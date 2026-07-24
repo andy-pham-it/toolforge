@@ -3,17 +3,13 @@
 /**
  * @andy-toolforge/sdlc-workflows MCP plugin tools.
  * Auto-discovered by @andy-toolforge/mcp.
- *
- * Tools:
- *   sdlc_get_template      — Read a template file by ID
- *   sdlc_list_templates    — List available templates
- *   sdlc_get_standard      — Read a standard/reference file by ID
  */
 
 const fs = require('fs');
 const path = require('path');
 const { checkManifest } = require('./lib/version-registry');
 const { buildIndex, searchSkills } = require('./lib/skill-index');
+const { renderTemplate, parseFrontmatter, extractVariables } = require('./lib/template-engine');
 const pkg = require('./package.json');
 
 const TEMPLATES_DIR = path.join(__dirname, 'templates');
@@ -40,13 +36,17 @@ const getTemplateDef = {
                 type: 'string',
                 description: 'Template identifier — maps to templates/flows/<templateId>.md (e.g. "prd/agile-prd")',
             },
+            context: {
+                type: 'object',
+                description: 'Optional context variables for rendering. When provided, also returns renderedContent and variables.',
+            },
         },
         required: ['templateId'],
     },
 };
 
 async function getTemplateHandler(_llm, args) {
-    const { templateId } = args;
+    const { templateId, context } = args;
     if (!templateId || typeof templateId !== 'string') {
         throw new Error('templateId is required and must be a string');
     }
@@ -64,7 +64,19 @@ async function getTemplateHandler(_llm, args) {
             throw new Error('Invalid templateId: path traversal detected');
         }
         if (fs.existsSync(resolved)) {
-            return { content: fs.readFileSync(resolved, 'utf-8'), path: path.relative(TEMPLATES_DIR, resolved) };
+            const content = fs.readFileSync(resolved, 'utf-8');
+            const result = { content, path: path.relative(TEMPLATES_DIR, resolved) };
+
+            if (context && typeof context === 'object') {
+                const { frontmatter, body } = parseFrontmatter(content);
+                const renderedBody = renderTemplate(body, context);
+                result.renderedContent = frontmatter
+                    ? `---\n${require('js-yaml').dump(frontmatter).trim()}\n---\n\n${renderedBody}`
+                    : renderedBody;
+                result.variables = extractVariables(content);
+            }
+
+            return result;
         }
     }
 
@@ -410,6 +422,51 @@ async function searchSkillsHandler(_llm, args) {
 }
 
 // ---------------------------------------------------------------------------
+// sdlc_render_template
+// ---------------------------------------------------------------------------
+const renderTemplateDef = {
+    name: 'sdlc_render_template',
+    description: 'Render a template with context variables. Supports {{ var }}, {% if %}, {% for %}, {% include %}. Returns rendered markdown.',
+    inputSchema: {
+        type: 'object',
+        properties: {
+            templateId: {
+                type: 'string',
+                description: 'Template identifier (e.g. "prd/agile-prd", "brd/ieee-29148")',
+            },
+            context: {
+                type: 'object',
+                description: 'Variables to inject into the template',
+            },
+        },
+        required: ['templateId', 'context'],
+    },
+};
+
+async function renderTemplateHandler(_llm, args) {
+    const { templateId, context } = args;
+    if (!templateId) throw new Error('templateId is required');
+    if (!context || typeof context !== 'object') throw new Error('context must be an object');
+
+    const rawResult = await getTemplateHandler(_llm, { templateId });
+    const rawContent = rawResult.content;
+
+    const { frontmatter, body } = parseFrontmatter(rawContent);
+    const renderedBody = renderTemplate(body, context);
+
+    const renderedContent = frontmatter
+        ? `---\n${require('js-yaml').dump(frontmatter).trim()}\n---\n\n${renderedBody}`
+        : renderedBody;
+
+    return {
+        templateId,
+        originalContent: rawContent,
+        renderedContent,
+        variables: extractVariables(rawContent),
+    };
+}
+
+// ---------------------------------------------------------------------------
 // Exports
 // ---------------------------------------------------------------------------
 module.exports = function () {
@@ -421,5 +478,6 @@ module.exports = function () {
         { definition: validateSkillDef, handler: validateSkillHandler },
         { definition: checkVersionDef, handler: checkVersionHandler },
         { definition: searchSkillsDef, handler: searchSkillsHandler },
+        { definition: renderTemplateDef, handler: renderTemplateHandler },
     ];
 };
