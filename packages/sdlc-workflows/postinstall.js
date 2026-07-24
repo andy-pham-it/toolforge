@@ -3,6 +3,7 @@
 
 const path = require('path');
 const fs = require('fs');
+const { globSync } = require('glob');
 const { installSkills } = require('@andy-toolforge/core/lib/postinstall-skills');
 
 const STANDARD_MAP = {
@@ -26,22 +27,23 @@ const manifestPath = path.join(manifestDir, 'sdlc-workflows.json');
 
 fs.mkdirSync(manifestDir, { recursive: true });
 
-// Scan templates directory
-function scanTemplates(dir, prefix) {
+function scanTemplates() {
+  const templatesDir = path.join(__dirname, 'templates');
   const results = [];
-  if (!fs.existsSync(dir)) return results;
-  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
-    const full = path.join(dir, entry.name);
-    if (entry.isDirectory()) {
-      results.push(...scanTemplates(full, prefix ? `${prefix}/${entry.name}` : entry.name));
-    } else if (entry.isFile() && entry.name.endsWith('.md')) {
-      const baseName = entry.name.replace(/\.md$/, '');
-      const id = prefix ? `${prefix}/${baseName}` : baseName;
-      const standard = STANDARD_MAP[baseName] || 'unknown';
-      const type = full.includes('/standards/') ? 'standard' : 'flow';
-      const templateVersion = '1.0.0';
-      results.push({ id, name: baseName, standard, type, version: templateVersion });
-    }
+  if (!fs.existsSync(templatesDir)) return results;
+
+  const matches = globSync('**/*.md', { cwd: templatesDir, nodir: true });
+  for (const match of matches) {
+    if (match.startsWith('partials/')) continue;
+
+    const parsed = path.parse(match);
+    const baseName = parsed.name;
+    const prefix = parsed.dir;
+    const id = prefix ? `${prefix}/${baseName}` : baseName;
+    const standard = STANDARD_MAP[baseName] || 'unknown';
+    const type = prefix.includes('standards') ? 'standard' : 'flow';
+    const templateVersion = '1.0.0';
+    results.push({ id, name: baseName, standard, type, version: templateVersion });
   }
   return results;
 }
@@ -50,7 +52,7 @@ const manifest = {
   package: '@andy-toolforge/sdlc-workflows',
   installedVersion: pkg.version,
   installedAt: new Date().toISOString(),
-  templates: scanTemplates(path.join(__dirname, 'templates'), ''),
+  templates: scanTemplates(),
 };
 
 fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2));

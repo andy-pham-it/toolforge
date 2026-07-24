@@ -5,10 +5,12 @@
   "description": "SDLC Agent Flows — skill files + MCP plugin tools for AI-driven SDLC document generation",
   "main": "index.js",
   "scripts": {
+    "test": "node --test lib/template-engine.test.js lib/version-registry.test.js lib/skill-index.test.js",
     "postinstall": "node postinstall.js"
   },
   "dependencies": {
     "@andy-toolforge/core": "^1.0.0",
+    "glob": "^13.0.6",
     "js-yaml": "^5.2.2"
   },
   "engines": {

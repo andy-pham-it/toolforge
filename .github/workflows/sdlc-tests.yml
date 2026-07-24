@@ -1,0 +1,22 @@
+name: SDLC Workflows Tests
+
+on:
+  pull_request:
+    paths:
+      - 'packages/sdlc-workflows/**'
+  push:
+    branches: [main]
+    paths:
+      - 'packages/sdlc-workflows/**'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm ci
+      - name: Run SDLC Workflows unit tests
+        run: npm test -w @andy-toolforge/sdlc-workflows

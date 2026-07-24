@@ -7,6 +7,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const { globSync } = require('glob');
 const { checkManifest } = require('./lib/version-registry');
 const { buildIndex, searchSkills } = require('./lib/skill-index');
 const { renderTemplate, parseFrontmatter, extractVariables } = require('./lib/template-engine');
@@ -106,22 +107,12 @@ function scanMdFiles(dir) {
     const results = [];
     if (!fs.existsSync(dir)) return results;
 
-    const entries = fs.readdirSync(dir, { withFileTypes: true });
-    for (const entry of entries) {
-        const fullPath = path.join(dir, entry.name);
-        if (entry.isDirectory()) {
-            const subDir = entry.name;
-            const subEntries = fs.readdirSync(fullPath, { withFileTypes: true });
-            for (const sub of subEntries) {
-                if (sub.isFile() && sub.name.endsWith('.md')) {
-                    const templateId = subDir + '/' + sub.name.slice(0, -3);
-                    results.push({ id: templateId, category: subDir, file: sub.name });
-                }
-            }
-        } else if (entry.isFile() && entry.name.endsWith('.md')) {
-            const templateId = entry.name.slice(0, -3);
-            results.push({ id: templateId, category: '', file: entry.name });
-        }
+    const matches = globSync('**/*.md', { cwd: dir, nodir: true });
+    for (const match of matches) {
+        const parsed = path.parse(match);
+        const templateId = match.slice(0, -3);
+        const category = parsed.dir || '';
+        results.push({ id: templateId, category, file: parsed.base });
     }
     return results;
 }
