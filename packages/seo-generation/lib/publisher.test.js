@@ -214,4 +214,185 @@ describe('MultiPlatformPublisher', async () => {
             assert.ok(result.error.includes('Missing required'));
         });
     });
+
+    describe('_safeJson', async () => {
+        await it('should parse valid JSON', async () => {
+            const publisher = new MultiPlatformPublisher({ browserManager: mockBrowser, jobQueue: mockQueue });
+            const res = { text: async () => '{"key": "value"}' };
+            const result = await publisher._safeJson(res);
+            assert.deepEqual(result, { key: 'value' });
+        });
+
+        await it('should throw on invalid JSON with error context', async () => {
+            const publisher = new MultiPlatformPublisher({ browserManager: mockBrowser, jobQueue: mockQueue });
+            const res = { text: async () => '<html>not json</html>' };
+            await assert.rejects(
+                () => publisher._safeJson(res),
+                /Expected JSON but got:/
+            );
+        });
+
+        await it('should throw on empty body', async () => {
+            const publisher = new MultiPlatformPublisher({ browserManager: mockBrowser, jobQueue: mockQueue });
+            const res = { text: async () => '' };
+            await assert.rejects(
+                () => publisher._safeJson(res),
+                /Expected JSON but got:/
+            );
+        });
+    });
+
+    describe('_youtubeAuth', async () => {
+        await it('should use Bearer header for OAuth token (ya29.*)', async () => {
+            const publisher = new MultiPlatformPublisher({
+                browserManager: mockBrowser,
+                jobQueue: mockQueue,
+                apiKeys: { youtube: 'ya29.a0AfH6SAMPLE' },
+            });
+            const baseUrl = 'https://www.googleapis.com/upload/youtube/v3/videos?part=snippet,status&uploadType=resumable';
+            const { url, headers } = publisher._youtubeAuth(baseUrl);
+            assert.equal(url, baseUrl);
+            assert.equal(headers['Authorization'], 'Bearer ya29.a0AfH6SAMPLE');
+        });
+
+        await it('should use Bearer header for OAuth token with dots (ya29.)', async () => {
+            const publisher = new MultiPlatformPublisher({
+                browserManager: mockBrowser,
+                jobQueue: mockQueue,
+                apiKeys: { youtube: 'ya29.dots.in.token' },
+            });
+            const baseUrl = 'https://www.googleapis.com/upload/youtube/v3/videos';
+            const { url, headers } = publisher._youtubeAuth(baseUrl);
+            assert.equal(url, baseUrl);
+            assert.equal(headers['Authorization'], 'Bearer ya29.dots.in.token');
+        });
+
+        await it('should use ?key= query param for simple API key', async () => {
+            const publisher = new MultiPlatformPublisher({
+                browserManager: mockBrowser,
+                jobQueue: mockQueue,
+                apiKeys: { youtube: 'AIzaSyABC123DEF456' },
+            });
+            const baseUrl = 'https://www.googleapis.com/upload/youtube/v3/videos?part=snippet';
+            const { url, headers } = publisher._youtubeAuth(baseUrl);
+            assert.ok(url.includes('key=AIzaSyABC123DEF456'));
+            assert.equal(url, baseUrl + '&key=AIzaSyABC123DEF456');
+            assert.deepEqual(headers, {});
+        });
+
+        await it('should return no auth when no API key set', async () => {
+            const publisher = new MultiPlatformPublisher({
+                browserManager: mockBrowser,
+                jobQueue: mockQueue,
+            });
+            const baseUrl = 'https://example.com/api';
+            const { url, headers } = publisher._youtubeAuth(baseUrl);
+            assert.equal(url, baseUrl);
+            assert.deepEqual(headers, {});
+        });
+    });
+
+    describe('fetch-mocked REST API', async () => {
+        let originalFetch;
+
+        await before(() => { originalFetch = global.fetch; });
+        await after(() => { global.fetch = originalFetch; });
+
+        await it('should publish to WordPress via REST API on success', async () => {
+            global.fetch = async (url, opts) => {
+                assert.ok(url.includes('/wp/v2/posts'));
+                assert.equal(opts.method, 'POST');
+                assert.ok(opts.headers['Authorization'].startsWith('Basic '));
+                return {
+                    ok: true,
+                    text: async () => JSON.stringify({ link: 'https://example.com/?p=42' }),
+                };
+            };
+
+            const publisher = new MultiPlatformPublisher({
+                browserManager: mockBrowser,
+                jobQueue: mockQueue,
+                apiKeys: { wordpress: 'user:app-pass' },
+                wordpressUrl: 'https://example.com/wp-json',
+            });
+
+            const result = await publisher.publishToWordPress(
+                { title: 'Test', content: '<p>Hello</p>' },
+                []
+            );
+
+            assert.equal(result.success, true);
+            assert.equal(result.url, 'https://example.com/?p=42');
+        });
+
+        await it('should fall back to browser on WordPress API error', async () => {
+            global.fetch = async () => ({
+                ok: false,
+                status: 403,
+                text: async () => '{"code":"rest_forbidden"}',
+            });
+
+            const publisher = new MultiPlatformPublisher({
+                browserManager: mockBrowser,
+                jobQueue: mockQueue,
+                apiKeys: { wordpress: 'user:wrong-pass' },
+                wordpressUrl: 'https://example.com/wp-json',
+            });
+
+            const result = await publisher.publishToWordPress(
+                { title: 'Test', content: '<p>Hello</p>' },
+                []
+            );
+
+            assert.equal(result.success, true);
+            assert.ok(result.url.includes('draft'));
+        });
+
+        await it('should publish to Facebook via REST API on success', async () => {
+            global.fetch = async (url, opts) => {
+                assert.ok(url.includes('graph.facebook.com'));
+                const body = JSON.parse(opts.body);
+                assert.equal(body.message, 'Hello Facebook');
+                return {
+                    ok: true,
+                    text: async () => JSON.stringify({ id: 'fb-post-123' }),
+                };
+            };
+
+            const publisher = new MultiPlatformPublisher({
+                browserManager: mockBrowser,
+                jobQueue: mockQueue,
+                apiKeys: { facebook: 'eaabc123def456' },
+            });
+
+            const result = await publisher.publishToFacebook(
+                { message: 'Hello Facebook', link: 'https://example.com' },
+                []
+            );
+
+            assert.equal(result.success, true);
+            assert.equal(result.postId, 'fb-post-123');
+        });
+
+        await it('should fall back to browser on Facebook API error', async () => {
+            global.fetch = async () => ({
+                ok: false,
+                status: 400,
+                text: async () => '{"error":{"message":"invalid token"}}',
+            });
+
+            const publisher = new MultiPlatformPublisher({
+                browserManager: mockBrowser,
+                jobQueue: mockQueue,
+                apiKeys: { facebook: 'bad-token' },
+            });
+
+            const result = await publisher.publishToFacebook(
+                { message: 'Hello' },
+                []
+            );
+
+            assert.equal(result.success, true);
+        });
+    });
 });

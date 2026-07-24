@@ -1,5 +1,10 @@
 class BrowserManager {
     static instance = null;
+    static _config = { headless: true };
+
+    constructor(config = {}) {
+        BrowserManager._config = { ...BrowserManager._config, ...config };
+    }
 
     static async getInstance() {
         if (!BrowserManager.instance) {
@@ -14,7 +19,7 @@ class BrowserManager {
                 );
             }
             BrowserManager.instance = await puppeteer.launch({
-                headless: true,
+                headless: BrowserManager._config.headless,
                 args: [
                     '--no-sandbox',
                     '--disable-setuid-sandbox',

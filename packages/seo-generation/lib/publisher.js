@@ -19,6 +19,29 @@ class MultiPlatformPublisher {
         this.wordpressUrl = config.wordpressUrl;
     }
 
+    /** Safely parse a fetch response as JSON, falling back to text on parse failure. */
+    async _safeJson(res) {
+        const text = await res.text();
+        try {
+            return JSON.parse(text);
+        } catch {
+            throw new Error(`Expected JSON but got: ${text.slice(0, 200)}`);
+        }
+    }
+
+    /** Build YouTube auth headers: OAuth Bearer for ya29.* tokens, ?key= query param for API keys. */
+    _youtubeAuth(initUrl) {
+        const key = this.apiKeys.youtube;
+        if (!key) return { url: initUrl, headers: {} };
+        if (key.startsWith('ya29.') || key.includes('.')) {
+            // Looks like an OAuth access token
+            return { url: initUrl, headers: { Authorization: `Bearer ${key}` } };
+        }
+        // Simple API key — YouTube resumable upload requires OAuth, but we try ?key= as best-effort
+        const separator = initUrl.includes('?') ? '&' : '?';
+        return { url: `${initUrl}${separator}key=${key}`, headers: {} };
+    }
+
     async publishToYouTube(video, metadata) {
         if (!video || !metadata || !metadata.title) {
             return { success: false, error: 'Missing required video or metadata' };
@@ -29,22 +52,25 @@ class MultiPlatformPublisher {
                 const fs = require('fs');
 
                 // Step 1: Initiate resumable upload, get upload URL
-                const initRes = await fetch(
-                    `https://www.googleapis.com/upload/youtube/v3/videos?part=snippet,status&uploadType=resumable`,
-                    {
-                        method: 'POST',
-                        headers: {
-                            Authorization: `Bearer ${this.apiKeys.youtube}`,
-                            'Content-Type': 'application/json',
-                            'X-Upload-Content-Length': String((await fs.promises.stat(video)).size),
-                        },
-                        body: JSON.stringify({
-                            snippet: { title: metadata.title, description: metadata.description || '', tags: metadata.tags || [] },
-                            status: { privacyStatus: metadata.privacyStatus || 'private' },
-                        }),
+                const baseUrl = `https://www.googleapis.com/upload/youtube/v3/videos?part=snippet,status&uploadType=resumable`;
+                const { url: initUrl, headers: authHeaders } = this._youtubeAuth(baseUrl);
+
+                const initRes = await fetch(initUrl, {
+                    method: 'POST',
+                    headers: {
+                        ...authHeaders,
+                        'Content-Type': 'application/json',
+                        'X-Upload-Content-Length': String((await fs.promises.stat(video)).size),
                     },
-                );
-                if (!initRes.ok) throw new Error(`YouTube API returned ${initRes.status}`);
+                    body: JSON.stringify({
+                        snippet: { title: metadata.title, description: metadata.description || '', tags: metadata.tags || [] },
+                        status: { privacyStatus: metadata.privacyStatus || 'private' },
+                    }),
+                });
+                if (!initRes.ok) {
+                    const body = await initRes.text().catch(() => '');
+                    throw new Error(`YouTube API returned ${initRes.status}: ${body.slice(0, 200)}`);
+                }
 
                 const uploadUrl = initRes.headers.get('Location');
                 if (!uploadUrl) throw new Error('No upload URL returned from YouTube');
@@ -59,9 +85,12 @@ class MultiPlatformPublisher {
                     },
                     body: videoBuffer,
                 });
-                if (!uploadRes.ok) throw new Error(`YouTube upload returned ${uploadRes.status}`);
+                if (!uploadRes.ok) {
+                    const body = await uploadRes.text().catch(() => '');
+                    throw new Error(`YouTube upload returned ${uploadRes.status}: ${body.slice(0, 200)}`);
+                }
 
-                const data = await uploadRes.json();
+                const data = await this._safeJson(uploadRes);
                 return { success: true, url: `https://youtu.be/${data.id}` };
             } catch (err) {
                 console.warn(`[MultiPlatformPublisher] YouTube REST API failed, falling back to browser: ${err.message}`);
@@ -116,10 +145,11 @@ class MultiPlatformPublisher {
                 });
 
                 if (!res.ok) {
-                    throw new Error(`WordPress API returned ${res.status}`);
+                    const body = await res.text().catch(() => '');
+                    throw new Error(`WordPress API returned ${res.status}: ${body.slice(0, 200)}`);
                 }
 
-                const data = await res.json();
+                const data = await this._safeJson(res);
                 return { success: true, url: data.link };
             } catch (err) {
                 console.warn(`[MultiPlatformPublisher] WordPress REST API failed, falling back to browser: ${err.message}`);
@@ -160,10 +190,11 @@ class MultiPlatformPublisher {
                 });
 
                 if (!res.ok) {
-                    throw new Error(`Facebook Graph API returned ${res.status}`);
+                    const body = await res.text().catch(() => '');
+                    throw new Error(`Facebook Graph API returned ${res.status}: ${body.slice(0, 200)}`);
                 }
 
-                const data = await res.json();
+                const data = await this._safeJson(res);
                 return { success: true, postId: data.id };
             } catch (err) {
                 console.warn(`[MultiPlatformPublisher] Facebook REST API failed, falling back to browser: ${err.message}`);
