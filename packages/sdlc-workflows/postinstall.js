@@ -5,6 +5,14 @@ const path = require('path');
 const fs = require('fs');
 const { installSkills } = require('@andy-toolforge/core/lib/postinstall-skills');
 
+const STANDARD_MAP = {
+  'agile-prd': 'agile', 'ieee-29148': 'ieee-29148',
+  'arc42': 'arc42', 'c4-model': 'c4',
+  'iso-29119': 'iso-29119', 'ieee-829': 'ieee-829',
+  'itil-runbook': 'itil', 'sre-runbook': 'sre',
+  'agile-scrum': 'agile', 'itil-sre': 'itil',
+};
+
 // 1. Install skill files
 installSkills({
   domain: 'sdlc-workflows',
@@ -27,10 +35,12 @@ function scanTemplates(dir, prefix) {
     if (entry.isDirectory()) {
       results.push(...scanTemplates(full, prefix ? `${prefix}/${entry.name}` : entry.name));
     } else if (entry.isFile() && entry.name.endsWith('.md')) {
-      const id = prefix ? `${prefix}/${entry.name.replace(/\.md$/, '')}` : entry.name.replace(/\.md$/, '');
-      const standard = entry.name.includes('agile') ? 'agile' : 'itil';
+      const baseName = entry.name.replace(/\.md$/, '');
+      const id = prefix ? `${prefix}/${baseName}` : baseName;
+      const standard = STANDARD_MAP[baseName] || 'unknown';
       const type = full.includes('/standards/') ? 'standard' : 'flow';
-      results.push({ id, name: entry.name.replace(/\.md$/, ''), standard, type });
+      const templateVersion = '1.0.0';
+      results.push({ id, name: baseName, standard, type, version: templateVersion });
     }
   }
   return results;

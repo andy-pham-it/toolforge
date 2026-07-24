@@ -51,6 +51,10 @@ Template drift:
 ## MCP Tools Used
 - `sdlc_list_templates` (để so sánh với installed templates)
 
+## Drift Detection (Phase 3)
+- Gọi `sdlc_check_version` để kiểm tra version drift
+- Nếu driftDetected == true → cảnh báo user: "SDLC Workflows package version mismatch — run 'npm update @andy-toolforge/sdlc-workflows'"
+
 ## Cross-ref
 - Input từ: `/project-init` (config), `/project-onboard` (baseline)
 - Output cho: developer biết cần update doc nào

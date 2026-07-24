@@ -12,6 +12,8 @@
 
 const fs = require('fs');
 const path = require('path');
+const { checkManifest } = require('./lib/version-registry');
+const pkg = require('./package.json');
 
 const TEMPLATES_DIR = path.join(__dirname, 'templates');
 const FLOWS_DIR = path.join(TEMPLATES_DIR, 'flows');
@@ -343,6 +345,29 @@ async function validateSkillHandler(_llm, args) {
 }
 
 // ---------------------------------------------------------------------------
+// sdlc_check_version
+// ---------------------------------------------------------------------------
+const checkVersionDef = {
+    name: 'sdlc_check_version',
+    description: 'Check installed SDLC workflows version against package version. Detects drift (outdated manifest) and returns manifest details.',
+    inputSchema: {
+        type: 'object',
+        properties: {
+            manifestDir: {
+                type: 'string',
+                description: 'Path to .opencode/manifests/ directory (default: cwd/.opencode/manifests)',
+            },
+        },
+    },
+};
+
+async function checkVersionHandler(_llm, args) {
+    const cwd = process.cwd();
+    const manifestDir = args.manifestDir || path.join(cwd, '.opencode', 'manifests');
+    return checkManifest(manifestDir, pkg.version);
+}
+
+// ---------------------------------------------------------------------------
 // Exports
 // ---------------------------------------------------------------------------
 module.exports = function () {
@@ -352,5 +377,6 @@ module.exports = function () {
         { definition: getStandardDef, handler: getStandardHandler },
         { definition: validateDocDef, handler: validateDocumentHandler },
         { definition: validateSkillDef, handler: validateSkillHandler },
+        { definition: checkVersionDef, handler: checkVersionHandler },
     ];
 };
