@@ -1,0 +1,18 @@
+name: "Plan — spec to implementation bridge"
+input:
+  mockAnswers:
+    - q: "Implementation priorities?"
+      a: "Core first, then footage-generation"
+    - q: "Timeline?"
+      a: "2 weeks"
+    - q: "Constraints?"
+      a: "CommonJS, no build step"
+expectedOutput:
+  format: "docs/plan-toolforge-v1.0.0.md"
+  contains:
+    - "Tasks"
+    - "Dependencies"
+    - "Estimate"
+    - "Test Strategy"
+  satisfactionScore:
+    minFields: 3

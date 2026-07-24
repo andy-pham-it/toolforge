@@ -1,0 +1,17 @@
+name: "Retro — phase retrospective"
+input:
+  mockAnswers:
+    - q: "Điều gì tốt?"
+      a: "Áp dụng Subagent-Driven Development, test pass ngay lần đầu"
+    - q: "Điều gì chưa tốt?"
+      a: "Design doc cần nhiều vòng refine, mất thời gian"
+    - q: "Cần thay đổi gì?"
+      a: "Viết test trước cho YAML test case parser"
+expectedOutput:
+  format: "docs/retro-phase1-v1.0.0.md"
+  contains:
+    - "Start Doing"
+    - "Stop Doing"
+    - "Continue Doing"
+    - "Action Items"
+  learnFileWritten: true

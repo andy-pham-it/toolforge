@@ -1,0 +1,20 @@
+name: "Deploy — SRE runbook"
+input:
+  mockAnswers:
+    - q: "Service name?"
+      a: "Toolforge MCP Server"
+    - q: "Architecture?"
+      a: "Node.js + Express, single process"
+    - q: "CI/CD?"
+      a: "GitHub Actions publish to npm"
+    - q: "Monitoring?"
+      a: "Logs via stdout, uptime via systemd"
+    - q: "Runbook type?"
+      a: "SRE"
+expectedOutput:
+  format: "docs/deploy-toolforge-mcp-v1.0.0.md"
+  contains:
+    - "Deploy Runbook"
+    - "Rollback"
+    - "Monitoring"
+    - "Incident Response"

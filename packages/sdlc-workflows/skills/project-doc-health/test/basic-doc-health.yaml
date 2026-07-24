@@ -1,0 +1,13 @@
+name: "Doc Health — full audit"
+input:
+  mockAnswers:
+    - q: "Check which docs?"
+      a: "all"
+expectedOutput:
+  format: "health report table"
+  contains:
+    - "PRD"
+    - "✅"
+    - "❌"
+    - "version"
+    - "Template drift"

@@ -1,0 +1,21 @@
+name: "PRD — Agile product requirements"
+input:
+  mockAnswers:
+    - q: "Product vision?"
+      a: "Toolforge — monorepo chia sẻ code giữa các dự án"
+    - q: "Target users?"
+      a: "Tôi (Andy) và các AI agent"
+    - q: "Core problem?"
+      a: "Copy code giữa các dự án, khó maintain"
+    - q: "Success metrics?"
+      a: "Giảm code duplication 80%, mỗi package có test"
+    - q: "Features?"
+      a: "core (LLM client), footage-generation, seo-generation"
+expectedOutput:
+  format: "docs/prd-toolforge-v1.0.0.md"
+  contains:
+    - "Vision"
+    - "Target Audience"
+    - "Success Metrics"
+    - "Epics"
+    - "Release Criteria"

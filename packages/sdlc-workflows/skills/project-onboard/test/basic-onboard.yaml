@@ -1,0 +1,16 @@
+name: "Project Onboard — existing codebase"
+input:
+  mockAnswers:
+    - q: "Codebase path?"
+      a: "."
+    - q: "Có docs/ không?"
+      a: "Có PRD, BRD cũ"
+    - q: "Import docs cũ?"
+      a: "Có"
+expectedOutput:
+  format: "SDLC audit report + AGENTS.md + config"
+  contains:
+    - "PRD"
+    - "BRD"
+    - "gap analysis"
+  scanDepth: 3

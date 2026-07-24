@@ -1,0 +1,22 @@
+name: "Project Init — basic quick mode"
+input:
+  mockAnswers:
+    - q: "Tên & mô tả project?"
+      a: "Toolforge — monorepo chứa các package npm dùng chung"
+    - q: "Tech stack?"
+      a: "Node.js, CommonJS, npm workspaces"
+    - q: "AI agent nào dùng?"
+      a: "OpenCode"
+    - q: "Có CI/CD không?"
+      a: "GitHub Actions"
+    - q: "Cần SDLC flows?"
+      a: "Có"
+    - q: "Quick hay Detailed?"
+      a: "Quick"
+expectedOutput:
+  format: "directory scan + AGENTS.md skeleton + .opencode/config.jsonc"
+  contains:
+    - "AGENTS.md"
+    - ".opencode/config.jsonc"
+    - "sdlc-workflows"
+  mode: "quick"
