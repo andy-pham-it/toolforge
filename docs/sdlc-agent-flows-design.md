@@ -1010,36 +1010,36 @@ Skill cần template "prd/agile"
 
 ### Phase 1: MVP (2-3 days)
 
-| Task | Người thực hiện | Ước lượng |
-|---|---|---|
-| **Package**: `@andy-toolforge/sdlc-workflows` struct + `postinstall.js` (dùng `installSkills()`) + version manifest | Toolforge | 1.5 giờ |
-| **MCP tools**: `mcp-tools.js` — 3 tools (`sdlc_get_template`, `sdlc_list_templates`, `sdlc_get_standard`) serve template + standard reference, đọc templates/ từ filesystem, inline fallback | Toolforge | 3 giờ |
-| **Templates**: agile-scrum.md, agile-prd.md, itil-sre.md, itil-runbook.md, sre-runbook.md (Agile-only Phase 1, IEEE reference notes trong SKILL.md) | Toolforge | 2.5 giờ |
-| **Skill**: `project-init/SKILL.md` — quick + detailed mode (+ postinstall skill install) | Toolforge | 4 giờ |
-| **Skill**: `project-onboard/SKILL.md` — discovery-based onboard cho existing projects | Toolforge | 4 giờ |
-| **Skill**: `project-doc-health/SKILL.md` — scan docs, check frontmatter, cross-ref health, version drift check | Toolforge | 2.5 giờ |
-| **Skill**: `sdlc-prd/SKILL.md` — Agile PRD (lightweight cross-ref validation built-in) | Toolforge | 3 giờ |
-| **Skill**: `sdlc-deploy/SKILL.md` — ITIL + SRE | Toolforge | 3 giờ |
-| **Skill**: `sdlc-plan/SKILL.md` — Spec→implementation bridge (+ cross-doc satisfaction score) | Toolforge | 3 giờ |
-| **Skill**: `sdlc-retro/SKILL.md` — Retrospective + lessons learned | Toolforge | 2 giờ |
-| **Learn phase**: Thêm optional Learn step vào workflow template (tất cả skills) + inline template fallback | Toolforge | 1.5 giờ |
-| **Test cases**: YAML test case cho mỗi skill (tay, chưa tự động) | Toolforge | 2 giờ |
+| Task | Status | Người thực hiện | Ước lượng |
+|---|---|---|---|
+| **Package**: struct + `postinstall.js` + version manifest | ✅ Done | Toolforge | 1.5 giờ |
+| **MCP tools**: `mcp-tools.js` — 3 tools | ✅ Done | Toolforge | 3 giờ |
+| **Templates**: agile-scrum.md, agile-prd.md, itil-sre.md, itil-runbook.md, sre-runbook.md | ✅ Done | Toolforge | 2.5 giờ |
+| **Skill**: `project-init/SKILL.md` | ✅ Done | Toolforge | 4 giờ |
+| **Skill**: `project-onboard/SKILL.md` | ✅ Done | Toolforge | 4 giờ |
+| **Skill**: `project-doc-health/SKILL.md` | ✅ Done | Toolforge | 2.5 giờ |
+| **Skill**: `sdlc-prd/SKILL.md` | ✅ Done | Toolforge | 3 giờ |
+| **Skill**: `sdlc-deploy/SKILL.md` | ✅ Done | Toolforge | 3 giờ |
+| **Skill**: `sdlc-plan/SKILL.md` | ✅ Done | Toolforge | 3 giờ |
+| **Skill**: `sdlc-retro/SKILL.md` | ✅ Done | Toolforge | 2 giờ |
+| **Learn phase**: Optional Learn step + inline template fallback | ✅ Done | Toolforge | 1.5 giờ |
+| **Test cases**: YAML test cases cho mỗi skill | ✅ Done | Toolforge | 2 giờ |
 
-**Tổng Phase 1**: ~32 giờ (4 days)
+**Tổng Phase 1**: ~32 giờ (4 days) — ✅ Completed
 
 ### Phase 2: Expansion (within 2 weeks)
 
-| Task | Ước lượng |
-|---|---|
-| MCP: `validate_document` tool (structure check theo standard) | 3 giờ |
-| **Skill**: `sdlc-brd` + templates (IEEE 29148, Use Case 2.0) | 4-6 giờ |
-| **Skill**: `sdlc-arch` + templates (Arc42, C4) | 4-6 giờ |
-| **Skill**: `sdlc-test-plan` + templates (ISO 29119, IEEE 829) | 3-4 giờ |
-| **Skill**: `/sdlc-validate` — cross-document validation (PRD↔BRD↔ADR↔Test↔Deploy) | 4 giờ |
-| MCP: `sdlc_validate_skill` tool + test runner | 4 giờ |
-| Templates mở rộng cho BRD, Arch, Test Plan | 4 giờ |
+| Task | Status | Ước lượng |
+|---|---|---|
+| MCP: `validate_document` tool (structure check theo standard) | ✅ Done | 3 giờ |
+| MCP: `sdlc_validate_skill` tool | ✅ Done | 4 giờ |
+| **Skill**: `sdlc-brd` + test | ✅ Done | 4-6 giờ |
+| **Skill**: `sdlc-arch` + test | ✅ Done | 4-6 giờ |
+| **Skill**: `sdlc-test-plan` + test | ✅ Done | 3-4 giờ |
+| **Skill**: `/sdlc-validate` — cross-document validation | ✅ Done | 4 giờ |
+| Templates: BRD (IEEE 29148), Arch (Arc42, C4), Test Plan (ISO 29119, IEEE 829) | ✅ Done | 4 giờ |
 
-**Tổng Phase 2**: ~26-30 giờ
+**Tổng Phase 2**: ~26-30 giờ — ✅ Completed
 
 ### Phase 3: MCP Engine (when >15-20 templates)
 
@@ -1059,7 +1059,7 @@ Skill cần template "prd/agile"
 packages/sdlc-workflows/                    # @andy-toolforge/sdlc-workflows (single package)
 ├── package.json                            [TASK-001]
 ├── index.js                                # Exports (nếu cần sau này)
-├── mcp-tools.js                            [TASK-002] — 3 plugin tools
+├── mcp-tools.js                            [TASK-002] — plugin tools (3 → 5 in Phase 2)
 ├── postinstall.js                          [TASK-001] — installSkills() + sinh manifest
 ├── lib/                                    # Code thật (trống Phase 1)
 ├── skills/
@@ -1069,19 +1069,32 @@ packages/sdlc-workflows/                    # @andy-toolforge/sdlc-workflows (si
 │   ├── sdlc-prd/SKILL.md                  [TASK-006]
 │   ├── sdlc-plan/SKILL.md                 [TASK-007]
 │   ├── sdlc-retro/SKILL.md                [TASK-008]
-│   └── sdlc-deploy/SKILL.md               [TASK-009]
+│   ├── sdlc-deploy/SKILL.md               [TASK-009]
+│   ├── sdlc-brd/SKILL.md                  [Phase 2]
+│   ├── sdlc-arch/SKILL.md                 [Phase 2]
+│   ├── sdlc-test-plan/SKILL.md            [Phase 2]
+│   └── sdlc-validate/SKILL.md             [Phase 2]
 ├── templates/                              [TASK-010]
 │   ├── standards/
 │   │   ├── agile-scrum.md
 │   │   └── itil-sre.md
 │   └── flows/
 │       ├── prd/agile-prd.md
+│       ├── brd/ieee-29148.md               [Phase 2]
+│       ├── arch/arc42.md                    [Phase 2]
+│       ├── arch/c4-model.md                 [Phase 2]
+│       ├── test-plan/iso-29119.md           [Phase 2]
+│       ├── test-plan/ieee-829.md            [Phase 2]
 │       └── deploy/
 │           ├── itil-runbook.md
 │           └── sre-runbook.md
 └── test/                                   [TASK-011] — YAML test cases
     ├── basic-init.yaml
     ├── basic-prd.yaml
+    ├── basic-brd.yaml                       [Phase 2]
+    ├── basic-arch.yaml                      [Phase 2]
+    ├── basic-test-plan.yaml                 [Phase 2]
+    ├── basic-validate.yaml                  [Phase 2]
     └── basic-deploy.yaml
 
 Lessons directory (runtime, tạo bởi skill khi chạy):
