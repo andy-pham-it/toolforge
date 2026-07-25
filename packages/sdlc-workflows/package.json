@@ -1,9 +1,21 @@
 {
   "name": "@andy-toolforge/sdlc-workflows",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "private": false,
   "description": "SDLC Agent Flows — skill files + MCP plugin tools for AI-driven SDLC document generation",
   "main": "index.js",
+  "bin": {
+    "sdlc-workflows": "./mcp-server.js"
+  },
+  "files": [
+    "lib/",
+    "skills/",
+    "templates/",
+    "index.js",
+    "mcp-server.js",
+    "mcp-tools.js",
+    "postinstall.js"
+  ],
   "scripts": {
     "test": "node --test lib/template-engine.test.js lib/version-registry.test.js lib/skill-index.test.js",
     "postinstall": "node postinstall.js"
