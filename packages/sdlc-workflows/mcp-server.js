@@ -23,8 +23,11 @@ const readline = require('readline');
 const pkg = require('./package.json');
 const loadTools = require('./mcp-tools');
 
+// --debug flag: enable per-call duration logging
+const DEBUG = process.argv.includes('--debug');
+
 // ---------------------------------------------------------------------------
-// Tools — loaded from mcp-tools.js (no LLM, no API key)
+// Tools — loaded from mcp-tools/ (no LLM, no API key)
 // ---------------------------------------------------------------------------
 const tools = {};
 
@@ -113,8 +116,12 @@ async function handleToolCall(id, params) {
     return { jsonrpc: '2.0', id, error: { code: -32602, message: `Unknown tool: ${params.name}` } };
   }
 
+  const start = Date.now();
   try {
     const result = await tool.handler(null, params.arguments || {});
+    if (DEBUG) {
+      console.error(`[sdlc-workflows] tool ${params.name} OK — ${Date.now() - start}ms`);
+    }
     return {
       jsonrpc: '2.0',
       id,
@@ -123,10 +130,13 @@ async function handleToolCall(id, params) {
       },
     };
   } catch (err) {
+    if (DEBUG) {
+      console.error(`[sdlc-workflows] tool ${params.name} ERROR — ${Date.now() - start}ms: ${err.message}`);
+    }
     return {
       jsonrpc: '2.0',
       id,
-      error: { code: -32000, message: err.message, data: err.stack },
+      error: { code: err.code || -32000, message: err.message, data: err.stack },
     };
   }
 }

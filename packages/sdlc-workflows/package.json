@@ -11,13 +11,13 @@
     "lib/",
     "skills/",
     "templates/",
+    "mcp-tools/",
     "index.js",
     "mcp-server.js",
-    "mcp-tools.js",
     "postinstall.js"
   ],
   "scripts": {
-    "test": "node --test lib/template-engine.test.js lib/version-registry.test.js lib/skill-index.test.js",
+    "test": "node --test lib/template-engine.test.js lib/version-registry.test.js lib/skill-index.test.js mcp-server.test.js",
     "postinstall": "node postinstall.js"
   },
   "dependencies": {

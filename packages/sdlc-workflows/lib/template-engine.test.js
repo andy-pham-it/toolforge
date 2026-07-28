@@ -52,6 +52,21 @@ describe('renderTemplate', () => {
     assert.strictEqual(renderTemplate(tpl, { dark: false }), 'Light mode');
   });
 
+  it('should handle {% elif %} with truthy/falsy variables', () => {
+    const tpl = '{% if admin %}Admin{% elif premium %}Premium{% elif member %}Member{% else %}Guest{% endif %}';
+    assert.strictEqual(renderTemplate(tpl, { admin: true }), 'Admin');
+    assert.strictEqual(renderTemplate(tpl, { premium: true }), 'Premium');
+    assert.strictEqual(renderTemplate(tpl, { member: true }), 'Member');
+    assert.strictEqual(renderTemplate(tpl, {}), 'Guest');
+  });
+
+  it('should handle {% elif %} without {% else %}', () => {
+    const tpl = '{% if active %}Active{% elif pending %}Pending{% endif %}';
+    assert.strictEqual(renderTemplate(tpl, { active: true }), 'Active');
+    assert.strictEqual(renderTemplate(tpl, { pending: true }), 'Pending');
+    assert.strictEqual(renderTemplate(tpl, {}), '');
+  });
+
   it('should handle {% for item in list %} loops', () => {
     const tpl = '{% for item in items %}- {{ item }}\n{% endfor %}';
     const result = renderTemplate(tpl, { items: ['A', 'B', 'C'] });

@@ -87,7 +87,7 @@ console.log(result.valid ? 'PASS' : 'FAIL', result.errors);
 
 ## MCP Tools Reference
 
-All 8 tools are exported from `mcp-tools.js` and auto-discovered by `@andy-toolforge/mcp`.
+All 8 tools are exported from `mcp-tools/` and auto-discovered by `@andy-toolforge/mcp`.
 
 | Tool | Description |
 |------|-------------|

@@ -122,25 +122,61 @@ function renderTemplate(template, context, partials) {
     });
   }
 
-  // 3. Process {% if var %}...{% else %}...{% endif %}
-  const ifElseRe = /\{%\s*if\s+(\w[\w-]*)\s*%\}([\s\S]*?)\{%\s*else\s*%\}([\s\S]*?)\{%\s*endif\s*%\}/g;
-  result = result.replace(ifElseRe, (_match, varName, ifBody, elseBody) => {
-    const val = resolveValue(context, varName);
-    if (val) {
-      return renderTemplate(ifBody, context, partials);
-    }
-    return renderTemplate(elseBody, context, partials);
-  });
+  // 3. Process {% if var %}...{% elif var %}...{% else %}...{% endif %}
+  //    (elif can be chained: if/elif/elif/else/endif)
+  //    Uses a simple section-parsing approach (repeated capture groups in JS regex
+  //    only preserve the last iteration, so we parse from the full match body).
+  const ifBlockRe = /\{%\s*if\s+(\w[\w-]*)\s*%\}([\s\S]*?)\{%\s*endif\s*%\}/;
+  while (ifBlockRe.test(result)) {
+    result = result.replace(ifBlockRe, (_match, ifVar, between) => {
+      // between is everything between {% if var %} and {% endif %}
+      const branches = [];
+      let remaining = between;
+      // Look for first {% elif %} or {% else %} in the block
+      const firstSplit = remaining.match(/\{%\s*(elif|else)\s+(\w[\w-]*)?\s*%\}/);
+      if (firstSplit) {
+        branches.push({ var: ifVar, body: remaining.slice(0, firstSplit.index) });
+        remaining = remaining.slice(firstSplit.index);
+      } else {
+        // No elif/else in between — simple if/endif
+        if (resolveValue(context, ifVar)) return renderTemplate(between, context, partials);
+        return '';
+      }
 
-  // 4. Process {% if var %}...{% endif %} (no else)
+      // Walk remaining tokens: {% elif %}, {% else %}, or {% endif %}
+      const tokenRe = /\{%\s*(elif|else|endif)\s+(\w[\w-]*)?\s*%\}/;
+      while (remaining.length > 0) {
+        const tmatch = remaining.match(tokenRe);
+        if (!tmatch) break;
+        const keyword = tmatch[1];
+        const afterToken = remaining.slice(tmatch.index + tmatch[0].length);
+        if (keyword === 'elif') {
+          const next = afterToken.match(tokenRe);
+          const body = next ? afterToken.slice(0, next.index) : afterToken;
+          branches.push({ var: tmatch[2], body });
+          remaining = next ? afterToken.slice(next.index) : '';
+        } else if (keyword === 'else') {
+          const next = afterToken.match(tokenRe);
+          const body = next ? afterToken.slice(0, next.index) : afterToken;
+          branches.push({ var: null, body, isElse: true });
+          remaining = next ? afterToken.slice(next.index) : '';
+        } else if (keyword === 'endif') {
+          break; // consumed by the outer regex — nothing left
+        }
+      }
+
+      // Evaluate branches in order, return first truthy match
+      for (const branch of branches) {
+        if (branch.isElse) return renderTemplate(branch.body, context, partials);
+        if (resolveValue(context, branch.var)) return renderTemplate(branch.body, context, partials);
+      }
+      return '';
+    });
+  }
+
+  // 4. Process {% if var %}...{% endif %} (no else, no elif — for remaining
+  //    simple if/endif blocks that weren't caught by the section parser above)
   const ifRe = /\{%\s*if\s+(\w[\w-]*)\s*%\}([\s\S]*?)\{%\s*endif\s*%\}/g;
-  result = result.replace(ifRe, (_match, varName, body) => {
-    const val = resolveValue(context, varName);
-    if (val) {
-      return renderTemplate(body, context, partials);
-    }
-    return '';
-  });
 
   // 5. Process {{ var | default("val") }}
   const defaultRe = /\{\{\s*([\w.-]+)\s*\|\s*default\s*\(\s*"([^"]*)"\s*\)\s*\}\}/g;
