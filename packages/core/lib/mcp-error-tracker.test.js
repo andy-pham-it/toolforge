@@ -11,11 +11,13 @@ const { MCPErrorTracker } = require('./mcp-error-tracker');
 async function waitForLines(filePath, expected) {
   const deadline = Date.now() + 2000;
   while (Date.now() < deadline) {
-    const content = fs.readFileSync(filePath, 'utf8');
-    const lines = content.split('\n').filter(Boolean);
-    if (lines.length >= expected) return lines;
+    if (fs.existsSync(filePath)) {
+      const lines = fs.readFileSync(filePath, 'utf8').split('\n').filter(Boolean);
+      if (lines.length >= expected) return lines;
+    }
     await new Promise((r) => setTimeout(r, 20));
   }
+  if (!fs.existsSync(filePath)) return [];
   return fs.readFileSync(filePath, 'utf8').split('\n').filter(Boolean);
 }
 
