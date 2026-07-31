@@ -33,7 +33,21 @@ if (process.env.GEMINI_API_KEY) {
     console.warn('[mcp] Warning: No API key found (check GEMINI_API_KEY or GROQ_API_KEY). Tools that need LLM will return errors.');
 }
 
-const server = createServer({ provider, apiKey, models });
+// Error tracking: MCP_ERROR_LOG appends JSONL for every tool call;
+// MCP_ON_CRITICAL (optional) appends JSONL only for internal (-32000) errors.
+const errorLogPath = process.env.MCP_ERROR_LOG || undefined;
+let onCritical;
+if (process.env.MCP_ON_CRITICAL) {
+    const criticalLogPath = process.env.MCP_ON_CRITICAL;
+    const fs = require('fs');
+    onCritical = (info) => {
+        fs.promises
+            .appendFile(criticalLogPath, JSON.stringify({ timestamp: new Date().toISOString(), ...info }) + '\n')
+            .catch(() => {});
+    };
+}
+
+const server = createServer({ provider, apiKey, models, errorLogPath, onCritical });
 server.start().catch(err => {
     console.error('MCP server error:', err);
     process.exit(1);
