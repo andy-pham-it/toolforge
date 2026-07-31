@@ -4,7 +4,7 @@
 const path = require('path');
 const fs = require('fs');
 const { globSync } = require('glob');
-const { installSkills } = require('@andy-toolforge/core/lib/postinstall-skills');
+const { installSkills, findProjectRoot } = require('@andy-toolforge/core/lib/postinstall-skills');
 
 const STANDARD_MAP = {
   'agile-prd': 'agile', 'ieee-29148': 'ieee-29148',
@@ -22,7 +22,8 @@ installSkills({
 
 // 2. Generate version manifest
 const pkg = require('./package.json');
-const manifestDir = path.join(process.cwd(), '.opencode', 'manifests');
+const projectRoot = findProjectRoot(process.cwd(), path.join(__dirname, 'skills'));
+const manifestDir = path.join(projectRoot, '.opencode', 'manifests');
 const manifestPath = path.join(manifestDir, 'sdlc-workflows.json');
 
 fs.mkdirSync(manifestDir, { recursive: true });
