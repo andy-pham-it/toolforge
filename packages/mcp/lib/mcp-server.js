@@ -1,4 +1,4 @@
-const { LLMClient, OpenAIAdapter } = require('@andy-toolforge/core');
+const { LLMClient, OpenAIAdapter, MCPErrorTracker } = require('@andy-toolforge/core');
 const path = require('path');
 const fs = require('fs');
 const readline = require('readline');
@@ -40,6 +40,11 @@ class MCPServer {
         }
 
         this._tools = {};
+
+        this._tracker = new MCPErrorTracker({
+            logPath: config.errorLogPath,
+            onCritical: config.onCritical,
+        });
 
         if (config.discover !== false) {
             this._loadPluginTools();
@@ -264,7 +269,11 @@ Respond with a JSON object:
     }
 
     /** Handle a single JSON-RPC request */
-    async _handle(msg) {
+    _handle(msg) {
+        return this._tracker.wrapHandle((m) => this._handleInner(m))(msg);
+    }
+
+    _handleInner(msg) {
         if (!msg || typeof msg === 'string') {
             return { jsonrpc: '2.0', id: null, error: { code: -32600, message: 'Invalid Request' } };
         }
@@ -332,7 +341,8 @@ Respond with a JSON object:
         }
 
         try {
-            const result = await tool.handler(this.llm, params.arguments || {});
+            const wrapped = this._tracker.wrap(params.name, tool.handler);
+            const result = await wrapped(this.llm, params.arguments || {});
             return {
                 jsonrpc: '2.0',
                 id,

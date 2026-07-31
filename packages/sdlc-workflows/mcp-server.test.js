@@ -3,6 +3,8 @@
 const { describe, it, before, after } = require('node:test');
 const assert = require('node:assert/strict');
 const { spawn } = require('node:child_process');
+const fs = require('node:fs');
+const os = require('node:os');
 const path = require('node:path');
 
 const SERVER_PATH = path.join(__dirname, 'mcp-server.js');
@@ -197,5 +199,62 @@ describe('MCP Server (mcp-server.js)', () => {
     assert.ok(Array.isArray(parsed.results));
     assert.ok(parsed.totalResults >= 1);
     assert.ok(parsed.results.some(r => r.id.includes('arch')));
+  });
+});
+
+describe('MCP Server error tracking (--error-log)', () => {
+  let proc;
+  let logPath;
+
+  function readLog() {
+    if (!fs.existsSync(logPath)) return [];
+    return fs.readFileSync(logPath, 'utf8').split('\n').filter(Boolean).map((l) => JSON.parse(l));
+  }
+
+  before(() => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sdlc-mcp-'));
+    logPath = path.join(dir, 'errors.jsonl');
+    proc = spawn(process.execPath, [SERVER_PATH, '--error-log', logPath], {
+      stdio: ['pipe', 'pipe', 'pipe'],
+      env: { ...process.env, NODE_ENV: 'test' },
+    });
+    proc.stderr.on('data', () => {});
+  });
+
+  after(() => {
+    if (proc && !proc.killed) {
+      proc.kill();
+    }
+  });
+
+  it('logs an ok entry for successful tool calls and error entry with code for failures', async () => {
+    await rpcCall(proc, {
+      jsonrpc: '2.0',
+      id: 1,
+      method: 'tools/call',
+      params: { name: 'sdlc_list_templates', arguments: { category: 'flows' } },
+    });
+    const errResp = await rpcCall(proc, {
+      jsonrpc: '2.0',
+      id: 2,
+      method: 'tools/call',
+      params: { name: 'validate_document', arguments: {} },
+    });
+    assert.equal(errResp.error.code, -32602);
+
+    const deadline = Date.now() + 3000;
+    let entries = readLog();
+    while (entries.length < 2 && Date.now() < deadline) {
+      await new Promise((r) => setTimeout(r, 20));
+      entries = readLog();
+    }
+
+    assert.equal(entries.length, 2);
+    assert.equal(entries[0].type, 'ok');
+    assert.equal(entries[0].tool, 'sdlc_list_templates');
+    assert.equal(typeof entries[0].duration, 'number');
+    assert.equal(entries[1].type, 'error');
+    assert.equal(entries[1].tool, 'validate_document');
+    assert.equal(entries[1].code, -32602);
   });
 });

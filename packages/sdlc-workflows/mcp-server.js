@@ -22,9 +22,18 @@
 const readline = require('readline');
 const pkg = require('./package.json');
 const loadTools = require('./mcp-tools');
+const { MCPErrorTracker } = require('@andy-toolforge/core');
 
 // --debug flag: enable per-call duration logging
 const DEBUG = process.argv.includes('--debug');
+
+// --error-log flag or SDLC_MCP_ERROR_LOG env: JSONL error-tracking log path
+const errorLogIndex = process.argv.indexOf('--error-log');
+const ERROR_LOG_PATH = errorLogIndex > -1
+  ? process.argv[errorLogIndex + 1]
+  : (process.env.SDLC_MCP_ERROR_LOG || null);
+
+const tracker = new MCPErrorTracker({ logPath: ERROR_LOG_PATH });
 
 // ---------------------------------------------------------------------------
 // Tools — loaded from mcp-tools/ (no LLM, no API key)
@@ -58,7 +67,7 @@ function getToolList() {
 }
 
 /** Handle a single JSON-RPC request */
-async function handle(msg) {
+const handle = async (msg) => {
   if (!msg || typeof msg === 'string') {
     return { jsonrpc: '2.0', id: null, error: { code: -32600, message: 'Invalid Request' } };
   }
@@ -118,7 +127,8 @@ async function handleToolCall(id, params) {
 
   const start = Date.now();
   try {
-    const result = await tool.handler(null, params.arguments || {});
+    const wrapped = tracker.wrap(params.name, tool.handler);
+    const result = await wrapped(null, params.arguments || {});
     if (DEBUG) {
       console.error(`[sdlc-workflows] tool ${params.name} OK — ${Date.now() - start}ms`);
     }
@@ -158,7 +168,8 @@ async function start() {
     if (!line.trim()) continue;
     try {
       const msg = JSON.parse(line);
-      const resp = await handle(msg);
+      const wrappedHandle = tracker.wrapHandle(handle);
+      const resp = await wrappedHandle(msg);
       if (resp !== null) {
         process.stdout.write(JSON.stringify(resp) + '\n');
       }

@@ -1,8 +1,23 @@
 const { describe, it, before } = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('fs');
+const os = require('os');
+const path = require('path');
 const MCPServer = require('./mcp-server');
 const { createServer } = require('./index');
+
+/** Poll a file until it contains expectedCount lines (appendFile is async). */
+async function waitForLines(filePath, expectedCount, timeoutMs = 3000) {
+    const deadline = Date.now() + timeoutMs;
+    while (Date.now() < deadline) {
+        if (fs.existsSync(filePath)) {
+            const lines = fs.readFileSync(filePath, 'utf8').split('\n').filter(Boolean);
+            if (lines.length >= expectedCount) return lines;
+        }
+        await new Promise(r => setTimeout(r, 20));
+    }
+    throw new Error(`Timed out waiting for ${expectedCount} lines in ${filePath}`);
+}
 
 /** Create a mock LLM that returns controlled responses */
 function mockLlm(returnValue) {
@@ -452,6 +467,89 @@ describe('MCPServer', () => {
                 assert.equal(names.length, 2, `expected 2 built-in tools, got ${names.length}`);
                 assert(!names.includes('toolforge_content_research'), 'plugin tools should not load when discover=false');
             });
+        });
+    });
+
+    describe('error tracking (MCPErrorTracker integration)', () => {
+        function registerBoomTool(server) {
+            server._tools['_test_boom'] = {
+                definition: { name: '_test_boom', inputSchema: { type: 'object', properties: {} } },
+                handler: async () => { throw new Error('boom'); },
+            };
+        }
+
+        it('writes JSONL log entries to config.errorLogPath for ok and error calls', async () => {
+            const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'mcp-tracker-'));
+            const logPath = path.join(dir, 'errors.jsonl');
+            const server = createServer({ apiKey: 'test-key', discover: false, errorLogPath: logPath });
+            registerBoomTool(server);
+
+            await server._handle({
+                jsonrpc: '2.0', id: 1, method: 'tools/call',
+                params: { name: 'toolforge_ecosystem', arguments: { action: 'list' } },
+            });
+            await server._handle({
+                jsonrpc: '2.0', id: 2, method: 'tools/call',
+                params: { name: '_test_boom', arguments: {} },
+            });
+
+            const lines = await waitForLines(logPath, 2);
+            const parsed = lines.map(l => JSON.parse(l));
+            assert.equal(parsed[0].type, 'ok');
+            assert.equal(parsed[0].tool, 'toolforge_ecosystem');
+            assert.equal(typeof parsed[0].duration, 'number');
+            assert.equal(parsed[1].type, 'error');
+            assert.equal(parsed[1].tool, '_test_boom');
+            assert.equal(parsed[1].code, -32000);
+            fs.rmSync(dir, { recursive: true, force: true });
+        });
+
+        it('invokes config.onCritical for internal errors and keeps JSON-RPC error shape', async () => {
+            const criticals = [];
+            const server = createServer({
+                apiKey: 'test-key',
+                discover: false,
+                onCritical: (info) => criticals.push(info),
+            });
+            registerBoomTool(server);
+
+            const resp = await server._handle({
+                jsonrpc: '2.0', id: 3, method: 'tools/call',
+                params: { name: '_test_boom', arguments: {} },
+            });
+
+            assert(resp.error);
+            assert.equal(resp.error.code, -32000);
+            assert.equal(resp.error.message, 'boom');
+            assert.equal(criticals.length, 1);
+            assert.equal(criticals[0].tool, '_test_boom');
+            assert.equal(criticals[0].code, -32000);
+            assert.equal(criticals[0].message, 'boom');
+            assert.ok(criticals[0].stack);
+        });
+
+        it('accumulates stats via tracker.getStats() across calls', async () => {
+            const server = createServer({ apiKey: 'test-key', discover: false });
+            registerBoomTool(server);
+
+            await server._handle({
+                jsonrpc: '2.0', id: 4, method: 'tools/call',
+                params: { name: '_test_boom', arguments: {} },
+            });
+            await server._handle({
+                jsonrpc: '2.0', id: 5, method: 'tools/call',
+                params: { name: '_test_boom', arguments: {} },
+            });
+            await server._handle({
+                jsonrpc: '2.0', id: 6, method: 'tools/call',
+                params: { name: 'toolforge_ecosystem', arguments: { action: 'list' } },
+            });
+
+            const stats = server._tracker.getStats();
+            assert.equal(stats.totalCalls, 3);
+            assert.equal(stats.totalErrors, 2);
+            assert.equal(stats.errorCounts['-32000'], 2);
+            assert.equal(stats.recentLogs.length, 3);
         });
     });
 });
