@@ -6,6 +6,7 @@
     "packages/core",
     "packages/footage-generation",
     "packages/genai-tools",
+    "packages/hermes-opencode-mcp-bridge",
     "packages/seo-generation",
     "packages/book-writing",
     "packages/pm-support",
