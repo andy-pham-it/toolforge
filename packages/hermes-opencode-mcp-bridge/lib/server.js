@@ -1,6 +1,7 @@
 'use strict';
 
 const { z } = require('zod');
+const pkg = require('../package.json');
 const { McpServer } = require('@modelcontextprotocol/sdk/server/mcp.js');
 const { StdioServerTransport } = require('@modelcontextprotocol/sdk/server/stdio.js');
 const { loadConfig } = require('./config');
@@ -30,7 +31,7 @@ function createServer({ config, sessions, tools } = {}) {
     }
   }
   const enabled = tools ? new Set(tools) : null;
-  const server = new McpServer({ name: 'hermes-opencode-bridge', version: '0.1.0' });
+  const server = new McpServer({ name: 'hermes-opencode-bridge', version: pkg.version });
 
   if (!enabled || enabled.has('opencode_run')) {
     server.registerTool(
@@ -38,13 +39,13 @@ function createServer({ config, sessions, tools } = {}) {
       {
         title: 'Run task in opencode',
         description: 'Run a task in an opencode session. Use conversation_id to continue a previous session.',
-        inputSchema: {
+        inputSchema: z.object({
           task: z.string().describe('The task to run'),
           project_dir: z.string().optional().describe('Project directory'),
           model: z.string().optional().describe('Model id'),
           agent: z.string().optional().describe('Agent name'),
           conversation_id: z.string().optional().describe('Conversation to continue'),
-        },
+        }).strict(),
       },
       wrap((args) => opencodeRun({ config: cfg, sessions: sms, args }))
     );
@@ -56,11 +57,11 @@ function createServer({ config, sessions, tools } = {}) {
       {
         title: 'Read files or tree',
         description: 'Read a file or list a directory tree.',
-        inputSchema: {
+        inputSchema: z.object({
           path: z.string().describe('Path to file or directory'),
           depth: z.number().optional().describe('Directory recursion depth (default 2)'),
           max_lines: z.number().optional().describe('Max lines for files (default 500)'),
-        },
+        }).strict(),
       },
       wrap((args) => opencodeRead({ config: cfg, args }))
     );
@@ -72,9 +73,9 @@ function createServer({ config, sessions, tools } = {}) {
       {
         title: 'Git working state',
         description: 'Get git status of a project directory.',
-        inputSchema: {
+        inputSchema: z.object({
           project_dir: z.string().optional().describe('Project directory'),
-        },
+        }).strict(),
       },
       wrap((args) => opencodeStatus({ config: cfg, args }))
     );
@@ -86,10 +87,10 @@ function createServer({ config, sessions, tools } = {}) {
       {
         title: 'Manage allowed models',
         description: 'Set, add, remove, or list allowed models.',
-        inputSchema: {
+        inputSchema: z.object({
           models: z.array(z.string()).optional().describe('Model ids'),
           action: z.enum(['set', 'add', 'remove', 'list']).optional().describe('Action'),
-        },
+        }).strict(),
       },
       wrap((args) => opencodeSetModels({ config: cfg, args }))
     );
@@ -101,13 +102,13 @@ function createServer({ config, sessions, tools } = {}) {
       {
         title: 'Run task with auto-commit',
         description: 'Run a task and auto-commit changes afterward.',
-        inputSchema: {
+        inputSchema: z.object({
           task: z.string().describe('The task to run'),
           project_dir: z.string().optional().describe('Project directory'),
           model: z.string().optional().describe('Model id'),
           agent: z.string().optional().describe('Agent name'),
           conversation_id: z.string().optional().describe('Conversation to continue'),
-        },
+        }).strict(),
       },
       wrap((args) => opencodeRun({ config: { ...cfg, auto_commit: true }, sessions: sms, args }))
     );
