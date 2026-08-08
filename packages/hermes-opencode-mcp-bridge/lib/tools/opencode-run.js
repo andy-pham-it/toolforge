@@ -7,6 +7,18 @@ function error(code, message) {
   return { status: 'error', error: { code, message } };
 }
 
+function runAutoCommit(projectDir) {
+  return new Promise((resolve) => {
+    childProcess.execFile('git', ['-C', projectDir, 'add', '-A'], (addErr) => {
+      if (addErr) return resolve({ committed: false, error: `git add failed: ${addErr.message}` });
+      childProcess.execFile('git', ['-C', projectDir, 'commit', '-m', 'feat: auto-commit after opencode run'], (commitErr, commitOut) => {
+        if (commitErr) return resolve({ committed: false, error: `git commit failed: ${commitErr.message}` });
+        resolve({ committed: true, message: String(commitOut || '').trim() });
+      });
+    });
+  });
+}
+
 async function opencodeRun({ config, sessions, args, timeoutMs }) {
   const task = typeof args.task === 'string' ? args.task.trim() : '';
   if (!task) return error('INVALID_ARGS', 'task is required');
@@ -59,41 +71,45 @@ async function opencodeRun({ config, sessions, args, timeoutMs }) {
       resolve(error('TASK_ERROR', `opencode spawn error: ${err.message}`));
     });
 
-    child.on('close', () => {
+    child.on('close', async (code) => {
       if (settled) return;
       settled = true;
       clearTimeout(timer);
+      let parsed;
       try {
-        const parsed = parseOpenCodeOutput(stdout);
-        let conversation_id = args.conversation_id;
-        if (existingSession) {
-          existingSession.projectDir = projectDir;
-          sessions.touch(conversation_id);
-        } else {
-          conversation_id = sessions.create(parsed.session_id, projectDir);
-        }
-        sessions.markDone(conversation_id);
-        if (config.auto_commit) {
-          childProcess.execFile('git', ['-C', projectDir, 'add', '-A'], () => {
-            childProcess.execFile('git', ['-C', projectDir, 'commit', '-m', 'feat: auto-commit after opencode run'], () => {});
-          });
-        }
-        resolve({
-          status: 'success',
-          data: {
-            conversation_id,
-            session_id: parsed.session_id,
-            task,
-            project_dir: projectDir,
-            files_changed: parsed.files_changed,
-            diff: parsed.diff,
-            summary: parsed.summary,
-            completed_at: new Date().toISOString(),
-          },
-        });
+        parsed = parseOpenCodeOutput(stdout);
       } catch (err) {
-        resolve(error('PARSE_ERROR', `failed to parse opencode output: ${err.message}${stderr ? `\nstderr: ${stderr}` : ''}`));
+        if (code !== 0) {
+          return resolve(error('PARSE_ERROR', `failed to parse opencode output (exit ${code}): ${err.message}${stderr ? `\nstderr: ${stderr}` : ''}`));
+        }
+        // Exit 0 with no parseable output: the run succeeded but produced
+        // nothing (e.g. no-op task) → return success with an empty summary
+        // instead of failing the whole tool call.
+        parsed = { session_id: null, files_changed: [], summary: '', diff: '' };
       }
+      let conversation_id = args.conversation_id;
+      if (existingSession) {
+        existingSession.projectDir = projectDir;
+        sessions.touch(conversation_id);
+      } else {
+        conversation_id = sessions.create(parsed.session_id, projectDir);
+      }
+      sessions.markDone(conversation_id);
+      const auto_commit = config.auto_commit ? await runAutoCommit(projectDir) : null;
+      resolve({
+        status: 'success',
+        data: {
+          conversation_id,
+          session_id: parsed.session_id,
+          task,
+          project_dir: projectDir,
+          files_changed: parsed.files_changed,
+          diff: parsed.diff,
+          summary: parsed.summary,
+          completed_at: new Date().toISOString(),
+          ...(auto_commit ? { auto_commit } : {}),
+        },
+      });
     });
   });
 }

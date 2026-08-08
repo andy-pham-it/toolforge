@@ -21,6 +21,7 @@ test('loadConfig returns defaults when file missing', () => {
   assert.strictEqual(cfg.default_model, DEFAULTS.default_model);
   assert.deepStrictEqual(cfg.models, []);
   assert.strictEqual(cfg.opencode_bin, path.join(os.homedir(), '.opencode', 'bin', 'opencode'));
+  assert.strictEqual(cfg.session_file, path.join(os.homedir(), '.config', 'hermes-opencode', 'sessions.json'));
 });
 
 test('loadConfig merges user config over defaults', () => {
@@ -32,10 +33,11 @@ test('loadConfig merges user config over defaults', () => {
 });
 
 test('loadConfig expands ~ in paths', () => {
-  const file = tmpConfig({ opencode_bin: '~/bin/opencode', default_project_dir: '~' });
+  const file = tmpConfig({ opencode_bin: '~/bin/opencode', default_project_dir: '~', session_file: '~/sess.json' });
   const cfg = loadConfig(file);
   assert.strictEqual(cfg.opencode_bin, path.join(os.homedir(), 'bin', 'opencode'));
   assert.strictEqual(cfg.default_project_dir, os.homedir());
+  assert.strictEqual(cfg.session_file, path.join(os.homedir(), 'sess.json'));
 });
 
 test('loadConfig throws CONFIG_ERROR on bad JSON', () => {
@@ -51,4 +53,5 @@ test('writeConfig persists config and roundtrips', () => {
   const roundtrip = loadConfig(file);
   assert.strictEqual(roundtrip.default_agent, 'refactor');
   assert.deepStrictEqual(roundtrip.models, ['a', 'b']);
+  assert.strictEqual(roundtrip.session_file, path.join(os.homedir(), '.config', 'hermes-opencode', 'sessions.json'));
 });

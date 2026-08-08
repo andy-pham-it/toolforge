@@ -11,18 +11,20 @@ const { createServer } = require('./server');
 const { loadConfig } = require('./config');
 const { SessionManager } = require('./session');
 
-function makeFakeChild(stdoutLines, delay = 0) {
+function makeFakeChild(stdoutLines, delay = 0, exitCode = 0) {
   const child = new EventEmitter();
   child.stdout = new EventEmitter();
   child.stderr = new EventEmitter();
   child.pid = 4242;
   child.kill = () => true;
   queueMicrotask(() => {
-    setTimeout(() => {
+    const emit = () => {
       for (const line of stdoutLines) child.stdout.emit('data', line + '\n');
       child.stdout.emit('end');
-      child.emit('close', 0, null);
-    }, delay);
+      child.emit('close', exitCode, null);
+    };
+    if (delay > 0) setTimeout(emit, delay);
+    else emit();
   });
   return child;
 }
@@ -42,6 +44,7 @@ function fakeEnv(t) {
     default_agent: 'fixer',
     default_model: 'opencode/deepseek-v4-flash-free',
     session_timeout: 60,
+    session_file: path.join(dir, 'sessions.json'),
   }));
   const old = process.env.HERMES_OPENCODE_CONFIG;
   process.env.HERMES_OPENCODE_CONFIG = path.join(dir, 'config.json');
@@ -156,6 +159,7 @@ test('integration: success result exposes data in content[0].text', async (t) =>
   assert.match(text.summary, /Edited hello.js/);
   assert.ok(text.conversation_id);
   assert.strictEqual(res.status, 'success');
+  assert.strictEqual(res.isError, false);
   assert.strictEqual(res.data.session_id, 'ses_txt1');
 });
 
@@ -164,6 +168,7 @@ test('integration: error result exposes error payload in content[0].text', async
   const server = createServer({});
   const res = await toolHandler(server, 'opencode_run').call(server, { task: '   ' });
   assert.strictEqual(res.status, 'error');
+  assert.strictEqual(res.isError, true);
   assert.ok(Array.isArray(res.content));
   assert.strictEqual(res.content[0].type, 'text');
   const err = JSON.parse(res.content[0].text);
@@ -182,4 +187,50 @@ test('integration: opencode_read result carries file content in content[0].text'
   assert.strictEqual(res.content[0].type, 'text');
   const text = JSON.parse(res.content[0].text);
   assert.strictEqual(text.content, 'hi');
+});
+
+test('integration: opencode_task surfaces successful auto_commit in result', async (t) => {
+  fakeEnv(t);
+  mock.method(childProcess, 'spawn', (bin, args) => makeFakeChild(realOpenCodeStdout('ses_ac1')));
+  mock.method(childProcess, 'execFile', (bin, args, cb) => cb(null, '1 file changed, 1 insertion(+)\n', ''));
+  const server = createServer({});
+  const res = await toolHandler(server, 'opencode_task').call(server, { task: 'edit', project_dir: '/tmp/proj' });
+  assert.strictEqual(res.status, 'success');
+  assert.strictEqual(res.isError, false);
+  assert.deepStrictEqual(res.data.auto_commit, { committed: true, message: '1 file changed, 1 insertion(+)' });
+});
+
+test('integration: opencode_task surfaces auto_commit git failure in result', async (t) => {
+  fakeEnv(t);
+  mock.method(childProcess, 'spawn', (bin, args) => makeFakeChild(realOpenCodeStdout('ses_ac2')));
+  mock.method(childProcess, 'execFile', (bin, args, cb) => cb(new Error('git is angry')));
+  const server = createServer({});
+  const res = await toolHandler(server, 'opencode_task').call(server, { task: 'edit', project_dir: '/tmp/proj' });
+  assert.strictEqual(res.status, 'success');
+  assert.strictEqual(res.data.auto_commit.committed, false);
+  assert.match(res.data.auto_commit.error, /git add failed: git is angry/);
+});
+
+test('integration: empty output with exit 0 returns success with empty summary', async (t) => {
+  fakeEnv(t);
+  mock.method(childProcess, 'spawn', (bin, args) => makeFakeChild([], 0, 0));
+  const server = createServer({});
+  const res = await toolHandler(server, 'opencode_run').call(server, { task: 'noop', project_dir: '/tmp/proj' });
+  assert.strictEqual(res.status, 'success');
+  assert.strictEqual(res.isError, false);
+  assert.strictEqual(res.data.summary, '');
+  assert.deepStrictEqual(res.data.files_changed, []);
+  assert.strictEqual(res.data.session_id, null);
+  assert.ok(res.data.conversation_id);
+});
+
+test('integration: unparseable output with non-zero exit returns PARSE_ERROR', async (t) => {
+  fakeEnv(t);
+  mock.method(childProcess, 'spawn', (bin, args) => makeFakeChild([], 0, 1));
+  const server = createServer({});
+  const res = await toolHandler(server, 'opencode_run').call(server, { task: 'noop', project_dir: '/tmp/proj' });
+  assert.strictEqual(res.status, 'error');
+  assert.strictEqual(res.isError, true);
+  assert.strictEqual(res.error.code, 'PARSE_ERROR');
+  assert.match(res.error.message, /exit 1/);
 });

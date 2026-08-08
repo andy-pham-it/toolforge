@@ -11,6 +11,7 @@ const DEFAULTS = {
   default_model: 'opencode/deepseek-v4-flash-free',
   models: [],
   session_timeout: 300,
+  session_file: '~/.config/hermes-opencode/sessions.json',
   auto_commit: false,
   verbose: false,
 };
@@ -57,6 +58,7 @@ function loadConfig(file) {
   }
   cfg.opencode_bin = expandHome(cfg.opencode_bin);
   cfg.default_project_dir = expandHome(cfg.default_project_dir);
+  cfg.session_file = expandHome(cfg.session_file);
   if (!Array.isArray(cfg.models)) cfg.models = [];
   return cfg;
 }
@@ -71,6 +73,7 @@ function writeConfig(cfg, target) {
     default_model: cfg.default_model,
     models: cfg.models,
     session_timeout: cfg.session_timeout,
+    session_file: cfg.session_file,
     auto_commit: cfg.auto_commit,
     verbose: cfg.verbose,
   };

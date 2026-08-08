@@ -2,6 +2,9 @@
 
 const { test } = require('node:test');
 const assert = require('node:assert');
+const fs = require('node:fs');
+const os = require('node:os');
+const path = require('node:path');
 const { SessionManager, generateConversationId } = require('./session');
 
 test('generateConversationId has hob- prefix + 6 chars', () => {
@@ -65,4 +68,52 @@ test('startCleanup installs unref timer, stopCleanup clears it', () => {
   assert.strictEqual(typeof sm._timer.unref, 'function');
   sm.stopCleanup();
   assert.strictEqual(sm._timer, null);
+});
+
+test('sessionFile: sessions persist across manager restarts', () => {
+  const file = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'hob-ses-')), 'sessions.json');
+  const sm1 = new SessionManager({ sessionFile: file });
+  const id = sm1.create('ses_p1', '/tmp/proj');
+  sm1.touch(id);
+  sm1.markActive(id, 1234);
+  sm1.markDone(id);
+
+  const sm2 = new SessionManager({ sessionFile: file });
+  const s = sm2.get(id);
+  assert.ok(s);
+  assert.strictEqual(s.opencodeSessionId, 'ses_p1');
+  assert.strictEqual(s.projectDir, '/tmp/proj');
+});
+
+test('sessionFile: activePid is zeroed on load after restart', () => {
+  const file = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'hob-ses-')), 'sessions.json');
+  const sm1 = new SessionManager({ sessionFile: file });
+  const id = sm1.create('ses_p2', '/tmp/proj');
+  sm1.markActive(id, 9999);
+  const sm2 = new SessionManager({ sessionFile: file });
+  assert.strictEqual(sm2.get(id).activePid, null);
+});
+
+test('sessionFile: sweep and remove are persisted', () => {
+  const file = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'hob-ses-')), 'sessions.json');
+  const sm1 = new SessionManager({ sessionFile: file, sessionTimeout: 1 });
+  const id = sm1.create('ses_p3', '/tmp/proj');
+  sm1.get(id).lastUsedAt = Date.now() - 5000;
+  sm1.sweep();
+  let sm2 = new SessionManager({ sessionFile: file });
+  assert.strictEqual(sm2.get(id), null);
+
+  const id2 = sm1.create('ses_p4', '/tmp/proj');
+  sm1.remove(id2);
+  sm2 = new SessionManager({ sessionFile: file });
+  assert.strictEqual(sm2.get(id2), null);
+});
+
+test('sessionFile: missing or corrupt file starts empty without throwing', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'hob-ses-'));
+  const missing = new SessionManager({ sessionFile: path.join(dir, 'nope.json') });
+  assert.strictEqual(missing.sessions.size, 0);
+  fs.writeFileSync(path.join(dir, 'bad.json'), '{ not json');
+  const corrupt = new SessionManager({ sessionFile: path.join(dir, 'bad.json') });
+  assert.strictEqual(corrupt.sessions.size, 0);
 });

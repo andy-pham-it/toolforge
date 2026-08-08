@@ -19,6 +19,7 @@ function toResult(r) {
   return {
     content: [{ type: 'text', text: JSON.stringify(payload.data ?? payload.error ?? payload, null, 2) }],
     ...payload,
+    isError: payload.status === 'error',
   };
 }
 
@@ -34,7 +35,7 @@ function wrap(toolFn) {
 
 function createServer({ config, sessions, tools } = {}) {
   const cfg = config || loadConfig();
-  const sms = sessions || new SessionManager();
+  const sms = sessions || new SessionManager({ sessionFile: cfg.session_file });
   const KNOWN_TOOLS = ['opencode_run', 'opencode_read', 'opencode_status', 'opencode_set_models', 'opencode_task'];
   if (tools) {
     for (const name of tools) {
@@ -130,7 +131,7 @@ function createServer({ config, sessions, tools } = {}) {
 
 async function startServer(opts = {}) {
   const cfg = opts.config || loadConfig();
-  const sms = opts.sessions || new SessionManager();
+  const sms = opts.sessions || new SessionManager({ sessionFile: cfg.session_file });
   const server = createServer({ config: cfg, sessions: sms, tools: opts.tools });
   sms.startCleanup();
   const transport = new StdioServerTransport();

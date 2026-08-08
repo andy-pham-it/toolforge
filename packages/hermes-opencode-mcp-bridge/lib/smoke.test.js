@@ -2,6 +2,8 @@
 
 const { test } = require('node:test');
 const assert = require('node:assert');
+const fs = require('node:fs');
+const os = require('node:os');
 const path = require('node:path');
 const { spawn } = require('node:child_process');
 
@@ -9,9 +11,12 @@ const pkg = require('../package.json');
 const BIN = path.join(__dirname, 'index.js');
 
 function spawnBridge() {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'hob-smoke-'));
+  const configFile = path.join(dir, 'config.json');
+  fs.writeFileSync(configFile, JSON.stringify({ session_file: path.join(dir, 'sessions.json') }));
   const child = spawn(process.execPath, [BIN], {
     stdio: ['pipe', 'pipe', 'pipe'],
-    env: { ...process.env, HERMES_OPENCODE_CONFIG: path.join(__dirname, '..', 'no-such-config.json') },
+    env: { ...process.env, HERMES_OPENCODE_CONFIG: configFile },
   });
   return child;
 }
