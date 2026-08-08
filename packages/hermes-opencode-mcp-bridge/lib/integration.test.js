@@ -136,3 +136,50 @@ test('integration: opencode_task forces auto_commit', async (t) => {
   const res = await toolHandler(server, 'opencode_task').call(server, { task: 'edit', project_dir: '/tmp/proj' });
   assert.strictEqual(res.status, 'success');
 });
+
+// Regression: real MCP clients (Hermes, Claude) only read content[0].text.
+// The toResult wrapper must always populate it with the payload JSON.
+
+test('integration: success result exposes data in content[0].text', async (t) => {
+  fakeEnv(t);
+  mock.method(childProcess, 'spawn', (bin, args) => makeFakeChild(realOpenCodeStdout('ses_txt1')));
+  const cfg = loadConfig();
+  const sessions = new SessionManager();
+  const server = createServer({ config: cfg, sessions });
+  const res = await toolHandler(server, 'opencode_run').call(server, { task: 'do the thing', project_dir: '/tmp/proj' });
+
+  assert.ok(Array.isArray(res.content));
+  assert.strictEqual(res.content[0].type, 'text');
+  const text = JSON.parse(res.content[0].text);
+  assert.strictEqual(text.session_id, 'ses_txt1');
+  assert.deepStrictEqual(text.files_changed, ['/tmp/proj/hello.js']);
+  assert.match(text.summary, /Edited hello.js/);
+  assert.ok(text.conversation_id);
+  assert.strictEqual(res.status, 'success');
+  assert.strictEqual(res.data.session_id, 'ses_txt1');
+});
+
+test('integration: error result exposes error payload in content[0].text', async (t) => {
+  fakeEnv(t);
+  const server = createServer({});
+  const res = await toolHandler(server, 'opencode_run').call(server, { task: '   ' });
+  assert.strictEqual(res.status, 'error');
+  assert.ok(Array.isArray(res.content));
+  assert.strictEqual(res.content[0].type, 'text');
+  const err = JSON.parse(res.content[0].text);
+  assert.strictEqual(err.code, 'INVALID_ARGS');
+  assert.match(err.message, /task is required/);
+});
+
+test('integration: opencode_read result carries file content in content[0].text', async (t) => {
+  fakeEnv(t);
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'hob-int-txt-'));
+  fs.writeFileSync(path.join(dir, 'x.txt'), 'hi\n');
+  const server = createServer({});
+  const res = await toolHandler(server, 'opencode_read').call(server, { path: path.join(dir, 'x.txt') });
+  assert.strictEqual(res.status, 'success');
+  assert.ok(Array.isArray(res.content));
+  assert.strictEqual(res.content[0].type, 'text');
+  const text = JSON.parse(res.content[0].text);
+  assert.strictEqual(text.content, 'hi');
+});

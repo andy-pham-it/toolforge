@@ -11,12 +11,23 @@ const { opencodeRead } = require('./tools/opencode-read');
 const { opencodeStatus } = require('./tools/opencode-status');
 const { opencodeSetModels } = require('./tools/opencode-set-models');
 
+// Convert bridge result {status, data|error} into a standards-compliant MCP
+// CallToolResult so real MCP clients (Hermes, Claude, etc.) that only read
+// content[0].text see the payload. Old fields are kept for backward compat.
+function toResult(r) {
+  const payload = r && typeof r === 'object' && 'status' in r ? r : { status: 'success', data: r };
+  return {
+    content: [{ type: 'text', text: JSON.stringify(payload.data ?? payload.error ?? payload, null, 2) }],
+    ...payload,
+  };
+}
+
 function wrap(toolFn) {
   return async (args) => {
     try {
-      return await toolFn(args);
+      return toResult(await toolFn(args));
     } catch (err) {
-      return { status: 'error', error: { code: 'TASK_ERROR', message: err.message } };
+      return toResult({ status: 'error', error: { code: 'TASK_ERROR', message: err.message } });
     }
   };
 }
