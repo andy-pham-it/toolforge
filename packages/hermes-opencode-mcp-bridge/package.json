@@ -1,6 +1,6 @@
 {
   "name": "@andy-toolforge/hermes-opencode-mcp-bridge",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "MCP bridge from Hermes Agent to the opencode CLI (code editing, terminal, git, multi-model)",
   "main": "lib/index.js",
   "bin": {
@@ -25,7 +25,8 @@
   "author": "Andy Pham",
   "license": "MIT",
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.30.0"
+    "@modelcontextprotocol/sdk": "^1.30.0",
+    "zod": "^3.25.76"
   },
   "engines": {
     "node": ">=18"
