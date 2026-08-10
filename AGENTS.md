@@ -31,6 +31,7 @@ Root `package.json` khai báo `workspaces: ["packages/*"]`. Mỗi thư mục con
 |------|-------|-------|
 | **Infra** | `@andy-toolforge/core` | Nền tảng dùng chung (LLM, browser, logger, queue) |
 | **Domain** | `@andy-toolforge/footage-generation` | Nghiệp vụ cụ thể (sinh ảnh, SEO, viết sách...) |
+| **Python sidecar** | `py-packages/vn-stock-indicators` | Chỉ báo kỹ thuật thuần numpy, gọi qua subprocess từ vn-stock |
 
 **Rules:**
 - Domain packages **CHỈ** phụ thuộc vào `@andy-toolforge/core` — không phụ thuộc lẫn nhau
@@ -153,9 +154,17 @@ npm install <dep> -w @andy-toolforge/<pkg>
 | Analyze code complexity, dependencies | `packages/coding-support/lib/` |
 | Write/outline/review books | `packages/book-writing/lib/` |
 | Competitor/SWOT/market research | `packages/ba-support/lib/` |
-| MCP server tools (media, SEO, Gemini) | `packages/mcp/lib/tools/` |
-| Add a new tool to the MCP server | `packages/mcp/lib/tools/<name>.js` |
+| MCP server tools (media, SEO, Gemini) | `packages/mcp/lib/` |
+| Add MCP tools to a package | `mcp-tools.js` at package root (auto-discovered by `mcp`) |
 | Screen/filter/score VN stocks, detect signals | `packages/vn-stock/lib/` |
+| Voice assistant (Gemini Live API, multi-voice) | `packages/voice-assistant/lib/` |
+| Generate lessons, scaffold series, embed images | `packages/authoring/lib/` |
+| Gemini search grounding, structured extraction | `packages/genai-tools/lib/` |
+| LLM gateway pipeline (stages, CLI, HTTP) | `packages/llm-gateway/lib/` |
+| Pipeline stage primitives (TypeScript) | `packages/llm-gateway-core/lib/` |
+| SDLC workflow templates + MCP server | `packages/sdlc-workflows/` |
+| Bridge opencode CLI ↔ MCP | `packages/hermes-opencode-mcp-bridge/lib/` |
+| VN stock indicators (pure numpy, Python) | `py-packages/vn-stock-indicators/` |
 | Add skill prompt files | `packages/<domain>/skills/` |
 | Publish a package | Run `npm publish -w @andy-toolforge/<pkg>` |
 
@@ -212,6 +221,24 @@ Exports by package (key symbols from Serena analysis):
 | `tts-generator` | `TTSGenerator` | `lib/generator.js` | Gemini TTS via Interactions REST API |
 | `tts-generator` | `LiveTTSGenerator` | `lib/live-generator.js` | Gemini TTS via Live WebSocket API |
 | `tts-generator` | `OutputFormatter` | `lib/output.js` | Output formatting (batch/single/stream) |
+| `authoring` | `generateLesson` | `lib/generate-lesson.js` | Generate lesson plans via LLM |
+| `authoring` | `scaffoldSeries` | `lib/scaffold-series.js` | Scaffold series dir (TOC + lessons + images/) |
+| `authoring` | `embedImagesToMarkdown` | `lib/embed-images.js` | Replace image placeholders via Gemini Images |
+| `authoring` | `validateSeries` | `lib/validate-series.js` | Check series structure, links, images |
+| `genai-tools` | `GenAIClient` | `lib/genai-client.js` | Gemini client wrapper |
+| `genai-tools` | `searchGrounding` | `lib/tools/search-grounding.js` | Google Search–grounded answers |
+| `genai-tools` | `extractStructured` | `lib/tools/extract-structured.js` | JSON extraction via responseSchema |
+| `voice-assistant` | `VoiceAssistant` | `lib/assistant.js` | Bounded voice conversations (Gemini Live) |
+| `voice-assistant` | `VoiceSession` | `lib/session.js` | Session lifecycle for voice chats |
+| `llm-gateway` | `Gateway` | `lib/gateway.js` | Pipeline orchestrator (stages + adapters) |
+| `llm-gateway` | `createGateway` | `lib/index.js` | Factory requiring `createAdapter` callback |
+| `llm-gateway` | `MetricsCollector` | `lib/metrics/collector.js` | Request/token/cost metrics |
+| `llm-gateway-core` | `createPipeline` | `lib/create-pipeline.js` | Build stage chains (TypeScript) |
+| `llm-gateway-core` | `Pipeline`/`Stage` | `lib/pipeline.js` | `async execute(context, next)` chain |
+| `sdlc-workflows` | `mcp-server` | `mcp-server.js` | MCP server for SDLC templates/skills |
+| `hermes-opencode-mcp-bridge` | `createServer` | `lib/server.js` | MCP server bridging opencode CLI |
+| `hermes-opencode-mcp-bridge` | `startServer` | `lib/server.js` | Boot server from config |
+| `py-packages/vn-stock-indicators` | 29 indicators | `vn_stock_indicators/` | Pure numpy: trend/momentum/volatility/volume/price_action |
 
 ## 11. AI decision checklist
 
