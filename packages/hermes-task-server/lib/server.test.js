@@ -44,7 +44,7 @@ test('runHermesTask: happy path JSON shape (FR-5)', async () => {
   const mock = spawnMock((bin, args, opts) => {
     assert.ok(args.includes('--ignore-user-config'));
     assert.ok(args.includes('-Q'));
-    return fakeChild({ stdoutData: 'answer here\nsession_id: ses_abc123\n', exitCode: 0 });
+    return fakeChild({ stdoutData: 'answer here', stderrData: '\nsession_id: ses_abc123\n', exitCode: 0 });
   });
   const stderr = [];
   const origWrite = process.stderr.write;
@@ -57,7 +57,7 @@ test('runHermesTask: happy path JSON shape (FR-5)', async () => {
     assert.equal(res.ok, true);
     assert.equal(res.provider, 'gemini');
     assert.equal(res.model, 'gemini-3.1-flash-lite');
-    assert.equal(res.result, 'answer here\nsession_id: ses_abc123\n');
+    assert.equal(res.result, 'answer here');
     assert.equal(res.truncated, false);
     assert.equal(res.exit_code, 0);
     assert.equal(res.session_id, 'ses_abc123');

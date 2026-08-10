@@ -31,10 +31,12 @@ function capDetail(s, maxBytes) {
   return truncate(s, maxBytes).text;
 }
 
-/** Best-effort parse of `--pass-session-id` output; null when unparseable (v2 note). */
-function parseSessionId(stdout) {
-  if (!stdout) return null;
-  const m = String(stdout).match(/session[_-]?id["']?\s*[:=]\s*["']?([A-Za-z0-9_-]+)/i);
+/** Best-effort parse of `--pass-session-id` output; null when unparseable (v2 note).
+ * The session id is printed to STDERR (prefixed by a blank line), not stdout. */
+function parseSessionId(stdout, stderr) {
+  const haystack = [stdout, stderr].filter((s) => s != null).join('\n');
+  if (!haystack) return null;
+  const m = String(haystack).match(/session[_-]?id["']?\s*[:=]\s*["']?([A-Za-z0-9_-]+)/i);
   return m ? m[1] : null;
 }
 
@@ -190,7 +192,7 @@ async function runHermesTask(args = {}, overrides = {}) {
       truncated: trimmed.truncated,
       exit_code: run.exitCode,
       duration_ms: durationMs,
-      session_id: parseSessionId(run.stdout),
+      session_id: parseSessionId(run.stdout, run.stderr),
     };
   } finally {
     busy = false;
