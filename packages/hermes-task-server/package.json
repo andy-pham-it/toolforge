@@ -1,0 +1,28 @@
+{
+  "name": "@andy-toolforge/hermes-task-server",
+  "version": "0.1.0",
+  "description": "MCP tool hermes_task — dispatch one-shot agentic tasks to the local Hermes Agent CLI on alive free-tier providers",
+  "main": "lib/index.js",
+  "files": [
+    "lib/",
+    "mcp-tools.js"
+  ],
+  "scripts": {
+    "test": "node --test lib/*.test.js"
+  },
+  "keywords": [
+    "toolforge",
+    "hermes",
+    "mcp",
+    "agent",
+    "llm"
+  ],
+  "author": "Andy Pham",
+  "license": "MIT",
+  "engines": {
+    "node": ">=20"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}
