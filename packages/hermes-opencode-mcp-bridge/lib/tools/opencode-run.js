@@ -85,7 +85,7 @@ async function opencodeRun({ config, sessions, args, timeoutMs }) {
         // Exit 0 with no parseable output: the run succeeded but produced
         // nothing (e.g. no-op task) → return success with an empty summary
         // instead of failing the whole tool call.
-        parsed = { session_id: null, files_changed: [], summary: '', diff: '' };
+        parsed = { session_id: null, files_changed: [], summary: '', diff: '', tool_calls: [] };
       }
       let conversation_id = args.conversation_id;
       if (existingSession) {
@@ -104,6 +104,7 @@ async function opencodeRun({ config, sessions, args, timeoutMs }) {
           task,
           project_dir: projectDir,
           files_changed: parsed.files_changed,
+          tool_calls: parsed.tool_calls || [],
           diff: parsed.diff,
           summary: parsed.summary,
           completed_at: new Date().toISOString(),

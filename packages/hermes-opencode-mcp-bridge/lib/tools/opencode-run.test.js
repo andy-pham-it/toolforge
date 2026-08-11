@@ -49,6 +49,7 @@ test('opencodeRun succeeds and returns parsed output', async () => {
   const lines = [
     JSON.stringify({ type: 'step_start', sessionID: 'ses_new1', part: { type: 'step-start' } }),
     JSON.stringify({ type: 'tool_use', sessionID: 'ses_new1', part: { type: 'tool', tool: 'edit', state: { status: 'completed', metadata: { filediff: { file: '/a.txt', patch: 'Index: a.txt\n@@ -1 +1 @@\n-old\n+new' } } } } }),
+    JSON.stringify({ type: 'tool_use', sessionID: 'ses_new1', part: { type: 'tool', tool: 'bash', state: { status: 'completed', input: 'ls -la', output: 'total 8\n-rw-r--r-- 1 admin admin 0 a.txt' } } }),
     JSON.stringify({ type: 'text', sessionID: 'ses_new1', part: { type: 'text', text: 'Done' } }),
   ];
   const m = installFakeSpawn(lines);
@@ -60,6 +61,16 @@ test('opencodeRun succeeds and returns parsed output', async () => {
   assert.ok(res.data.conversation_id);
   assert.deepStrictEqual(res.data.files_changed, ['/a.txt']);
   assert.match(res.data.summary, /Done/);
+  assert.ok(Array.isArray(res.data.tool_calls));
+  assert.strictEqual(res.data.tool_calls.length, 2);
+  assert.strictEqual(res.data.tool_calls[0].tool, 'edit');
+  assert.deepStrictEqual(res.data.tool_calls[1], {
+    tool: 'bash',
+    status: 'completed',
+    isError: false,
+    input: 'ls -la',
+    output: 'total 8\n-rw-r--r-- 1 admin admin 0 a.txt',
+  });
   assert.ok(sessions.get(res.data.conversation_id));
   m.mock.restore();
   restore();
