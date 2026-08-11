@@ -146,10 +146,13 @@ credential automatically — free-tier quotas reset daily.
 
 - Gemini free model IDs are bare (no provider prefix). gemini-3.1-flash-lite is the
   highest-budget free model (500 RPD / 15 RPM).
-- OpenRouter (`:free` suffixed models) and OpenCode Zen (`opencode/*`) entries are
-  liveness-gated — they only activate once the underlying provider credential revives.
-- `opencode/deepseek-v4-flash-free` is listed **only** for explicit
-  `provider="opencode"` use — it is never an implicit default (600s fallback hang risk).
+- OpenRouter (`:free` suffixed models) and OpenCode Zen (`opencode-zen` provider key,
+  matching the auth.json credential key) entries are liveness-gated — they only
+  activate once the underlying provider credential revives.
+- `deepseek-v4-flash-free` is the **default model for explicit `provider="opencode-zen"`**
+  calls (no `model` arg). It stays out of `tiebreakOrder`, so auto-pick still prefers
+  nvidia → huggingface → gemini → kimi-coding and only falls back to OpenCode Zen when
+  those are all dead (avoids the 600s fallback hang risk).
 
 ## Tests
 

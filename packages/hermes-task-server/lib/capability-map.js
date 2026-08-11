@@ -16,13 +16,14 @@ module.exports = {
     ['gemini', 'gemini-3.5-flash-lite'],
     ['openrouter', 'nvidia/nemotron-3-ultra-550b-a55b:free'],
     ['openrouter', 'nvidia/nemotron-3-super-120b-a12b:free'],
+    ['opencode-zen', 'deepseek-v4-flash-free'], // default model for explicit provider=opencode-zen (user 2026-08-11)
   ],
   coding: [
     ['gemini', 'gemini-3.1-flash-lite'],
     ['gemini', 'gemini-3-flash'],
-    ['opencode', 'mimo-v2.5-free'],
-    ['opencode', 'cohere/north-mini-code:free'], // North Mini Code (Free) via OpenCode Zen
-    ['opencode', 'deepseek-v4-flash-free'], // NEVER implicit default — explicit provider=opencode only
+    ['opencode-zen', 'mimo-v2.5-free'],
+    ['opencode-zen', 'cohere/north-mini-code:free'], // North Mini Code (Free) via OpenCode Zen
+    ['opencode-zen', 'deepseek-v4-flash-free'],
     ['openrouter', 'cohere/north-mini-code:free'],
   ],
   vision: [
@@ -43,9 +44,9 @@ module.exports = {
   chat: [
     ['gemini', 'gemini-3.1-flash-lite'],
     ['openrouter', 'nvidia/nemotron-nano-9b-v2:free'],
-    ['opencode', 'mimo-v2.5-free'],
+    ['opencode-zen', 'mimo-v2.5-free'],
     ['openrouter', 'poolside/laguna-s-2.1:free'],
     ['openrouter', 'poolside/laguna-xs-2.1:free'],
-    ['opencode', 'deepseek-v4-flash-free'],
-  ], // deepseek NEVER implicit default — explicit provider=opencode only
+    ['opencode-zen', 'deepseek-v4-flash-free'],
+  ],
 };

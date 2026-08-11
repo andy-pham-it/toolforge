@@ -69,7 +69,7 @@ test('pickAliveProvider: picks first alive entry by capability + tiebreak', () =
   const a = auth({
     nvidia: [{ last_status: null }],
     openrouter: [{ last_status: 'exhausted' }], // dead -> openrouter entries skipped
-    opencode: [{ last_status: 'exhausted' }], // dead -> opencode entries skipped
+    'opencode-zen': [{ last_status: 'exhausted' }], // dead -> opencode-zen entries skipped
     gemini: [{ last_status: null }],
   });
   // reasoning map first entry is gemini (alive) -> gemini/gemini-3.1-flash-lite
@@ -110,4 +110,5 @@ test('validateProvider: pool key or top-level providers key', () => {
 test('defaultModelFor: hosted reasoning entry else first entry', () => {
   assert.equal(defaultModelFor('gemini', cfg), 'gemini-3.1-flash-lite');
   assert.equal(defaultModelFor('openrouter', cfg), 'nvidia/nemotron-3-ultra-550b-a55b:free');
+  assert.equal(defaultModelFor('opencode-zen', cfg), 'deepseek-v4-flash-free');
 });
