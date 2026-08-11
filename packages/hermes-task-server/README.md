@@ -111,6 +111,65 @@ a live `hermes sessions export` re-extraction that is itself cached). At least o
 of `task_id` / `session_id` is required. `{ok:false, error:"not_found"}` when
 nothing matches.
 
+### Provider/model catalog (FR-5d)
+
+```
+hermes_models(provider="gemini", input_type="pdf", limit=10)
+```
+
+Looks up the **valid providers and models known to Hermes at runtime** — no
+hardcoded list needed. Merges three sources:
+
+1. `~/.hermes/provider_models_cache.json` — the authoritative model list
+   maintained by `hermes model` (exact model IDs Hermes accepts per provider).
+2. `~/.hermes/auth.json` credential liveness — each provider is flagged
+   `alive` / `dead` / `unknown` (with `last_status` / `last_error_code`).
+3. The capability map fallback — providers with no cache entry still appear,
+   sourced from `capability-map` (flagged via `source`).
+
+Each model is tagged with its `capabilities` (reasoning/coding/vision/multimodal/
+planning/image-gen/voice/chat), its supported `input_types` (attached-file inputs),
+and an `is_default` flag:
+
+| Capability | input_types |
+|------------|-------------|
+| vision     | text, image, pdf |
+| multimodal | text, image, audio, video |
+| others     | text |
+
+Params: `provider` (exact name filter; `provider_not_found` when unknown),
+`input_type` (`text`/`image`/`pdf`/`audio`/`video` — filters models by supported
+attached-file input), `limit` (max models listed per provider, default 10),
+`models_cache_path` (override the cache location).
+
+```json
+{
+  "ok": true,
+  "source": "mixed",
+  "fetched_at": 1755000000,
+  "count": 2,
+  "providers": [
+    {
+      "provider": "gemini",
+      "status": "alive",
+      "last_status": null,
+      "last_error_code": null,
+      "fetched_at": 1755000000,
+      "source": "cache",
+      "model_count": 14,
+      "default_model": "gemini-3.1-flash-lite",
+      "models": [
+        { "id": "gemini-3.1-flash-lite", "capabilities": ["reasoning", "coding"], "input_types": ["text", "image", "pdf", "audio", "video"], "is_default": true }
+      ]
+    }
+  ]
+}
+```
+
+The cache **cannot be refreshed programmatically** — `hermes model` requires an
+interactive terminal. `fetched_at` (epoch seconds) tells you how fresh the model
+list is; refresh with `hermes model` in a terminal when models change.
+
 Errors: `busy`, `no_credential`, `provider_not_found`, `cwd_not_allowed`,
 `timeout`, `rate_limited`, `spawn_failed`, `unknown`.
 

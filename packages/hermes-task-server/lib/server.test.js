@@ -8,7 +8,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 
-const { runHermesTask, runHermesTaskDetail } = require('./server');
+const { runHermesTask, runHermesTaskDetail, runHermesModels } = require('./server');
 const { cacheRun, readRun } = require('./task-cache');
 
 function tmpAuth(credentialPool, providers) {
@@ -456,4 +456,53 @@ test('runHermesTaskDetail: max_bytes truncates result', async () => {
   assert.equal(res.ok, true);
   assert.equal(res.cached, true);
   assert.ok(Buffer.byteLength(res.result, 'utf8') <= 100);
+});
+
+test('runHermesModels: happy path merges cache + auth liveness (FR-5d)', async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'hermes-task-models-'));
+  const cacheFile = path.join(dir, 'models-cache.json');
+  fs.writeFileSync(cacheFile, JSON.stringify({ gemini: { at: 1234, models: ['gemini-3.1-flash-lite'] } }));
+  const res = await runHermesModels({}, { authPath: aliveGeminiAuth(), modelsCachePath: cacheFile });
+  assert.equal(res.ok, true);
+  assert.equal(res.source, 'mixed'); // gemini from cache + capability-map providers
+  assert.equal(res.count, 3);
+  assert.equal(res.providers[0].provider, 'gemini');
+  assert.equal(res.providers[0].status, 'alive');
+  assert.equal(res.providers[0].model_count, 1);
+  assert.equal(res.providers[0].default_model, 'gemini-3.1-flash-lite');
+  assert.equal(res.providers[0].models[0].is_default, true);
+  assert.ok(res.providers[0].models[0].capabilities.includes('reasoning'));
+  assert.ok(res.providers[0].models[0].input_types.includes('text'));
+});
+
+test('runHermesModels: provider filter + provider_not_found', async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'hermes-task-models-'));
+  const cacheFile = path.join(dir, 'models-cache.json');
+  fs.writeFileSync(cacheFile, JSON.stringify({ gemini: { at: 1234, models: ['gemini-3.1-flash-lite'] } }));
+  const ok = await runHermesModels({ provider: 'gemini' }, { authPath: aliveGeminiAuth(), modelsCachePath: cacheFile });
+  assert.equal(ok.ok, true);
+  assert.equal(ok.providers[0].provider, 'gemini');
+  const bad = await runHermesModels({ provider: 'nope' }, { authPath: aliveGeminiAuth(), modelsCachePath: cacheFile });
+  assert.equal(bad.ok, false);
+  assert.equal(bad.error, 'provider_not_found');
+});
+
+test('runHermesModels: input_type filter', async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'hermes-task-models-'));
+  const cacheFile = path.join(dir, 'models-cache.json');
+  fs.writeFileSync(cacheFile, JSON.stringify({ gemini: { at: 1234, models: ['gemini-3.1-flash-lite', 'gemini-3-flash'] } }));
+  const res = await runHermesModels({ input_type: 'video' }, { authPath: aliveGeminiAuth(), modelsCachePath: cacheFile });
+  assert.equal(res.ok, true);
+  assert.equal(res.providers[0].models.length, 1);
+  assert.equal(res.providers[0].models[0].id, 'gemini-3.1-flash-lite');
+  assert.equal(res.providers[0].model_count, 1);
+});
+
+test('runHermesModels: missing cache falls back to capability-map', async () => {
+  const res = await runHermesModels({}, { authPath: aliveGeminiAuth(), modelsCachePath: '/nonexistent/models-cache.json' });
+  assert.equal(res.ok, true);
+  assert.equal(res.source, 'capability-map');
+  const gemini = res.providers.find((p) => p.provider === 'gemini');
+  assert.ok(gemini);
+  assert.ok(gemini.model_count > 0);
 });

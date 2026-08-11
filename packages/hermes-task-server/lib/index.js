@@ -4,7 +4,7 @@ const { loadConfig } = require('./config');
 const { pickAliveProvider, classifyCapability, validateProvider, defaultModelFor } = require('./provider-selector');
 const { readAuth, markExhausted } = require('./credential-store');
 const { runHermesChat, classifyError, buildArgv } = require('./runner');
-const { runHermesTask, runHermesTaskDetail } = require('./server');
+const { runHermesTask, runHermesTaskDetail, runHermesModels } = require('./server');
 
 /**
  * Minimal JSON-RPC 2.0 stdio MCP server shim (zero deps).
@@ -65,6 +65,39 @@ function createServer(config = {}) {
     }
   };
 
+  const modelsDefinition = {
+    name: 'hermes_models',
+    description:
+      'Look up valid providers/models known to Hermes at runtime. Reads ~/.hermes/provider_models_cache.json ' +
+      '(maintained by `hermes model`) merged with auth.json credential liveness and capability-map fallback. ' +
+      'Each model is tagged with capabilities, supported input_types (attached files: image/pdf/video/audio) and is_default. ' +
+      'Cannot refresh programmatically (hermes model requires a TTY); fetched_at shows cache freshness.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        provider: { type: 'string', description: 'Filter by provider name (exact; e.g. gemini, opencode-zen)' },
+        input_type: { type: 'string', enum: ['text', 'image', 'pdf', 'audio', 'video'], description: 'Filter models by supported attached-file input type' },
+        limit: { type: 'number', description: 'Max models listed per provider', default: 10 },
+        models_cache_path: { type: 'string', description: 'Override path to provider_models_cache.json' },
+      },
+    },
+  };
+
+  const modelsHandler = async (args) => {
+    try {
+      const result = await runHermesModels(args, cfg);
+      return {
+        content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+        isError: result.ok === false,
+      };
+    } catch (err) {
+      return {
+        content: [{ type: 'text', text: JSON.stringify({ ok: false, error: 'unknown', error_detail: String(err && err.message || err) }) }],
+        isError: true,
+      };
+    }
+  };
+
   const handler = async (args) => {
     try {
       const result = await runHermesTask(args, cfg);
@@ -99,7 +132,7 @@ function createServer(config = {}) {
       case 'notifications/initialized':
         return null; // no response expected
       case 'tools/list':
-        return respond({ tools: [definition, detailDefinition] });
+        return respond({ tools: [definition, detailDefinition, modelsDefinition] });
       case 'tools/call': {
         const params = msg.params || {};
         if (params.name === 'hermes_task') {
@@ -108,6 +141,10 @@ function createServer(config = {}) {
         }
         if (params.name === 'hermes_task_detail') {
           const result = await detailHandler(params.arguments || {});
+          return respond(result);
+        }
+        if (params.name === 'hermes_models') {
+          const result = await modelsHandler(params.arguments || {});
           return respond(result);
         }
         return respondError(-32602, `unknown tool: ${params.name}`);
@@ -137,13 +174,14 @@ function createServer(config = {}) {
     process.stdin.on('end', () => process.exit(0));
   }
 
-  return { start, handleMessage, definition, detailDefinition, handler, detailHandler };
+  return { start, handleMessage, definition, detailDefinition, modelsDefinition, handler, detailHandler, modelsHandler };
 }
 
 module.exports = {
   createServer,
   runHermesTask,
   runHermesTaskDetail,
+  runHermesModels,
   pickAliveProvider,
   classifyCapability,
   validateProvider,

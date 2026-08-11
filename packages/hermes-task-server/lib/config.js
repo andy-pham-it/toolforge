@@ -14,6 +14,7 @@ const DEFAULTS = Object.freeze({
   maxDigestResultBytes: 8 * 1024, // default 'digest' result cap
   defaultOutputMode: 'digest', // 'digest' | 'full'
   cacheDir: path.join(os.homedir(), '.hermes', 'hermes-task-cache'),
+  modelsCachePath: path.join(os.homedir(), '.hermes', 'provider_models_cache.json'), // maintained by `hermes model` (runtime model list)
   maxErrorDetailBytes: 500,
   // tool_calls extraction caps (additive success-payload field)
   maxToolCallArgsBytes: 2 * 1024,

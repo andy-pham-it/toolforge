@@ -1,11 +1,13 @@
 'use strict';
 
+const fs = require('fs');
 const { loadConfig } = require('./config');
 const { markExhausted, readAuth } = require('./credential-store');
 const { pickAliveProvider, classifyCapability, validateProvider, defaultModelFor } = require('./provider-selector');
 const { classifyError, runHermesChat, runSessionExport } = require('./runner');
 const { extractToolCalls } = require('./tool-calls');
 const { cacheRun, readRun, findBySession } = require('./task-cache');
+const { buildCatalog } = require('./models-catalog');
 
 // Max concurrency = 1 (spec FR-8/Q3): second concurrent call fails fast with busy.
 let busy = false;
@@ -328,4 +330,61 @@ async function runHermesTaskDetail(args = {}, overrides = {}) {
   };
 }
 
-module.exports = { runHermesTask, runHermesTaskDetail };
+async function runHermesModels(args = {}, overrides = {}) {
+  const cfg = overrides && typeof overrides === 'object' ? loadConfig(overrides) : loadConfig();
+
+  // Models cache is maintained by `hermes model` in an interactive terminal;
+  // we cannot trigger a refresh programmatically (TTY required). Missing or
+  // stale cache falls back to the capability-map so the tool always answers.
+  let modelsCache = null;
+  try {
+    const cachePath = (typeof args.models_cache_path === 'string' && args.models_cache_path.trim()) || cfg.modelsCachePath;
+    modelsCache = JSON.parse(fs.readFileSync(cachePath, 'utf8'));
+  } catch {
+    modelsCache = null;
+  }
+
+  let auth = null;
+  try {
+    auth = readAuth(cfg.authPath);
+  } catch {
+    auth = null;
+  }
+
+  const catalog = buildCatalog({ modelsCache, auth, cfg });
+  let providers = catalog.providers;
+
+  // Filter by explicit provider (exact match; unknown provider is an error).
+  const providerFilter = typeof args.provider === 'string' && args.provider.trim() !== '' ? args.provider.trim() : null;
+  if (providerFilter) {
+    const entry = providers.find((p) => p.provider === providerFilter);
+    if (!entry) {
+      return { ok: false, error: 'provider_not_found', error_detail: `no models known for provider "${providerFilter}"` };
+    }
+    providers = [entry];
+  }
+
+  // Filter by supported input type (attached files: image/pdf/audio/video).
+  const inputType = typeof args.input_type === 'string' && args.input_type.trim() !== '' ? args.input_type.trim() : null;
+  if (inputType) {
+    providers = providers.map((p) => {
+      const models = p.models.filter((m) => m.input_types.includes(inputType));
+      return { ...p, models, model_count: models.length };
+    });
+    if (!providerFilter) providers = providers.filter((p) => p.model_count > 0);
+  }
+
+  // Cap listed models per provider (model_count stays truthful).
+  const limit = Number.isFinite(Number(args.limit)) && Number(args.limit) > 0 ? Math.round(Number(args.limit)) : 10;
+  for (const p of providers) p.models = p.models.slice(0, limit);
+
+  return {
+    ok: true,
+    source: catalog.source,
+    fetched_at: catalog.fetched_at,
+    count: providers.length,
+    providers,
+  };
+}
+
+module.exports = { runHermesTask, runHermesTaskDetail, runHermesModels };

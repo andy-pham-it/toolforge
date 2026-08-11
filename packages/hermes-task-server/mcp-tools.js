@@ -3,7 +3,7 @@
 // mcp-tools.js — @andy-toolforge/mcp auto-discovery convention.
 // Exports function(config) => [{definition, handler}].
 
-const { runHermesTask, runHermesTaskDetail } = require('./lib/server');
+const { runHermesTask, runHermesTaskDetail, runHermesModels } = require('./lib/server');
 
 const definition = {
   name: 'hermes_task',
@@ -54,6 +54,30 @@ async function detailHandler(llm, args, context = {}) {
   return result;
 }
 
+const modelsDefinition = {
+  name: 'hermes_models',
+  description:
+    'Look up valid providers/models known to Hermes at runtime. Reads ~/.hermes/provider_models_cache.json ' +
+    '(maintained by `hermes model`) merged with auth.json credential liveness and capability-map fallback. ' +
+    'Each model is tagged with capabilities, supported input_types (attached files: image/pdf/video/audio) and is_default. ' +
+    'Cannot refresh programmatically (hermes model requires a TTY); fetched_at shows cache freshness.',
+  inputSchema: {
+    type: 'object',
+    properties: {
+      provider: { type: 'string', description: 'Filter by provider name (exact; e.g. gemini, opencode-zen)' },
+      input_type: { type: 'string', enum: ['text', 'image', 'pdf', 'audio', 'video'], description: 'Filter models by supported attached-file input type' },
+      limit: { type: 'number', description: 'Max models listed per provider', default: 10 },
+      models_cache_path: { type: 'string', description: 'Override path to provider_models_cache.json' },
+    },
+  },
+};
+
+async function modelsHandler(llm, args, context = {}) {
+  const cfg = (module.exports._pluginConfig || {});
+  const result = await runHermesModels(args || {}, cfg);
+  return result;
+}
+
 // ---------------------------------------------------------------------------
 // Exports — factory pattern for MCP auto-discovery
 // ---------------------------------------------------------------------------
@@ -62,5 +86,6 @@ module.exports = function (config = {}) {
   return [
     { definition, handler },
     { definition: detailDefinition, handler: detailHandler },
+    { definition: modelsDefinition, handler: modelsHandler },
   ];
 };
