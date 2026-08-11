@@ -54,6 +54,17 @@ Response (FR-5):
 Errors: `busy`, `no_credential`, `provider_not_found`, `cwd_not_allowed`,
 `timeout`, `rate_limited`, `spawn_failed`, `unknown`.
 
+### Timeouts
+
+- `timeout_seconds` defaults to **300** (5 min) and is clamped to 10–1800. To override,
+  name the timeout in the request (e.g. "timeout 600 giây" → 600, "15 phút" → 900).
+  Without an explicit number, the AI uses the 300 default.
+- ⚠ Ceiling: the MCP server itself (`mcp.andy-toolforge` in
+  `~/.config/opencode/opencode.jsonc`) has `timeout: 600000` (10 min) — a *server-level*
+  cutoff, separate from the tool timeout. A `timeout_seconds` above 600 is killed at
+  10 min regardless of Hermes still running. For longer tasks, raise the MCP config
+  (e.g. `1800000` = 30 min) and restart opencode.
+
 ## Configuration
 
 Env overrides: `HERMES_AUTH_PATH` (default `~/.hermes/auth.json`), `HERMES_BIN`
