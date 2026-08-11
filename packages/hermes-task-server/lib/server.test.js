@@ -8,7 +8,8 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 
-const { runHermesTask } = require('./server');
+const { runHermesTask, runHermesTaskDetail } = require('./server');
+const { cacheRun, readRun } = require('./task-cache');
 
 function tmpAuth(credentialPool, providers) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'hermes-task-srv-'));
@@ -71,7 +72,7 @@ test('runHermesTask: happy path JSON shape (FR-5) + tool_calls (FR-5b)', async (
   process.stderr.write = (s) => { stderr.push(s); return true; };
   try {
     const res = await runHermesTask(
-      { prompt: 'hello world', provider: 'gemini', model: 'gemini-3.1-flash-lite' },
+      { prompt: 'hello world', provider: 'gemini', model: 'gemini-3.1-flash-lite', output_mode: 'full' },
       { authPath: aliveGeminiAuth() }
     );
     assert.equal(res.ok, true);
@@ -81,6 +82,8 @@ test('runHermesTask: happy path JSON shape (FR-5) + tool_calls (FR-5b)', async (
     assert.equal(res.truncated, false);
     assert.equal(res.exit_code, 0);
     assert.equal(res.session_id, 'ses_abc123');
+    assert.equal(res.output_mode, 'full');
+    assert.ok(typeof res.task_id === 'string' && res.task_id.length > 0);
     assert.ok(res.duration_ms >= 0);
     assert.deepEqual(res.tool_calls, [
       { id: 'call_1', name: 'bash', arguments: { command: 'echo hi' }, result: '{"stdout":"hi"}' },
@@ -241,17 +244,17 @@ test('runHermesTask: cwd in allowlist passed via --in', async () => {
   }
 });
 
-test('runHermesTask: result trimmed at 50KB with truncated flag', async () => {
-  const big = 'x'.repeat(60 * 1024);
+test('runHermesTask: full mode result trimmed at 200KB with truncated flag', async () => {
+  const big = 'x'.repeat(240 * 1024);
   const mock = spawnMock(() => fakeChild({ stdoutData: big, exitCode: 0 }));
   try {
     const res = await runHermesTask(
-      { prompt: 'hello', provider: 'gemini', model: 'gemini-3.1-flash-lite' },
+      { prompt: 'hello', provider: 'gemini', model: 'gemini-3.1-flash-lite', output_mode: 'full' },
       { authPath: aliveGeminiAuth() }
     );
     assert.equal(res.ok, true);
     assert.equal(res.truncated, true);
-    assert.ok(Buffer.byteLength(res.result, 'utf8') <= 50 * 1024);
+    assert.ok(Buffer.byteLength(res.result, 'utf8') <= 200 * 1024);
   } finally {
     mock.mock.restore();
   }
@@ -317,4 +320,140 @@ test('runHermesTask: missing prompt -> invalid_args', async () => {
   const res = await runHermesTask({}, { authPath: aliveGeminiAuth() });
   assert.equal(res.ok, false);
   assert.equal(res.error, 'invalid_args');
+});
+
+function exportObjFor(sessionId, withToolCallCount) {
+  return {
+    id: sessionId,
+    message_count: 3,
+    api_call_count: 1,
+    tool_call_count: withToolCallCount ? 1 : undefined,
+    messages: [
+      { id: 'u1', role: 'user', content: 'hello world', tool_calls: null, tool_call_id: null },
+      {
+        id: 'a1', role: 'assistant', content: '',
+        tool_calls: [{ id: 'call_1', call_id: 'call_1', type: 'function', function: { name: 'bash', arguments: '{"command":"echo hi"}' } }],
+      },
+      { id: 't1', role: 'tool', content: '{"stdout":"hi"}', tool_call_id: 'call_1', tool_name: 'bash', tool_calls: null },
+    ],
+  };
+}
+
+test('runHermesTask: digest mode default -> compact result + stats, no tool_calls', async () => {
+  const mock = spawnMock((bin, args) => {
+    if (args[0] === 'sessions') {
+      return fakeChild({ stdoutData: JSON.stringify(exportObjFor('ses_abc123', true)), exitCode: 0 });
+    }
+    return fakeChild({ stdoutData: 'answer here', stderrData: '\nsession_id: ses_abc123\n', exitCode: 0 });
+  });
+  try {
+    const res = await runHermesTask(
+      { prompt: 'hello world', provider: 'gemini', model: 'gemini-3.1-flash-lite' },
+      { authPath: aliveGeminiAuth() }
+    );
+    assert.equal(res.ok, true);
+    assert.equal(res.output_mode, 'digest');
+    assert.equal(res.result, 'answer here');
+    assert.equal(res.tool_calls, undefined);
+    assert.ok(typeof res.task_id === 'string' && res.task_id.length > 0);
+    assert.deepEqual(res.digest, { tool_call_count: 1, api_call_count: 1, message_count: 3, tools_used: ['bash'] });
+  } finally {
+    mock.mock.restore();
+  }
+});
+
+test('runHermesTask: successful run cached to disk (FR-5c)', async () => {
+  const cacheDir = fs.mkdtempSync(path.join(os.tmpdir(), 'hermes-task-cache-srv-'));
+  const mock = spawnMock((bin, args) => {
+    if (args[0] === 'sessions') {
+      return fakeChild({ stdoutData: JSON.stringify(exportObjFor('ses_abc123', true)), exitCode: 0 });
+    }
+    return fakeChild({ stdoutData: 'answer here', stderrData: '\nsession_id: ses_abc123\n', exitCode: 0 });
+  });
+  try {
+    const res = await runHermesTask(
+      { prompt: 'hello world', provider: 'gemini', model: 'gemini-3.1-flash-lite' },
+      { authPath: aliveGeminiAuth(), cacheDir }
+    );
+    assert.equal(res.ok, true);
+    const rec = readRun({ cacheDir }, res.task_id);
+    assert.ok(rec);
+    assert.equal(rec.result, 'answer here');
+    assert.equal(rec.session_id, 'ses_abc123');
+    assert.equal(rec.provider, 'gemini');
+    assert.ok(rec.created_at);
+    assert.equal(rec.tool_calls.length, 1);
+  } finally {
+    mock.mock.restore();
+  }
+});
+
+test('runHermesTaskDetail: cached hit by task_id', async () => {
+  const cacheDir = fs.mkdtempSync(path.join(os.tmpdir(), 'hermes-task-detail-'));
+  cacheRun({ cacheDir }, {
+    task_id: 't1', session_id: 'ses_1', provider: 'gemini', model: 'm1', output_mode: 'full',
+    result: 'cached full result', tool_calls: [{ id: 'c1', name: 'bash', arguments: null, result: null }],
+    digest: null, exit_code: 0, duration_ms: 123, created_at: new Date().toISOString(),
+  });
+  const res = await runHermesTaskDetail({ task_id: 't1' }, { cacheDir });
+  assert.equal(res.ok, true);
+  assert.equal(res.cached, true);
+  assert.equal(res.task_id, 't1');
+  assert.equal(res.session_id, 'ses_1');
+  assert.equal(res.provider, 'gemini');
+  assert.equal(res.result, 'cached full result');
+  assert.deepEqual(res.tool_calls, [{ id: 'c1', name: 'bash', arguments: null, result: null }]);
+  assert.equal(res.exit_code, 0);
+  assert.equal(res.duration_ms, 123);
+});
+
+test('runHermesTaskDetail: cache miss + session_id -> live export', async () => {
+  const cacheDir = fs.mkdtempSync(path.join(os.tmpdir(), 'hermes-task-detail-'));
+  const mock = spawnMock((bin, args) => {
+    if (args[0] === 'sessions') {
+      return fakeChild({ stdoutData: JSON.stringify(exportObjFor('ses_live', true)), exitCode: 0 });
+    }
+    throw new Error('must not spawn chat for detail');
+  });
+  try {
+    const res = await runHermesTaskDetail({ session_id: 'ses_live' }, { cacheDir });
+    assert.equal(res.ok, true);
+    assert.equal(res.cached, false);
+    assert.equal(res.session_id, 'ses_live');
+    assert.equal(res.task_id, 'ses_ses_live');
+    assert.equal(res.result, null);
+    assert.deepEqual(res.tool_calls, [
+      { id: 'call_1', name: 'bash', arguments: { command: 'echo hi' }, result: '{"stdout":"hi"}' },
+    ]);
+    // live export also cached for next hit
+    assert.ok(readRun({ cacheDir }, 'ses_ses_live'));
+  } finally {
+    mock.mock.restore();
+  }
+});
+
+test('runHermesTaskDetail: not_found when no cache and no session_id', async () => {
+  const cacheDir = fs.mkdtempSync(path.join(os.tmpdir(), 'hermes-task-detail-'));
+  const res = await runHermesTaskDetail({ task_id: 'nope' }, { cacheDir });
+  assert.equal(res.ok, false);
+  assert.equal(res.error, 'not_found');
+});
+
+test('runHermesTaskDetail: invalid_args when neither task_id nor session_id', async () => {
+  const cacheDir = fs.mkdtempSync(path.join(os.tmpdir(), 'hermes-task-detail-'));
+  const res = await runHermesTaskDetail({}, { cacheDir });
+  assert.equal(res.ok, false);
+  assert.equal(res.error, 'invalid_args');
+});
+
+test('runHermesTaskDetail: max_bytes truncates result', async () => {
+  const cacheDir = fs.mkdtempSync(path.join(os.tmpdir(), 'hermes-task-detail-'));
+  cacheRun({ cacheDir }, {
+    task_id: 't2', session_id: 'ses_2', provider: 'gemini', model: 'm1', output_mode: 'full',
+    result: 'x'.repeat(500), tool_calls: [], digest: null, exit_code: 0, duration_ms: 1, created_at: new Date().toISOString(),
+  });
+  const res = await runHermesTaskDetail({ task_id: 't2', max_bytes: 100 }, { cacheDir });
+  assert.equal(res.ok, true);
+  assert.equal(res.cached, true);
+  assert.ok(Buffer.byteLength(res.result, 'utf8') <= 100);
 });

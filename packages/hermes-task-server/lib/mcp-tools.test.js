@@ -23,14 +23,20 @@ function fakeChild({ stdoutData = '', exitCode = 0 } = {}) {
 
 test('mcp-tools factory: returns [{definition, handler}] with FR-2 schema', () => {
   const tools = mcpToolsFactory({});
-  assert.equal(tools.length, 1);
+  assert.equal(tools.length, 2);
   const { definition, handler } = tools[0];
   assert.equal(typeof handler, 'function');
   assert.equal(definition.name, 'hermes_task');
   assert.equal(definition.inputSchema.type, 'object');
   assert.deepEqual(definition.inputSchema.required, ['prompt']);
-  for (const k of ['prompt', 'provider', 'model', 'timeout_seconds', 'cwd', 'toolsets', 'max_turns']) {
+  for (const k of ['prompt', 'provider', 'model', 'timeout_seconds', 'cwd', 'toolsets', 'max_turns', 'output_mode']) {
     assert.ok(definition.inputSchema.properties[k], `missing param ${k}`);
+  }
+  const detail = tools[1];
+  assert.equal(detail.definition.name, 'hermes_task_detail');
+  assert.equal(typeof detail.handler, 'function');
+  for (const k of ['task_id', 'session_id', 'max_bytes']) {
+    assert.ok(detail.definition.inputSchema.properties[k], `missing param ${k}`);
   }
 });
 

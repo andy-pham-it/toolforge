@@ -4,7 +4,7 @@ const { loadConfig } = require('./config');
 const { pickAliveProvider, classifyCapability, validateProvider, defaultModelFor } = require('./provider-selector');
 const { readAuth, markExhausted } = require('./credential-store');
 const { runHermesChat, classifyError, buildArgv } = require('./runner');
-const { runHermesTask } = require('./server');
+const { runHermesTask, runHermesTaskDetail } = require('./server');
 
 /**
  * Minimal JSON-RPC 2.0 stdio MCP server shim (zero deps).
@@ -29,9 +29,40 @@ function createServer(config = {}) {
         cwd: { type: 'string', description: 'Working directory (must be in cwdAllowlist)', default: '' },
         toolsets: { type: 'string', description: 'Hermes toolsets to enable', default: '' },
         max_turns: { type: 'number', description: 'Max conversation turns', default: 500 },
+        output_mode: { type: 'string', enum: ['digest', 'full'], description: 'digest (compact result + stats, default) or full (uncapped result + tool_calls)', default: 'digest' },
       },
       required: ['prompt'],
     },
+  };
+
+  const detailDefinition = {
+    name: 'hermes_task_detail',
+    description:
+      'Fetch full detail (uncapped result, tool_calls) for a prior hermes_task run from disk cache. ' +
+      'Pass task_id and/or session_id. Returns {ok, cached, task_id, session_id, provider, model, result, tool_calls, exit_code, duration_ms}.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        task_id: { type: 'string', description: 'Task id from a prior hermes_task response' },
+        session_id: { type: 'string', description: 'Hermes session id (used when task_id is unknown or cache miss)' },
+        max_bytes: { type: 'number', description: 'Optional cap on result bytes returned', default: 0 },
+      },
+    },
+  };
+
+  const detailHandler = async (args) => {
+    try {
+      const result = await runHermesTaskDetail(args, cfg);
+      return {
+        content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+        isError: result.ok === false,
+      };
+    } catch (err) {
+      return {
+        content: [{ type: 'text', text: JSON.stringify({ ok: false, error: 'unknown', error_detail: String(err && err.message || err) }) }],
+        isError: true,
+      };
+    }
   };
 
   const handler = async (args) => {
@@ -68,12 +99,18 @@ function createServer(config = {}) {
       case 'notifications/initialized':
         return null; // no response expected
       case 'tools/list':
-        return respond({ tools: [definition] });
+        return respond({ tools: [definition, detailDefinition] });
       case 'tools/call': {
         const params = msg.params || {};
-        if (params.name !== 'hermes_task') return respondError(-32602, `unknown tool: ${params.name}`);
-        const result = await handler(params.arguments || {});
-        return respond(result);
+        if (params.name === 'hermes_task') {
+          const result = await handler(params.arguments || {});
+          return respond(result);
+        }
+        if (params.name === 'hermes_task_detail') {
+          const result = await detailHandler(params.arguments || {});
+          return respond(result);
+        }
+        return respondError(-32602, `unknown tool: ${params.name}`);
       }
       default:
         return respondError(-32601, `method not found: ${msg.method}`);
@@ -100,12 +137,13 @@ function createServer(config = {}) {
     process.stdin.on('end', () => process.exit(0));
   }
 
-  return { start, handleMessage, definition, handler };
+  return { start, handleMessage, definition, detailDefinition, handler, detailHandler };
 }
 
 module.exports = {
   createServer,
   runHermesTask,
+  runHermesTaskDetail,
   pickAliveProvider,
   classifyCapability,
   validateProvider,

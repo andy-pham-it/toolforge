@@ -33,7 +33,7 @@ server.start(); // stdio JSON-RPC
 Tool call:
 
 ```
-hermes_task(prompt="Summarize this file", provider="auto", timeout_seconds=300)
+hermes_task(prompt="Summarize this file", provider="auto", output_mode="digest", timeout_seconds=300)
 ```
 
 Response (FR-5):
@@ -43,24 +43,30 @@ Response (FR-5):
   "ok": true,
   "provider": "gemini",
   "model": "gemini-3.1-flash-lite",
-  "result": "<hermes final response, trimmed at 50KB>",
+  "task_id": "1723380000000_abc123",
+  "output_mode": "digest",
+  "result": "<hermes final response, trimmed at 8KB in digest mode>",
   "truncated": false,
   "exit_code": 0,
   "duration_ms": 4213,
   "session_id": "20260811_115247_084e47",
-  "tool_calls": [
-    {
-      "id": "call_1",
-      "name": "search_files",
-      "arguments": { "pattern": "EntitlementService" },
-      "result": "{\"total_count\": 14}"
-    }
-  ]
+  "digest": {
+    "tool_call_count": 4,
+    "api_call_count": 3,
+    "message_count": 8,
+    "tools_used": ["search_files", "bash"]
+  }
 }
 ```
 
-`tool_calls` (FR-5b): additive, best-effort summary of the tool invocations the
-Hermes agent made during the run, extracted post-run from
+`output_mode` (FR-5): `"digest"` (default) returns a compact `result` (capped at
+`maxDigestResultBytes` 8KB) plus a `digest` stats block — enough for the caller AI
+to decide whether it needs more. `"full"` caps `result` at `maxResultBytes`
+(raised to 200KB) and includes the `tool_calls` array below. Heavy tasks should
+default to digest and pull details on demand via `hermes_task_detail` (FR-5c).
+
+`tool_calls` (FR-5b, full mode): additive, best-effort summary of the tool
+invocations the Hermes agent made during the run, extracted post-run from
 `hermes sessions export --format jsonl --session-id <id>`. Each entry is
 `{id, name, arguments, result}` — `arguments` best-effort parsed from the JSON
 string, `result` paired to the matching tool-output message (or `null`).
@@ -68,6 +74,42 @@ Caps: `maxToolCallArgsBytes` 2KB, `maxToolCallResultBytes` 8KB, `maxToolCalls` 5
 `sessionExportTimeoutMs` 15s. Extraction failure never fails the task — the field
 is simply omitted and a `[hermes_task] tool_calls extraction failed` line is logged
 to stderr. `tool_calls` is absent when no `session_id` could be parsed.
+
+Every successful run is also cached to disk (FR-5c) at
+`~/.hermes/hermes-task-cache/<task_id>.json` — the full uncapped stdout, `tool_calls`,
+`digest`, `session_id`, `provider`, `model`, `exit_code`, `duration_ms`. Cache
+write failures are logged to stderr and never fail the task. Override the location
+with `cacheDir` in config.
+
+### On-demand detail (FR-5c)
+
+```
+hermes_task_detail(task_id="1723380000000_abc123", session_id="20260811_115247_084e47", max_bytes=0)
+```
+
+Returns the full detail of a prior run — uncapped `result` (or trimmed to
+`max_bytes` bytes when > 0), `tool_calls`, `digest`, and metadata:
+
+```json
+{
+  "ok": true,
+  "cached": true,
+  "task_id": "1723380000000_abc123",
+  "session_id": "20260811_115247_084e47",
+  "provider": "gemini",
+  "model": "gemini-3.1-flash-lite",
+  "output_mode": "full",
+  "result": "<full uncapped result>",
+  "tool_calls": [ { "id": "call_1", "name": "search_files", "arguments": {}, "result": "{}" } ],
+  "exit_code": 0,
+  "duration_ms": 4213
+}
+```
+
+Lookup is by `task_id` (disk cache), falling back to `session_id` (cache scan, then
+a live `hermes sessions export` re-extraction that is itself cached). At least one
+of `task_id` / `session_id` is required. `{ok:false, error:"not_found"}` when
+nothing matches.
 
 Errors: `busy`, `no_credential`, `provider_not_found`, `cwd_not_allowed`,
 `timeout`, `rate_limited`, `spawn_failed`, `unknown`.
@@ -88,9 +130,11 @@ Errors: `busy`, `no_credential`, `provider_not_found`, `cwd_not_allowed`,
 Env overrides: `HERMES_AUTH_PATH` (default `~/.hermes/auth.json`), `HERMES_BIN`
 (default `hermes`).
 
-`lib/config.js` defaults: `resetWindowMs` 24h, `maxResultBytes` 50KB,
-`maxErrorDetailBytes` 500, `tiebreakOrder` nvidia → huggingface → gemini → kimi-coding,
-`capabilityMap` (L2 table: reasoning/reason/coding/vision/multimodal/planning/image-gen/voice/chat).
+`lib/config.js` defaults: `resetWindowMs` 24h, `maxResultBytes` 200KB (full mode cap),
+`maxDigestResultBytes` 8KB (digest mode cap), `defaultOutputMode` `"digest"`,
+`cacheDir` `~/.hermes/hermes-task-cache`, `maxErrorDetailBytes` 500, `tiebreakOrder`
+nvidia → huggingface → gemini → kimi-coding, `capabilityMap` (L2 table:
+reasoning/reason/coding/vision/multimodal/planning/image-gen/voice/chat).
 
 ### Provider liveness semantics
 

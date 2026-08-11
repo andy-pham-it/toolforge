@@ -10,7 +10,10 @@ const DEFAULTS = Object.freeze({
   spawnCwd: process.cwd(),
   cwdAllowlist: [], // deny-all unless configured
   resetWindowMs: 24 * 60 * 60 * 1000, // 24h
-  maxResultBytes: 50 * 1024,
+  maxResultBytes: 200 * 1024, // inline 'full' result cap (raised from 50KB per user request)
+  maxDigestResultBytes: 8 * 1024, // default 'digest' result cap
+  defaultOutputMode: 'digest', // 'digest' | 'full'
+  cacheDir: path.join(os.homedir(), '.hermes', 'hermes-task-cache'),
   maxErrorDetailBytes: 500,
   // tool_calls extraction caps (additive success-payload field)
   maxToolCallArgsBytes: 2 * 1024,
