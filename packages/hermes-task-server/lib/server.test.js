@@ -40,8 +40,28 @@ function fakeChild({ stdoutData = '', stderrData = '', exitCode = 0 } = {}) {
   return child;
 }
 
-test('runHermesTask: happy path JSON shape (FR-5)', async () => {
-  const mock = spawnMock((bin, args, opts) => {
+test('runHermesTask: happy path JSON shape (FR-5) + tool_calls (FR-5b)', async () => {
+  const mock = spawnMock((bin, args) => {
+    if (args[0] === 'sessions') {
+      // post-run export call: fetch session JSONL for tool_calls extraction
+      assert.equal(args[1], 'export');
+      assert.equal(args[2], '--format');
+      assert.equal(args[args.indexOf('--format') + 1], 'jsonl');
+      assert.equal(args[args.indexOf('--session-id') + 1], 'ses_abc123');
+      const exportObj = {
+        id: 'ses_abc123',
+        message_count: 3,
+        messages: [
+          { id: 'u1', role: 'user', content: 'hello world', tool_calls: null, tool_call_id: null },
+          {
+            id: 'a1', role: 'assistant', content: '',
+            tool_calls: [{ id: 'call_1', call_id: 'call_1', type: 'function', function: { name: 'bash', arguments: '{"command":"echo hi"}' } }],
+          },
+          { id: 't1', role: 'tool', content: '{"stdout":"hi"}', tool_call_id: 'call_1', tool_name: 'bash', tool_calls: null },
+        ],
+      };
+      return fakeChild({ stdoutData: JSON.stringify(exportObj), exitCode: 0 });
+    }
     assert.ok(args.includes('--ignore-user-config'));
     assert.ok(args.includes('-Q'));
     return fakeChild({ stdoutData: 'answer here', stderrData: '\nsession_id: ses_abc123\n', exitCode: 0 });
@@ -62,7 +82,35 @@ test('runHermesTask: happy path JSON shape (FR-5)', async () => {
     assert.equal(res.exit_code, 0);
     assert.equal(res.session_id, 'ses_abc123');
     assert.ok(res.duration_ms >= 0);
+    assert.deepEqual(res.tool_calls, [
+      { id: 'call_1', name: 'bash', arguments: { command: 'echo hi' }, result: '{"stdout":"hi"}' },
+    ]);
     assert.ok(stderr.some((l) => /\[hermes_task\] provider=gemini model=gemini-3\.1-flash-lite prompt_len=11 timeout=300s -> ok/.test(l)));
+  } finally {
+    mock.mock.restore();
+    process.stderr.write = origWrite;
+  }
+});
+
+test('runHermesTask: export failure -> task still ok, tool_calls omitted, stderr logged', async () => {
+  const mock = spawnMock((bin, args) => {
+    if (args[0] === 'sessions') {
+      return fakeChild({ stdoutData: '', exitCode: 1 });
+    }
+    return fakeChild({ stdoutData: 'answer here', stderrData: '\nsession_id: ses_abc123\n', exitCode: 0 });
+  });
+  const stderr = [];
+  const origWrite = process.stderr.write;
+  process.stderr.write = (s) => { stderr.push(s); return true; };
+  try {
+    const res = await runHermesTask(
+      { prompt: 'hello world', provider: 'gemini', model: 'gemini-3.1-flash-lite' },
+      { authPath: aliveGeminiAuth() }
+    );
+    assert.equal(res.ok, true);
+    assert.equal(res.result, 'answer here');
+    assert.equal(res.tool_calls, undefined);
+    assert.ok(stderr.some((l) => /\[hermes_task\] tool_calls extraction failed/.test(l)));
   } finally {
     mock.mock.restore();
     process.stderr.write = origWrite;

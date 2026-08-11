@@ -12,6 +12,11 @@ const DEFAULTS = Object.freeze({
   resetWindowMs: 24 * 60 * 60 * 1000, // 24h
   maxResultBytes: 50 * 1024,
   maxErrorDetailBytes: 500,
+  // tool_calls extraction caps (additive success-payload field)
+  maxToolCallArgsBytes: 2 * 1024,
+  maxToolCallResultBytes: 8 * 1024,
+  maxToolCalls: 50,
+  sessionExportTimeoutMs: 15 * 1000,
   tiebreakOrder: ['nvidia', 'huggingface', 'gemini', 'kimi-coding'], // L3; nous excluded (dead 404)
   capabilityMap,
 });

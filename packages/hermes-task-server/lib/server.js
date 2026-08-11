@@ -3,7 +3,8 @@
 const { loadConfig } = require('./config');
 const { markExhausted, readAuth } = require('./credential-store');
 const { pickAliveProvider, classifyCapability, validateProvider, defaultModelFor } = require('./provider-selector');
-const { classifyError, runHermesChat } = require('./runner');
+const { classifyError, runHermesChat, runSessionExport } = require('./runner');
+const { extractToolCalls } = require('./tool-calls');
 
 // Max concurrency = 1 (spec FR-8/Q3): second concurrent call fails fast with busy.
 let busy = false;
@@ -183,8 +184,8 @@ async function runHermesTask(args = {}, overrides = {}) {
 
     // 7. Success (FR-5).
     const trimmed = truncate(run.stdout, cfg.maxResultBytes);
-    logLine('ok', durationMs);
-    return {
+    const sessionId = parseSessionId(run.stdout, run.stderr);
+    const response = {
       ok: true,
       provider,
       model,
@@ -192,8 +193,23 @@ async function runHermesTask(args = {}, overrides = {}) {
       truncated: trimmed.truncated,
       exit_code: run.exitCode,
       duration_ms: durationMs,
-      session_id: parseSessionId(run.stdout, run.stderr),
+      session_id: sessionId,
     };
+    // 7b. Best-effort tool_calls (additive; extraction failure never fails the task).
+    if (sessionId) {
+      try {
+        const exp = await runSessionExport(cfg.hermesBin, sessionId, cfg);
+        if (exp.spawnError || exp.timedOut || exp.exitCode !== 0) {
+          process.stderr.write(`[hermes_task] tool_calls extraction failed: export exit=${exp.exitCode} timedOut=${exp.timedOut}\n`);
+        } else {
+          response.tool_calls = extractToolCalls(JSON.parse(exp.stdout), cfg);
+        }
+      } catch (err) {
+        process.stderr.write(`[hermes_task] tool_calls extraction failed: ${err.message}\n`);
+      }
+    }
+    logLine('ok', durationMs);
+    return response;
   } finally {
     busy = false;
   }

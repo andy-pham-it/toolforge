@@ -121,4 +121,74 @@ function classifyError({ exitCode, stderr, timedOut, spawnError } = {}) {
   return null;
 }
 
-module.exports = { buildArgv, classifyError, runHermesChat };
+/**
+ * Run `hermes sessions export --format jsonl --session-id <id> - --yes`.
+ * Outputs a single JSON object on stdout. Resolves {stdout, exitCode, timedOut, spawnError}
+ * with the same timeout + process-group-kill semantics as runHermesChat; JSON
+ * parsing is left to the caller. Short-lived local CLI call (default 15s cap).
+ */
+function runSessionExport(bin, sessionId, cfg = {}) {
+  const argv = [bin || 'hermes', 'sessions', 'export', '--format', 'jsonl', '--session-id', sessionId, '-', '--yes'];
+  const timeoutMs = cfg.sessionExportTimeoutMs != null ? cfg.sessionExportTimeoutMs : 15000;
+  const killGraceMs = cfg.killGraceMs != null ? cfg.killGraceMs : 5000;
+  const startedAt = Date.now();
+
+  return new Promise((resolve) => {
+    let child;
+    try {
+      child = childProcess.spawn(bin, argv.slice(1), {
+        cwd: cfg.spawnCwd,
+        detached: true, // own process group -> group kill, no orphan
+        stdio: ['ignore', 'pipe', 'pipe'],
+      });
+    } catch (err) {
+      resolve({
+        stdout: '',
+        exitCode: null,
+        durationMs: Date.now() - startedAt,
+        timedOut: false,
+        spawnError: err,
+      });
+      return;
+    }
+
+    let stdout = '';
+    let settled = false;
+    let timedOut = false;
+    const timer = setTimeout(() => {
+      timedOut = true;
+      try {
+        if (child.pid) process.kill(-child.pid, 'SIGKILL'); // whole group
+      } catch { /* already gone */ }
+    }, timeoutMs + killGraceMs);
+    if (typeof timer.unref === 'function') timer.unref();
+
+    child.stdout.on('data', (d) => { stdout += d; });
+    child.on('error', (err) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      resolve({
+        stdout,
+        exitCode: null,
+        durationMs: Date.now() - startedAt,
+        timedOut,
+        spawnError: err,
+      });
+    });
+    child.on('exit', (code) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      resolve({
+        stdout,
+        exitCode: timedOut ? 124 : code,
+        durationMs: Date.now() - startedAt,
+        timedOut,
+        spawnError: null,
+      });
+    });
+  });
+}
+
+module.exports = { buildArgv, classifyError, runHermesChat, runSessionExport };

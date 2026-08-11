@@ -5,7 +5,7 @@ const assert = require('node:assert/strict');
 const { EventEmitter } = require('events');
 const childProcess = require('child_process');
 
-const { buildArgv, classifyError, runHermesChat } = require('./runner');
+const { buildArgv, classifyError, runHermesChat, runSessionExport } = require('./runner');
 
 // Fake child exposing the EventEmitter surface runHermesChat uses.
 function fakeChild({ stdoutData = '', stderrData = '', exitCode = 0, spawnError = null, pid = 1234 } = {}) {
@@ -152,4 +152,76 @@ test('classifyError: taxonomy', () => {
   assert.equal(classifyError({ spawnError: { code: 'ENOENT' } }), 'spawn_failed');
   assert.equal(classifyError({ exitCode: 2, stderr: 'boom' }), 'unknown');
   assert.equal(classifyError({ exitCode: 0 }), null);
+});
+
+test('runSessionExport: builds export argv and returns stdout on exit 0', async () => {
+  let seenArgs = null;
+  const mock = test.mock.method(childProcess, 'spawn', (bin, args) => {
+    seenArgs = { bin, args };
+    return fakeChild({ stdoutData: '{"id":"s1","messages":[]}' });
+  });
+  try {
+    const res = await runSessionExport('hermes', 'sess_abc', {});
+    assert.deepEqual(seenArgs.args, [
+      'sessions', 'export', '--format', 'jsonl', '--session-id', 'sess_abc', '-', '--yes',
+    ]);
+    assert.equal(seenArgs.bin, 'hermes');
+    assert.equal(res.exitCode, 0);
+    assert.equal(res.timedOut, false);
+    assert.equal(res.spawnError, null);
+    assert.equal(res.stdout, '{"id":"s1","messages":[]}');
+  } finally {
+    mock.mock.restore();
+  }
+});
+
+test('runSessionExport: nonzero exit surfaces exitCode', async () => {
+  const mock = test.mock.method(childProcess, 'spawn', () => fakeChild({ exitCode: 3, stdoutData: '' }));
+  try {
+    const res = await runSessionExport('hermes', 'sess_abc', {});
+    assert.equal(res.exitCode, 3);
+    assert.equal(res.timedOut, false);
+  } finally {
+    mock.mock.restore();
+  }
+});
+
+test('runSessionExport: ENOENT -> spawnError', async () => {
+  const err = Object.assign(new Error('spawn hermes ENOENT'), { code: 'ENOENT' });
+  const mock = test.mock.method(childProcess, 'spawn', () => fakeChild({ spawnError: err }));
+  try {
+    const res = await runSessionExport('hermes', 'sess_abc', {});
+    assert.equal(res.spawnError.code, 'ENOENT');
+    assert.equal(res.exitCode, null);
+  } finally {
+    mock.mock.restore();
+  }
+});
+
+test('runSessionExport: timeout kills group and returns exitCode 124', async () => {
+  const child = new EventEmitter();
+  child.pid = 777;
+  child.stdout = new EventEmitter();
+  child.stderr = new EventEmitter();
+  child.killCalls = [];
+  child.kill = (sig) => {
+    child.killCalls.push(sig);
+    setImmediate(() => child.emit('exit', null, sig));
+    return true;
+  };
+  const killMock = test.mock.method(process, 'kill', (pid, sig) => {
+    if (pid === -777) child.kill(sig);
+  });
+  const mock = test.mock.method(childProcess, 'spawn', () => child);
+  const keepAlive = setInterval(() => {}, 1000);
+  try {
+    const res = await runSessionExport('hermes', 'sess_abc', { sessionExportTimeoutMs: 10, killGraceMs: 10 });
+    assert.equal(res.timedOut, true);
+    assert.equal(res.exitCode, 124);
+    assert.ok(child.killCalls.includes('SIGKILL'));
+  } finally {
+    clearInterval(keepAlive);
+    mock.mock.restore();
+    killMock.mock.restore();
+  }
 });

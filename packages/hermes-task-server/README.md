@@ -47,9 +47,27 @@ Response (FR-5):
   "truncated": false,
   "exit_code": 0,
   "duration_ms": 4213,
-  "session_id": null
+  "session_id": "20260811_115247_084e47",
+  "tool_calls": [
+    {
+      "id": "call_1",
+      "name": "search_files",
+      "arguments": { "pattern": "EntitlementService" },
+      "result": "{\"total_count\": 14}"
+    }
+  ]
 }
 ```
+
+`tool_calls` (FR-5b): additive, best-effort summary of the tool invocations the
+Hermes agent made during the run, extracted post-run from
+`hermes sessions export --format jsonl --session-id <id>`. Each entry is
+`{id, name, arguments, result}` — `arguments` best-effort parsed from the JSON
+string, `result` paired to the matching tool-output message (or `null`).
+Caps: `maxToolCallArgsBytes` 2KB, `maxToolCallResultBytes` 8KB, `maxToolCalls` 50,
+`sessionExportTimeoutMs` 15s. Extraction failure never fails the task — the field
+is simply omitted and a `[hermes_task] tool_calls extraction failed` line is logged
+to stderr. `tool_calls` is absent when no `session_id` could be parsed.
 
 Errors: `busy`, `no_credential`, `provider_not_found`, `cwd_not_allowed`,
 `timeout`, `rate_limited`, `spawn_failed`, `unknown`.
