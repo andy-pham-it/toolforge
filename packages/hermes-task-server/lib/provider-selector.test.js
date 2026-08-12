@@ -112,3 +112,38 @@ test('defaultModelFor: hosted reasoning entry else first entry', () => {
   assert.equal(defaultModelFor('openrouter', cfg), 'nvidia/nemotron-3-ultra-550b-a55b:free');
   assert.equal(defaultModelFor('opencode-zen', cfg), 'deepseek-v4-flash-free');
 });
+
+test('credentialAlive: stale dead marks forgiven past TTL (auto-forgive)', () => {
+  const now = Date.now();
+  const HOUR = 60 * 60 * 1000;
+  const staleAt = (now - 7 * HOUR) / 1000; // 7h old, beyond the 6h TTL
+  const freshAt = (now - 1 * HOUR) / 1000; // 1h old, within the TTL
+  const ttl = 6 * HOUR;
+  assert.equal(credentialAlive({ last_status: 'exhausted', last_status_at: staleAt }, now, ttl), true);
+  assert.equal(credentialAlive({ last_status: 'exhausted', last_status_at: staleAt }, now), false); // no TTL
+  assert.equal(credentialAlive({ last_status: 'exhausted', last_status_at: staleAt }, now, 0), false);
+  assert.equal(credentialAlive({ last_status: 'exhausted', last_status_at: freshAt }, now, ttl), false); // recent
+  assert.equal(credentialAlive({ last_status: 'exhausted', last_status_at: null }, now, ttl), false);
+});
+
+test('aliveProviders: threads forgiveTtlMs to revive stale-exhausted providers', () => {
+  const now = Date.now();
+  const HOUR = 60 * 60 * 1000;
+  const staleAt = (now - 7 * HOUR) / 1000;
+  const a = auth({ 'opencode-zen': [{ last_status: 'exhausted', last_status_at: staleAt }] });
+  assert.deepEqual([...aliveProviders(a, now, 6 * HOUR)], ['opencode-zen']);
+  assert.deepEqual([...aliveProviders(a, now)], []);
+});
+
+test('pickAliveProvider: cfg.exhaustedForgiveTtlMs revives stale-exhausted provider', () => {
+  const now = Date.now();
+  const HOUR = 60 * 60 * 1000;
+  const staleAt = (now - 7 * HOUR) / 1000;
+  const a = auth({ 'opencode-zen': [{ last_status: 'exhausted', last_status_at: staleAt }] });
+  const ttlCfg = { exhaustedForgiveTtlMs: 6 * HOUR };
+  assert.deepEqual(pickAliveProvider('hello', a, ttlCfg), {
+    provider: 'opencode-zen',
+    model: 'deepseek-v4-flash-free',
+  });
+  assert.equal(pickAliveProvider('hello', a, cfg), null); // no TTL -> still dead
+});

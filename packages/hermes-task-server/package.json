@@ -1,6 +1,6 @@
 {
   "name": "@andy-toolforge/hermes-task-server",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "description": "MCP tool hermes_task — dispatch one-shot agentic tasks to the local Hermes Agent CLI on alive free-tier providers",
   "main": "lib/index.js",
   "files": [

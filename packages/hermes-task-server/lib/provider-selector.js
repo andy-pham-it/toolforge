@@ -17,7 +17,7 @@ function normalizeCredList(v) {
 }
 
 /** Is a single credential alive? null last_status = alive. */
-function credentialAlive(cred, now) {
+function credentialAlive(cred, now, forgiveTtlMs = 0) {
   if (!cred || typeof cred !== 'object') return false;
   const st = cred.last_status;
   if (st == null) return true;
@@ -25,6 +25,13 @@ function credentialAlive(cred, now) {
   // Dead but reset window passed -> revived.
   const reset = Number(cred.last_error_reset_at);
   if (Number.isFinite(reset) && reset > 0 && reset < now) return true;
+  // TTL auto-forgive: auth.json only updates on real calls, so a stale dead mark
+  // can outlive a silently-reset quota. Forgive old marks — a genuinely dead
+  // provider just re-freezes with fresh metadata on its next 429 (hermes' philosophy).
+  if (forgiveTtlMs > 0) {
+    const at = Number(cred.last_status_at);
+    if (Number.isFinite(at) && at > 0 && now - at * 1000 > forgiveTtlMs) return true;
+  }
   return false;
 }
 
@@ -32,15 +39,15 @@ function credentialAlive(cred, now) {
  * L1: providers with at least one alive credential.
  * Merges auth.credential_pool keys + top-level auth.providers OAuth keys.
  */
-function aliveProviders(auth, now = Date.now()) {
+function aliveProviders(auth, now = Date.now(), forgiveTtlMs = 0) {
   const alive = new Set();
   const pool = (auth && auth.credential_pool) || {};
   for (const [provider, creds] of Object.entries(pool)) {
-    if (normalizeCredList(creds).some((c) => credentialAlive(c, now))) alive.add(provider);
+    if (normalizeCredList(creds).some((c) => credentialAlive(c, now, forgiveTtlMs))) alive.add(provider);
   }
   const top = (auth && auth.providers) || {};
   for (const provider of Object.keys(top)) {
-    if (credentialAlive(top[provider], now)) alive.add(provider);
+    if (credentialAlive(top[provider], now, forgiveTtlMs)) alive.add(provider);
   }
   return alive;
 }
@@ -65,7 +72,7 @@ function classifyCapability(prompt) {
  */
 function pickAliveProvider(capabilityOrPrompt, auth, cfg = {}) {
   const now = Date.now();
-  const alive = aliveProviders(auth, now);
+  const alive = aliveProviders(auth, now, cfg.exhaustedForgiveTtlMs || 0);
   const map = (cfg.capabilityMap || capabilityMap) || {};
   const tiebreak = cfg.tiebreakOrder || [];
   const cap =

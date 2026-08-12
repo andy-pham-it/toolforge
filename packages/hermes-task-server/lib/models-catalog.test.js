@@ -117,3 +117,16 @@ test('buildCatalog: models sorted by id, providers sorted by name', () => {
   // localeCompare: '-' (0x2D) < '.' (0x2E), so gemini-3-flash sorts before gemini-3.1-flash-lite
   assert.deepEqual(cat.providers[0].models.map((m) => m.id), ['gemini-3-flash', 'gemini-3.1-flash-lite']);
 });
+
+test('buildCatalog: stale-exhausted status revived when TTL set (matches picking)', () => {
+  const now = Date.now();
+  const HOUR = 60 * 60 * 1000;
+  const staleAt = (now - 7 * HOUR) / 1000;
+  const modelsCache = { gemini: { at: 1, models: ['gemini-3.1-flash-lite'] } };
+  const auth = { credential_pool: { gemini: [{ last_status: 'exhausted', last_error_code: 429, last_status_at: staleAt }] } };
+  const ttlCfg = { exhaustedForgiveTtlMs: 6 * HOUR };
+  const forgiven = buildCatalog({ modelsCache, auth, cfg: ttlCfg });
+  assert.equal(forgiven.providers[0].status, 'alive');
+  const raw = buildCatalog({ modelsCache, auth, cfg: {} });
+  assert.equal(raw.providers[0].status, 'dead');
+});

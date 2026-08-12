@@ -10,6 +10,7 @@ const DEFAULTS = Object.freeze({
   spawnCwd: process.cwd(),
   cwdAllowlist: [], // deny-all unless configured
   resetWindowMs: 24 * 60 * 60 * 1000, // 24h
+  exhaustedForgiveTtlMs: 6 * 60 * 60 * 1000, // stale-exhaustion auto-forgive: dead marks older than this are treated as revived (re-probed on next real call)
   maxResultBytes: 200 * 1024, // inline 'full' result cap (raised from 50KB per user request)
   maxDigestResultBytes: 8 * 1024, // default 'digest' result cap
   defaultOutputMode: 'digest', // 'digest' | 'full'

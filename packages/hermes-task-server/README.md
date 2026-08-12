@@ -189,7 +189,7 @@ Errors: `busy`, `no_credential`, `provider_not_found`, `cwd_not_allowed`,
 Env overrides: `HERMES_AUTH_PATH` (default `~/.hermes/auth.json`), `HERMES_BIN`
 (default `hermes`).
 
-`lib/config.js` defaults: `resetWindowMs` 24h, `maxResultBytes` 200KB (full mode cap),
+`lib/config.js` defaults: `resetWindowMs` 24h, `exhaustedForgiveTtlMs` 6h, `maxResultBytes` 200KB (full mode cap),
 `maxDigestResultBytes` 8KB (digest mode cap), `defaultOutputMode` `"digest"`,
 `cacheDir` `~/.hermes/hermes-task-cache`, `maxErrorDetailBytes` 500, `tiebreakOrder`
 nvidia → huggingface → gemini → kimi-coding, `capabilityMap` (L2 table:
@@ -200,6 +200,13 @@ reasoning/reason/coding/vision/multimodal/planning/image-gen/voice/chat).
 A credential is **alive** unless `last_status` is `exhausted`/`429`/`402` AND its
 `last_error_reset_at` is still in the future. A past reset timestamp revives the
 credential automatically — free-tier quotas reset daily.
+
+`auth.json` is only updated when Hermes actually makes a call and hits an error, so a
+stale dead mark can outlive a silently-reset quota. `exhaustedForgiveTtlMs` (default
+6h) auto-forgives dead marks older than the TTL (`last_status_at`): the provider is
+treated as revived and re-probed on the next real call — a genuinely dead provider
+just re-freezes with fresh metadata on its next 429. This applies consistently to
+provider auto-picking and to the `hermes_models` catalog status.
 
 ### Capability map notes
 

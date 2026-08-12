@@ -506,3 +506,23 @@ test('runHermesModels: missing cache falls back to capability-map', async () => 
   assert.ok(gemini);
   assert.ok(gemini.model_count > 0);
 });
+
+test('runHermesTask: stale-exhausted provider auto-picked when forgive TTL set', async () => {
+  const now = Date.now();
+  const HOUR = 60 * 60 * 1000;
+  const staleAt = (now - 7 * HOUR) / 1000;
+  const authPath = tmpAuth({ 'opencode-zen': [{ id: 'z1', last_status: 'exhausted', last_status_at: staleAt }] }, {});
+  const mock = spawnMock((bin, args) => {
+    assert.equal(args[args.indexOf('--provider') + 1], 'opencode-zen');
+    assert.equal(args[args.indexOf('-m') + 1], 'deepseek-v4-flash-free');
+    return fakeChild({ stdoutData: 'ok', exitCode: 0 });
+  });
+  try {
+    const res = await runHermesTask({ prompt: 'hello' }, { authPath, exhaustedForgiveTtlMs: 6 * HOUR });
+    assert.equal(res.ok, true);
+    assert.equal(res.provider, 'opencode-zen');
+    assert.equal(res.model, 'deepseek-v4-flash-free');
+  } finally {
+    mock.mock.restore();
+  }
+});

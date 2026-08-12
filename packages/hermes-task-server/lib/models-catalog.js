@@ -72,7 +72,8 @@ function buildModelsForProvider(provider, cacheEntry, map, cfg) {
  */
 function buildCatalog({ modelsCache = null, auth = null, cfg = {} }) {
   const map = cfg.capabilityMap || capabilityMap;
-  const alive = auth ? aliveProviders(auth) : null; // Set<string> of provider names with a live credential
+  // aliveProviders with the TTL so catalog status matches pickAliveProvider (stale-exhaustion auto-forgive).
+  const alive = auth ? aliveProviders(auth, Date.now(), cfg.exhaustedForgiveTtlMs || 0) : null; // Set<string> of provider names with a live credential
 
   const cacheProviders = modelsCache && typeof modelsCache === 'object' ? modelsCache : {};
   const mapProviders = new Set();
