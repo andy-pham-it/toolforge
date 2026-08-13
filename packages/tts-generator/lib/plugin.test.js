@@ -127,12 +127,21 @@ describe('TTSPlugin', () => {
     });
 
     it('should fallback to GOOGLE_API_KEY', () => {
-      const orig = process.env.GOOGLE_API_KEY;
+      // GEMINI_API_KEY shadows GOOGLE_API_KEY in TTSPlugin; scrub both so an
+      // ambient real key cannot win over the explicit fallback in this test.
+      const origGemini = process.env.GEMINI_API_KEY;
+      const origGoogle = process.env.GOOGLE_API_KEY;
+      delete process.env.GEMINI_API_KEY;
       process.env.GOOGLE_API_KEY = 'fallback-key';
-      const plugin = new TTSPlugin({});
-      assert.equal(plugin.config.apiKey, 'fallback-key');
-      if (orig) process.env.GOOGLE_API_KEY = orig;
-      else delete process.env.GOOGLE_API_KEY;
+      try {
+        const plugin = new TTSPlugin({});
+        assert.equal(plugin.config.apiKey, 'fallback-key');
+      } finally {
+        if (origGemini) process.env.GEMINI_API_KEY = origGemini;
+        else delete process.env.GEMINI_API_KEY;
+        if (origGoogle) process.env.GOOGLE_API_KEY = origGoogle;
+        else delete process.env.GOOGLE_API_KEY;
+      }
     });
 
     it('should accept custom config', () => {

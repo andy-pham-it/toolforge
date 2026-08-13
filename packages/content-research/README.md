@@ -129,7 +129,7 @@ Quản lý article lifecycle với các actions: classify, tag, summarize, impro
 
 ### CompetitorAnalyzer
 
-Phân tích competitor website: crawl nội dung → LLM analysis (dùng Puppeteer).
+Phân tích competitor website: crawl nội dung thật → LLM analysis (dùng Puppeteer). Khác với ba-support `crawlCompetitor()` (chỉ profile dựa trên LLM knowledge, không crawl trang).
 
 **Constructor:** `new CompetitorAnalyzer({ provider, apiKey, model? })`
 

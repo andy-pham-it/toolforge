@@ -1,0 +1,19 @@
+{
+  "name": "@andy-toolforge/messaging",
+  "version": "0.1.0",
+  "description": "Messenger facade + Telegram/Discord/Console adapters for automation notifications",
+  "main": "lib/index.js",
+  "files": [
+    "lib/",
+    "skills/",
+    "postinstall.js"
+  ],
+  "scripts": {
+    "test": "node --test lib/*.test.js",
+    "postinstall": "node postinstall.js"
+  },
+  "dependencies": {},
+  "engines": {
+    "node": ">=18"
+  }
+}

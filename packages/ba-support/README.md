@@ -6,7 +6,7 @@
 **Business Analysis: competitor research, pricing, SWOT, trends, reports.** Thuộc hệ sinh thái [toolforge](https://github.com/andy-pham-it/toolforge).
 
 Package này giúp bạn:
-- Crawl và phân tích competitor profiles từ URL
+- Phân tích competitor profiles từ URL (LLM-based, không crawl trang thật)
 - So sánh pricing strategies
 - Phân tích SWOT từ dữ liệu đối thủ
 - Track market trends theo keywords
@@ -38,7 +38,8 @@ Một class duy nhất cho mọi nhu cầu business analysis. Cần LLMClient t�
 
 #### crawlCompetitor(url)
 
-Crawl và phân tích competitor từ URL.
+Phân tích competitor từ URL dựa trên kiến thức của LLM (không crawl trang thật) — trả về structured profile để feed vào pricing/SWOT/trends/report pipeline.
+> Cần crawl nội dung trang thật? Dùng [@andy-toolforge/content-research](https://npmjs.com/package/@andy-toolforge/content-research) `CompetitorAnalyzer.analyze()` (Puppeteer crawl + LLM analysis).
 
 | Param | Type | Mô tả |
 |-------|------|-------|

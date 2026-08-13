@@ -93,15 +93,27 @@ describe('TTSPlanner', () => {
 
     describe('plan() — regex fallback', () => {
         it('should split by double-newlines when LLM is null', async () => {
-            const planner = new TTSPlanner({ llm: null });
-            const plan = await planner.plan(SAMPLE_SCRIPT, 'Fallback Test');
+            // Scrub ambient LLM key env vars: TTSPlanner({ llm: null }) would
+            // otherwise fall through to _createDefaultLLM() and make a real API
+            // call, making this unit test network- and env-dependent.
+            const savedKeys = ['GROQ_API_KEY', 'GEMINI_API_KEY', 'OPENAI_API_KEY'].map((k) => [k, process.env[k]]);
+            for (const [k] of savedKeys) delete process.env[k];
+            try {
+                const planner = new TTSPlanner({ llm: null });
+                const plan = await planner.plan(SAMPLE_SCRIPT, 'Fallback Test');
 
-            assert.ok(plan, 'plan should be returned');
-            // Sample has 5 paragraphs separated by blank lines
-            assert.ok(plan.segments.length >= 4, `should split into paragraphs, got ${plan.segments.length}`);
-            assert.ok(plan.segments.every(s => s.voice === 'auto'), 'all segments should have auto voice');
-            assert.ok(plan.segments.every(s => s.pace === 'normal'), 'all segments should have normal pace');
-            assert.ok(Array.isArray(plan.metadata.languages), 'metadata.languages should be an array');
+                assert.ok(plan, 'plan should be returned');
+                // Sample has 5 paragraphs separated by blank lines
+                assert.ok(plan.segments.length >= 4, `should split into paragraphs, got ${plan.segments.length}`);
+                assert.ok(plan.segments.every(s => s.voice === 'auto'), 'all segments should have auto voice');
+                assert.ok(plan.segments.every(s => s.pace === 'normal'), 'all segments should have normal pace');
+                assert.ok(Array.isArray(plan.metadata.languages), 'metadata.languages should be an array');
+            } finally {
+                for (const [k, v] of savedKeys) {
+                    if (v !== undefined) process.env[k] = v;
+                    else delete process.env[k];
+                }
+            }
         });
 
         it('should split by double-newlines when LLM throws', async () => {
