@@ -157,9 +157,21 @@ function toPDF(markdown, options = {}) {
   return new Promise((resolve, reject) => {
     const doc = new PDFDocument({ margin: 50 });
     const chunks = [];
-    doc.on('data', (c) => chunks.push(c));
-    doc.on('end', () => resolve(Buffer.concat(chunks)));
-    doc.on('error', reject);
+
+    if (options.stream) {
+      // Stream mode: pipe directly to a writable (e.g. fs.WriteStream) so
+      // large reports don't need to be buffered in RAM; resolves on 'finish'.
+      const stream = options.stream;
+      doc.pipe(stream);
+      doc.on('error', reject);
+      stream.on('error', reject);
+      stream.on('finish', resolve);
+    } else {
+      // Buffer mode (default): collect chunks and resolve with a Buffer.
+      doc.on('data', (c) => chunks.push(c));
+      doc.on('end', () => resolve(Buffer.concat(chunks)));
+      doc.on('error', reject);
+    }
 
     if (options.title) {
       doc.fontSize(20).text(options.title);

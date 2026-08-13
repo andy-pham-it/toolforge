@@ -47,3 +47,20 @@ test('MockLLMClient: throws when no responses configured', async () => {
     const llm = new MockLLMClient();
     await assert.rejects(() => llm.chat([]), /no response configured for call 1/);
 });
+
+test('MockLLMClient: reset() clears call history and restarts response index', async () => {
+    const llm = new MockLLMClient({ responses: ['first', 'second'] });
+    assert.strictEqual(await llm.chat([]), 'first');
+    assert.strictEqual(llm.calls.length, 1);
+    llm.reset();
+    assert.strictEqual(llm.calls.length, 0);
+    assert.strictEqual(await llm.chat([]), 'first'); // index restarted
+});
+
+test('MockLLMClient: invalid JSON response throws MockLLMError', async () => {
+    const llm = new MockLLMClient({ responses: '{not json' });
+    await assert.rejects(
+        () => llm.chat([], { json: true }),
+        (err) => err instanceof MockLLMClient.MockLLMError && /invalid JSON response for call 1/.test(err.message)
+    );
+});

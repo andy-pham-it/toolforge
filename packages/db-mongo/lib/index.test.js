@@ -130,7 +130,7 @@ test('MigrationRunner.migrate() applies only unapplied migrations in order', asy
   ];
 
   const appliedNow = await runner.migrate(migrations);
-  assert.deepStrictEqual(appliedNow, ['m2', 'm3']);
+  assert.deepStrictEqual(appliedNow, [{ name: 'm1', state: 'skipped' }, { name: 'm2', state: 'applied' }, { name: 'm3', state: 'applied' }]);
   assert.deepStrictEqual(upCalls, ['m2', 'm3']);
   assert.strictEqual(inserted.length, 2);
   assert.strictEqual(inserted[0].name, 'm2');
@@ -165,6 +165,28 @@ test('MigrationRunner.migrate() skips concurrently-applied migration (duplicate 
     { name: 'm2', up: async () => upCalls.push('m2') },
     { name: 'm3', up: async () => upCalls.push('m3') },
   ];
-  assert.deepStrictEqual(await runner.migrate(migrations), ['m3']);
+  assert.deepStrictEqual(await runner.migrate(migrations), [{ name: 'm1', state: 'skipped' }, { name: 'm2', state: 'applied' }, { name: 'm3', state: 'applied' }]);
   assert.deepStrictEqual(upCalls, ['m2', 'm3']);
+});
+
+test('MigrationRunner.migrate() records failed state and rethrows with report', async () => {
+  const col = {
+    createIndex: async () => {},
+    find: () => ({ toArray: async () => [] }),
+    insertOne: async () => ({}),
+  };
+  const db = { collection: () => col };
+  const runner = new MigrationRunner(db);
+  const migrations = [
+    { name: 'm1', up: async () => { throw new Error('boom'); } },
+    { name: 'm2', up: async () => {} },
+  ];
+  await assert.rejects(
+    () => runner.migrate(migrations),
+    (err) => {
+      assert.strictEqual(err.message, 'boom');
+      assert.deepStrictEqual(err.results, [{ name: 'm1', state: 'failed' }]);
+      return true;
+    }
+  );
 });

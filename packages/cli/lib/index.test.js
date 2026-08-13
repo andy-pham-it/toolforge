@@ -40,6 +40,12 @@ test('parseArgs: -- terminator', () => {
   assert.deepStrictEqual(flags, {});
 });
 
+test('parseArgs: negative numbers are positionals, not flag clusters', () => {
+  const { flags, positionals } = parseArgs(['calc', '-5', '-1.5', '--', '-x'], {});
+  assert.deepStrictEqual(positionals, ['calc', '-5', '-1.5', '-x']);
+  assert.deepStrictEqual(flags, {});
+});
+
 test('Spinner: writes frames and stops with final line', () => {
   mock.timers.enable({ apis: ['setInterval'] });
   try {
@@ -85,7 +91,7 @@ test('loadConfig: merges defaults, files, env override', () => {
   try {
     const config = loadConfig([fileA, fileB], { envPrefix: 'TESTCFG', defaults: { host: 'default', debug: false } });
     assert.strictEqual(config.host, 'localhost'); // file overrides default
-    assert.strictEqual(config.port, '5000'); // env overrides file
+    assert.strictEqual(config.port, 5000); // env overrides file (coerced to number)
     assert.strictEqual(config.debug, false); // default kept
   } finally {
     delete process.env.TESTCFG_PORT;

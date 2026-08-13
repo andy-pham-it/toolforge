@@ -51,3 +51,15 @@ test('toPDF: returns a PDF buffer', async () => {
   assert.ok(buf.length > 100);
   assert.strictEqual(buf.slice(0, 4).toString(), '%PDF');
 });
+
+test('toPDF: writes to a stream (no RAM buffer)', async () => {
+  const os = require('node:os');
+  const fs = require('node:fs');
+  const path = require('node:path');
+  const tmp = path.join(os.tmpdir(), `reporting-test-${Date.now()}.pdf`);
+  await toPDF('## Title\n\nHello', { title: 'Doc', stream: fs.createWriteStream(tmp) });
+  const data = fs.readFileSync(tmp);
+  fs.unlinkSync(tmp);
+  assert.ok(data.length > 100);
+  assert.strictEqual(data.slice(0, 4).toString(), '%PDF');
+});

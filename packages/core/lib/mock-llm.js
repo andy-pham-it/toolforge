@@ -21,6 +21,13 @@ class MockLLMClient {
     }
 
     /**
+     * Clear the recorded call history (and restart the per-call response index).
+     */
+    reset() {
+        this.calls = [];
+    }
+
+    /**
      * Return the next canned response and record the invocation.
      * @param {Array<{role: string, content: string}>} messages
      * @param {{ json?: boolean, responseFormat?: { json?: boolean } }} [opts]
@@ -48,10 +55,25 @@ class MockLLMClient {
             opts.json === true || (opts.responseFormat && opts.responseFormat.json === true);
         if (wantsJson) {
             if (typeof response === 'object') return response;
-            return JSON.parse(response);
+            try {
+                return JSON.parse(response);
+            } catch (err) {
+                throw new MockLLMError(
+                    `MockLLMClient: invalid JSON response for call ${index + 1}: ${err.message}`
+                );
+            }
         }
         return response;
     }
 }
+
+class MockLLMError extends Error {
+    constructor(message) {
+        super(message);
+        this.name = 'MockLLMError';
+    }
+}
+
+MockLLMClient.MockLLMError = MockLLMError;
 
 module.exports = MockLLMClient;

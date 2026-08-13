@@ -45,7 +45,7 @@ function parseArgs(argv, spec = {}) {
           setFlag(name, true);
         }
       }
-    } else if (arg.startsWith('-') && arg.length > 1) {
+    } else if (arg.startsWith('-') && arg.length > 1 && !/^-\d/.test(arg)) {
       const chars = arg.slice(1);
       for (let j = 0; j < chars.length; j++) {
         const short = chars[j];
@@ -136,11 +136,19 @@ function loadConfig(paths, options = {}) {
     }
     config = { ...config, ...loaded };
   }
-  if (envPrefix) {
+    if (envPrefix) {
     const prefix = envPrefix.endsWith('_') ? envPrefix : `${envPrefix}_`;
     for (const [key, value] of Object.entries(process.env)) {
       if (key.startsWith(prefix)) {
-        config[key.slice(prefix.length).toLowerCase()] = value;
+        // Coerce env overrides: 'true'/'false' -> boolean, numeric -> number,
+        // JSON -> object; keep raw string otherwise (e.g. 'PORT=80' -> 80).
+        let coerced = value;
+        try {
+          coerced = JSON.parse(value);
+        } catch {
+          /* not JSON — keep string */
+        }
+        config[key.slice(prefix.length).toLowerCase()] = coerced;
       }
     }
   }

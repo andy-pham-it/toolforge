@@ -110,7 +110,9 @@ class MigrationRunner {
   /**
    * Apply migrations not yet recorded, in array order.
    * Each migration: { name, up(db) } where db is the MongoDatabase instance.
-   * Returns the names of migrations applied in this call.
+   * Returns a run report: array of { name, state } records with state one of
+   * 'skipped' | 'running' | 'applied' | 'failed'. If a migration's up() throws,
+   * migrate() rethrows the error with `err.results` set to the report so far.
    */
   async migrate(migrations) {
     const col = this.db.collection(this.collectionName);
@@ -122,20 +124,32 @@ class MigrationRunner {
     const applied = await this.appliedNames();
     const results = [];
     for (const migration of migrations) {
-      if (applied.has(migration.name)) continue;
-      await migration.up(this.db);
+      if (applied.has(migration.name)) {
+        results.push({ name: migration.name, state: 'skipped' });
+        continue;
+      }
+      const entry = { name: migration.name, state: 'running' };
+      results.push(entry);
+      try {
+        await migration.up(this.db);
+      } catch (err) {
+        entry.state = 'failed';
+        err.results = results;
+        throw err;
+      }
       try {
         await col.insertOne({ name: migration.name, appliedAt: new Date() });
       } catch (err) {
         if (err && err.code === 11000) {
-          // applied by a concurrent migrate() call — skip
+          // applied by a concurrent migrate() call — up() already ran here
           applied.add(migration.name);
+          entry.state = 'applied';
           continue;
         }
         throw err;
       }
       applied.add(migration.name);
-      results.push(migration.name);
+      entry.state = 'applied';
     }
     return results;
   }

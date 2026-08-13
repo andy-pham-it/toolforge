@@ -9,7 +9,7 @@
 const CATALOG = [
     {
         name: '@andy-toolforge/core',
-        version: '1.2.0',
+        version: '1.2.1',
         description: 'Toolforge foundation: browser manager, LLM client, logger, job queue',
         useCases: [
             'Any project that needs an LLM client with multi-provider failover (Gemini → Groq)',
@@ -48,7 +48,7 @@ const CATALOG = [
     },
     {
         name: '@andy-toolforge/mcp',
-        version: '1.3.5',
+        version: '1.3.7',
         description: 'MCP server exposing @andy-toolforge tools over Model Context Protocol',
         useCases: [
             'Expose @andy-toolforge tools to AI coding agents via MCP protocol',
@@ -64,7 +64,7 @@ const CATALOG = [
     },
     {
         name: '@andy-toolforge/footage-generation',
-        version: '1.3.1',
+        version: '1.4.0',
         description: 'Generate images, videos, and visuals for podcasts and content',
         useCases: [
             'Generate podcast/video cover images via Gemini Images browser automation',
@@ -84,7 +84,7 @@ const CATALOG = [
     },
     {
         name: '@andy-toolforge/seo-generation',
-        version: '1.0.1',
+        version: '1.0.2',
         description: 'SEO content generation for YouTube, TikTok, blog',
         useCases: [
             'Generate YouTube/TikTok/Facebook SEO metadata (title, description, tags, keywords, timestamps)',
@@ -124,7 +124,7 @@ const CATALOG = [
     },
     {
         name: '@andy-toolforge/vn-stock',
-        version: '0.2.2',
+        version: '0.2.3',
         description: 'VN stock screener and scanner — technical analysis from MongoDB data',
         useCases: [
             'Screen/filter/scoring VN stocks by technical conditions (daily + intraday 15m/1h)',
