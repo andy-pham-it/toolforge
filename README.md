@@ -2,7 +2,7 @@
 
 [![npm (scoped)](https://img.shields.io/badge/npm-@andy--toolforge-red)](https://www.npmjs.com/org/andy-toolforge)
 
-**Monorepo chứa 11+ package npm dùng chung cho mọi dự án automation cá nhân.**
+**Monorepo chứa 21 package npm dùng chung cho mọi dự án automation cá nhân.**
 Triết lý: **Không copy-paste code.** Thay vào đó, mọi dự án đều import từ `@andy-toolforge/*` và được cập nhật qua `npm update`.
 
 Toolforge giải quyết vấn đề gì?
@@ -95,6 +95,19 @@ Toolforge không chỉ là "thư viện LLM" — nó là **hệ sinh thái autom
 | `@andy-toolforge/coding-support` | [![npm](https://img.shields.io/npm/v/@andy-toolforge/coding-support)](https://npmjs.com/package/@andy-toolforge/coding-support) | Code analysis, dead code, complexity | Developers |
 | `@andy-toolforge/vn-stock` | [![npm](https://img.shields.io/npm/v/@andy-toolforge/vn-stock)](https://npmjs.com/package/@andy-toolforge/vn-stock) | Stock screening, scoring, signal detection | Investors |
 | `@andy-toolforge/mcp` | [![npm](https://img.shields.io/npm/v/@andy-toolforge/mcp)](https://npmjs.com/package/@andy-toolforge/mcp) | MCP server — plugin discovery | AI agents |
+| `@andy-toolforge/genai-tools` | [![npm](https://img.shields.io/npm/v/@andy-toolforge/genai-tools)](https://npmjs.com/package/@andy-toolforge/genai-tools) | Gemini search grounding, structured extraction | AI agents |
+| `@andy-toolforge/tts-generator` | [![npm](https://img.shields.io/npm/v/@andy-toolforge/tts-generator)](https://npmjs.com/package/@andy-toolforge/tts-generator) | TTS: planner, 30 voices, Gemini TTS | Podcast producers |
+| `@andy-toolforge/voice-assistant` | [![npm](https://img.shields.io/npm/v/@andy-toolforge/voice-assistant)](https://npmjs.com/package/@andy-toolforge/voice-assistant) | Voice assistant (Gemini Live, multi-voice) | Voice apps |
+| `@andy-toolforge/authoring` | [![npm](https://img.shields.io/npm/v/@andy-toolforge/authoring)](https://npmjs.com/package/@andy-toolforge/authoring) | Lessons, series scaffold, image embedding | Educators |
+| `@andy-toolforge/llm-gateway` | [![npm](https://img.shields.io/npm/v/@andy-toolforge/llm-gateway)](https://npmjs.com/package/@andy-toolforge/llm-gateway) | LLM pipeline gateway (stages, CLI, HTTP) | LLM engineers |
+| `@andy-toolforge/llm-gateway-core` | [![npm](https://img.shields.io/npm/v/@andy-toolforge/llm-gateway-core)](https://npmjs.com/package/@andy-toolforge/llm-gateway-core) | Pipeline stage primitives (TypeScript) | LLM engineers |
+| `@andy-toolforge/hermes-opencode-mcp-bridge` | [![npm](https://img.shields.io/npm/v/@andy-toolforge/hermes-opencode-mcp-bridge)](https://npmjs.com/package/@andy-toolforge/hermes-opencode-mcp-bridge) | Bridge opencode CLI ↔ MCP | AI agents |
+| `@andy-toolforge/hermes-task-server` | [![npm](https://img.shields.io/npm/v/@andy-toolforge/hermes-task-server)](https://npmjs.com/package/@andy-toolforge/hermes-task-server) | One-shot agentic tasks trên free providers | AI agents |
+| `@andy-toolforge/sdlc-workflows` | [![npm](https://img.shields.io/npm/v/@andy-toolforge/sdlc-workflows)](https://npmjs.com/package/@andy-toolforge/sdlc-workflows) | SDLC workflow templates + MCP server | Dev teams |
+| `@andy-toolforge/messaging` | [![npm](https://img.shields.io/npm/v/@andy-toolforge/messaging)](https://npmjs.com/package/@andy-toolforge/messaging) | Messenger facade: Telegram/Discord/Console | Automation pipelines |
+| `@andy-toolforge/db-mongo` | [![npm](https://img.shields.io/npm/v/@andy-toolforge/db-mongo)](https://npmjs.com/package/@andy-toolforge/db-mongo) | MongoDB wrapper: connection, collections, migrations | Data-heavy projects |
+| `@andy-toolforge/cli` | [![npm](https://img.shields.io/npm/v/@andy-toolforge/cli)](https://npmjs.com/package/@andy-toolforge/cli) | CLI toolkit: arg parse, spinner, config loading | CLI tools |
+| `@andy-toolforge/reporting` | [![npm](https://img.shields.io/npm/v/@andy-toolforge/reporting)](https://npmjs.com/package/@andy-toolforge/reporting) | Markdown/HTML/PDF export | Reports |
 
 ---
 
@@ -272,7 +285,7 @@ const server = createServer({ provider: 'gemini', apiKey: process.env.GEMINI_API
 server.start(); // stdio transport
 ```
 
-Hiện tại có **24+ tools** được auto-discover từ 7 domain packages. Xem chi tiết tại [packages/mcp/README.md](./packages/mcp/README.md).
+Hiện tại có **50+ tools** được auto-discover từ 15+ domain packages. Xem chi tiết tại [packages/mcp/README.md](./packages/mcp/README.md).
 
 ---
 
@@ -350,6 +363,7 @@ uv run --directory py-packages/vn-stock-indicators pytest -v
 GitHub Actions tự động publish lên npmjs khi push lên `main`:
 
 - `.github/workflows/publish.yml` — build, test, publish tất cả packages
+- `.github/workflows/ci.yml` — test tất cả workspaces trên mỗi PR / push vào `main`
 - Cần `NPM_TOKEN` secret (npm Automation token với quyền read+write) trong GitHub repo settings
 
 ---

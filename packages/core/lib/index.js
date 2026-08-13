@@ -6,6 +6,7 @@ const Logger = require('./logger');
 const JobQueue = require('./queue');
 const { installSkills } = require('./postinstall-skills');
 const { MCPErrorTracker } = require('./mcp-error-tracker');
+const MockLLMClient = require('./mock-llm');
 
 module.exports = {
     LLMClient,
@@ -16,4 +17,5 @@ module.exports = {
     JobQueue,
     installSkills,
     MCPErrorTracker,
+    MockLLMClient,
 };

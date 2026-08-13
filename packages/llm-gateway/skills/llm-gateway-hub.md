@@ -5,6 +5,7 @@
 | Skill | Description |
 |-------|-------------|
 | `llm-gateway-adapter-guide` | Write custom adapters for any LLM provider |
+| `llm-gateway-pipeline-guide` | Build stage/pipeline chains with createPipeline |
 
 ## Quick CLI Reference
 

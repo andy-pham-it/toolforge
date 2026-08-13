@@ -1,0 +1,20 @@
+{
+  "name": "@andy-toolforge/cli",
+  "version": "0.1.0",
+  "description": "CLI toolkit: argument parsing, spinner, config loading",
+  "main": "lib/index.js",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/andy-pham-it/toolforge.git"
+  },
+  "files": [
+    "lib/"
+  ],
+  "scripts": {
+    "test": "node --test lib/*.test.js"
+  },
+  "dependencies": {},
+  "engines": {
+    "node": ">=18"
+  }
+}

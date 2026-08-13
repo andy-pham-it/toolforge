@@ -93,7 +93,27 @@ describe('Integration — StockDB + Screener + Scorer (MongoDB)', async () => {
         await db.close();
     });
 
-    describe('StockDB', async () => {
+    // Probe availability BEFORE registering sub-suites: node:test evaluates
+    // {skip} at registration time, and the before() hook runs after that.
+    const hasUv = (() => {
+        try {
+            require('child_process').execFileSync('uv', ['--version'], { stdio: 'ignore' });
+            return true;
+        } catch {
+            return false;
+        }
+    })();
+    let mongoUp = false;
+    const probe = new StockDB();
+    try {
+        await probe.connect();
+        mongoUp = true;
+        await probe.close();
+    } catch {
+        mongoUp = false;
+    }
+
+    describe('StockDB', { skip: !mongoUp }, async () => {
         await it('should connect and return test DB', () => {
             assert.ok(available, 'MongoDB must be available');
             assert.ok(db.db);
@@ -127,7 +147,7 @@ describe('Integration — StockDB + Screener + Scorer (MongoDB)', async () => {
         });
     });
 
-    describe('StockScreener', async () => {
+    describe('StockScreener', { skip: !mongoUp }, async () => {
         let screener;
 
         before(async () => {
@@ -206,7 +226,7 @@ describe('Integration — StockDB + Screener + Scorer (MongoDB)', async () => {
         });
     });
 
-    describe('StockScorer', async () => {
+    describe('StockScorer', { skip: !mongoUp }, async () => {
         await it('scoreCandle with real data should produce reasonable score', () => {
             const scorer = new StockScorer();
             const fptDaily = dailyDocs[0].candles[1];
@@ -219,7 +239,7 @@ describe('Integration — StockDB + Screener + Scorer (MongoDB)', async () => {
 
         await it('scoreAll should rank symbols by total score', async () => {
             const scorer = new StockScorer();
-            const results = await scorer.scoreAll({ limit: 10 });
+            const results = await scorer.scoreAll({ limit: 10000 });
             const fpt = results.find(r => r.symbol === `${TEST_PREFIX}FPT`);
             const vnm = results.find(r => r.symbol === `${TEST_PREFIX}VNM`);
             assert.ok(fpt);
@@ -259,7 +279,7 @@ describe('Integration — StockDB + Screener + Scorer (MongoDB)', async () => {
 
         await it('scoreAllIntraday should rank all symbols on interval', async () => {
             const scorer = new StockScorer();
-            const results = await scorer.scoreAllIntraday({ interval: '15m', limit: 10 });
+            const results = await scorer.scoreAllIntraday({ interval: '15m', limit: 10000 });
             assert.ok(results.length >= 2, `Expected >=2, got ${results.length}`);
             for (let i = 1; i < results.length; i++) {
                 assert.ok(results[i - 1].score >= results[i].score);
@@ -277,7 +297,7 @@ describe('Integration — StockDB + Screener + Scorer (MongoDB)', async () => {
         });
     });
 
-    describe('IndicatorEngine — real Python (uv)', async () => {
+    describe('IndicatorEngine — real Python (uv)', { skip: !hasUv }, async () => {
         const { IndicatorEngine } = require('./indicators');
         const PROJECT_DIR = path.resolve(__dirname, '..', '..', '..', 'py-packages', 'vn-stock-indicators');
 

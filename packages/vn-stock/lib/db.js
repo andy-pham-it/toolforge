@@ -1,4 +1,4 @@
-const { MongoClient } = require('mongodb');
+const { MongoDatabase } = require('@andy-toolforge/db-mongo');
 
 const DEFAULT_URI = process.env.STOCK_MONGO_URI || 'mongodb://localhost:27017';
 const DB_NAME = 'stock_db';
@@ -6,42 +6,36 @@ const DB_NAME = 'stock_db';
 class StockDB {
     constructor(uri = DEFAULT_URI) {
         this.uri = uri;
-        this.client = null;
-        this.db = null;
+        this.mdb = new MongoDatabase(uri, {
+            dbName: DB_NAME,
+            poolSize: 10,
+            serverSelectionTimeoutMS: 5000,
+        });
+    }
+
+    /** Backward-compat: the connected db handle (null until connect()). */
+    get db() {
+        return this.mdb.db;
     }
 
     async connect() {
-        if (this._connecting) return this._connecting;
-        this._connecting = (async () => {
-            if (this.db) return this.db;
-            try {
-                this.client = new MongoClient(this.uri, {
-                    maxPoolSize: 10,
-                    serverSelectionTimeoutMS: 5000,
-                });
-                await this.client.connect();
-                this.db = this.client.db(DB_NAME);
-            } catch (err) {
-                if (this.client) await this.client.close().catch(() => {});
-                this.client = null;
-                throw new Error(`Failed to connect to MongoDB: ${err.message}`);
-            }
-            return this.db;
-        })();
-        return this._connecting;
-    }
-
-    async close() {
-        if (this.client) {
-            await this.client.close();
-            this.client = null;
-            this.db = null;
+        try {
+            return await this.mdb.connect();
+        } catch (err) {
+            throw new Error(`Failed to connect to MongoDB: ${err.message}`);
         }
     }
 
+    async close() {
+        await this.mdb.close();
+    }
+
     collection(name) {
-        if (!this.db) throw new Error('Not connected. Call connect() first.');
-        return this.db.collection(name);
+        try {
+            return this.mdb.collection(name);
+        } catch (err) {
+            throw new Error('Not connected. Call connect() first.');
+        }
     }
 
     async getLatestCandles(collectionName) {

@@ -14,6 +14,7 @@
     "packages/ba-support",
     "packages/coding-support",
     "packages/mcp",
+    "packages/messaging",
     "packages/content-operations",
     "packages/content-research",
     "packages/tts-generator",
@@ -21,6 +22,9 @@
     "packages/vn-stock",
     "packages/llm-gateway",
     "packages/authoring",
+    "packages/db-mongo",
+    "packages/cli",
+    "packages/reporting",
     "packages/llm-gateway-core",
     "packages/sdlc-workflows"
   ]

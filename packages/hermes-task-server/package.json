@@ -5,10 +5,12 @@
   "main": "lib/index.js",
   "files": [
     "lib/",
-    "mcp-tools.js"
+    "mcp-tools.js",
+    "postinstall.js"
   ],
   "scripts": {
-    "test": "node --test lib/*.test.js"
+    "test": "node --test lib/*.test.js",
+    "postinstall": "node postinstall.js"
   },
   "keywords": [
     "toolforge",

@@ -1,0 +1,22 @@
+{
+  "name": "@andy-toolforge/db-mongo",
+  "version": "0.1.0",
+  "description": "Generic MongoDB wrapper: connection, collections, migrations",
+  "main": "lib/index.js",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/andy-pham-it/toolforge.git"
+  },
+  "files": [
+    "lib/"
+  ],
+  "scripts": {
+    "test": "node --test lib/*.test.js"
+  },
+  "dependencies": {
+    "mongodb": "^6.0.0"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

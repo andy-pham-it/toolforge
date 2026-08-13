@@ -13,7 +13,7 @@
   },
   "dependencies": {
     "@andy-toolforge/core": "^1.0.0",
-    "@andy-toolforge/genai-tools": "^0.1.0",
-    "mongodb": "^6.0.0"
+    "@andy-toolforge/db-mongo": "^0.1.0",
+    "@andy-toolforge/genai-tools": "^0.1.0"
   }
 }

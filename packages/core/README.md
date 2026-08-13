@@ -278,6 +278,38 @@ queue.update(job1.id, { state: 'done', completedSteps: ['scrape'] });
 
 ---
 
+### MockLLMClient
+
+Test helper — fake LLM client cho domain tests. Không gọi API thật; trả về response cấu hình sẵn và ghi lại mọi cuộc gọi.
+
+**Constructor:** `new MockLLMClient({ responses })`
+
+| Param | Type | Mô tả |
+|-------|------|-------|
+| `responses` | `string \| string[]` | String = trả về cùng response mọi lần; array = trả về theo thứ tự từng call |
+
+**Phương thức:**
+
+| Method | Returns | Mô tả |
+|--------|---------|-------|
+| `chat(messages, opts?)` | `Promise<string \| object>` | Trả về canned response; ghi lại `{ messages, opts }` vào `this.calls` |
+| `calls` | `Array` | Lịch sử mọi cuộc gọi (assert trong test) |
+
+**JSON mode:** nếu `opts.json === true` (hoặc `opts.responseFormat?.json`), trả về object (hoặc parse string response thành JSON).
+
+**Ví dụ:**
+
+```javascript
+const { MockLLMClient } = require('@andy-toolforge/core');
+
+const llm = new MockLLMClient({ responses: ['Phản hồi A', 'Phản hồi B'] });
+const r1 = await llm.chat('sys', 'user 1'); // 'Phản hồi A'
+const r2 = await llm.chat('sys', 'user 2'); // 'Phản hồi B'
+assert.strictEqual(llm.calls.length, 2);
+```
+
+---
+
 ## Error Handling Checklist
 
 | Triệu chứng | Nguyên nhân | Cách xử lý |

@@ -1,0 +1,22 @@
+{
+  "name": "@andy-toolforge/reporting",
+  "version": "0.1.0",
+  "description": "Report export: markdown, HTML, PDF",
+  "main": "lib/index.js",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/andy-pham-it/toolforge.git"
+  },
+  "files": [
+    "lib/"
+  ],
+  "scripts": {
+    "test": "node --test lib/*.test.js"
+  },
+  "dependencies": {
+    "pdfkit": "^0.15.0"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
