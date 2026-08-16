@@ -74,6 +74,15 @@ Each `opencode_run` returns a `conversation_id`. Passing it back continues that
 opencode session via `--session <id> --fork`. Idle sessions are swept after
 `session_timeout` seconds.
 
+## Skill file
+
+The package ships `skills/hermes-opencode-bridge.md` — an agent-facing guide for
+using the 5 tools (`opencode_run`, `opencode_task`, `opencode_read`,
+`opencode_status`, `opencode_set_models`), covering `conversation_id`
+continuation, `opencode_task` vs `opencode_run`, error codes, and config
+reference. The `postinstall` script installs it into the client project's
+`.opencode/skills/` (prefixed `hermes-opencode-bridge-`).
+
 ## License
 
 MIT

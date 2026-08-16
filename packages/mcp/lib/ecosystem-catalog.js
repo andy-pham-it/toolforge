@@ -303,7 +303,7 @@ const CATALOG = [
     },
     {
         name: '@andy-toolforge/hermes-opencode-mcp-bridge',
-        version: '0.1.5',
+        version: '0.1.6',
         description: 'MCP server bridging opencode CLI with the Hermes agent messaging bridge',
         useCases: [
             'Expose opencode task/status/git operations as MCP tools',
@@ -315,7 +315,8 @@ const CATALOG = [
             { name: 'startServer', description: 'Boot server from config' },
         ],
         dependencies: ['@modelcontextprotocol/sdk', 'zod'],
-        skillFiles: false,
+        skillFiles: true,
+        skillPrefix: 'hermes-opencode-bridge',
     },
     {
         name: '@andy-toolforge/hermes-task-server',
