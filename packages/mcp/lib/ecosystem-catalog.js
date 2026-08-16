@@ -440,6 +440,23 @@ const CATALOG = [
         dependencies: ['pdfkit'],
         skillFiles: false,
     },
+    {
+        name: '@andy-toolforge/sprint-retro',
+        version: '0.1.0',
+        description: 'Sprint retrospective: mine agent sessions, synthesize lessons, persist patterns',
+        useCases: [
+            'Run Scrum-style sprint retrospectives by mining agent session logs',
+            'Mine Hermes task cache + OpenCode sessions + other agents (Claude/Codex/etc.)',
+            'Synthesize lessons learned and candidate reusable patterns',
+            'Persist patterns to Supermemory or Serena memory',
+        ],
+        keyExports: [
+            { name: 'mineSessions', description: 'Mine agent sessions (Hermes cache, OpenCode, other agents) and return structured retro data' },
+        ],
+        dependencies: ['@andy-toolforge/core'],
+        skillFiles: true,
+        skillPrefix: 'sprint-retro',
+    },
 ];
 
 /**
