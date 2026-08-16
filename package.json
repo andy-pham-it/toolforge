@@ -27,6 +27,7 @@
     "packages/reporting",
     "packages/llm-gateway-core",
     "packages/sdlc-workflows",
-    "packages/sprint-retro"
+    "packages/sprint-retro",
+    "packages/knowledge-base"
   ]
 }

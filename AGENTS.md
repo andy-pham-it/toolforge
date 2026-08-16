@@ -164,6 +164,7 @@ npm install <dep> -w @andy-toolforge/<pkg>
 | Pipeline stage primitives (TypeScript) | `packages/llm-gateway-core/lib/` |
 | SDLC workflow templates + MCP server | `packages/sdlc-workflows/` |
 | Bridge opencode CLI ↔ MCP | `packages/hermes-opencode-mcp-bridge/lib/` |
+| Store/query structured agent knowledge | `packages/knowledge-base/lib/` |
 | VN stock indicators (pure numpy, Python) | `py-packages/vn-stock-indicators/` |
 | Add skill prompt files | `packages/<domain>/skills/` |
 | Publish a package | Run `npm publish -w @andy-toolforge/<pkg>` |
@@ -238,6 +239,7 @@ Exports by package (key symbols from Serena analysis):
 | `sdlc-workflows` | `mcp-server` | `mcp-server.js` | MCP server for SDLC templates/skills |
 | `hermes-opencode-mcp-bridge` | `createServer` | `lib/server.js` | MCP server bridging opencode CLI |
 | `hermes-opencode-mcp-bridge` | `startServer` | `lib/server.js` | Boot server from config |
+| `knowledge-base` | `KnowledgeBase` | `lib/index.js` | Zero-dep filesystem-first knowledge store (JSON, CRUD, search, adapters) |
 | `py-packages/vn-stock-indicators` | 29 indicators | `vn_stock_indicators/` | Pure numpy: trend/momentum/volatility/volume/price_action |
 
 ## 11. AI decision checklist

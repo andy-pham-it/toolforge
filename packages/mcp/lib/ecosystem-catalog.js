@@ -457,6 +457,23 @@ const CATALOG = [
         skillFiles: true,
         skillPrefix: 'sprint-retro',
     },
+    {
+        name: '@andy-toolforge/knowledge-base',
+        version: '0.1.0',
+        description: 'Filesystem-first knowledge base facade: JSON store, CRUD/search, Supermemory/Serena adapters',
+        useCases: [
+            'Persist facts, decisions, patterns and error-solutions as durable structured memory',
+            'Search and retrieve previously stored knowledge across sessions',
+            'Provide a zero-dependency memory store to any client project',
+            'Mirror knowledge entries to Supermemory/Serena CLIs when available',
+        ],
+        keyExports: [
+            { name: 'KnowledgeBase', description: 'Zero-dep filesystem-first knowledge store: add/get/search/list/forget + best-effort adapters' },
+        ],
+        dependencies: [],
+        skillFiles: true,
+        skillPrefix: 'knowledge-base',
+    },
 ];
 
 /**
