@@ -144,7 +144,7 @@ All 8 tools are exported from `mcp-tools/` and auto-discovered by `@andy-toolfor
 | `sdlc-brd` | BRD generation using IEEE 29148 template |
 | `sdlc-arch` | Architecture documentation using arc42/C4 templates |
 | `sdlc-deploy` | Deployment runbook generation |
-| `sdlc-retro` | Retrospective facilitation workflow |
+| `sdlc-retro` | Retrospective facilitation workflow (SDLC docs-based). Để tổng kết từ agent session logs, dùng package `@andy-toolforge/sprint-retro` |
 | `sdlc-validate` | Document validation workflow |
 | `sdlc-test-plan` | Test plan generation |
 | `project-init` | New project initialization workflow |

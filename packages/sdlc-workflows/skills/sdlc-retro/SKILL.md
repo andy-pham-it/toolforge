@@ -43,3 +43,5 @@ Hoặc chạy: `/sdlc-retro`
 ## Cross-ref
 - Input từ: tất cả SDLC docs, lessons files, git history
 - Output cho: AGENTS.md updates, skill improvements, next phase planning
+
+> **Có liên quan:** Muốn tổng kết bài học từ *session logs của agent* (opencode/Codex/Claude logs → Supermemory/Serena), dùng package độc lập **`@andy-toolforge/sprint-retro`** (`npx @andy-toolforge/sprint-retro mine`) — skill này retro trên SDLC docs; package kia retro trên agent sessions. Hai công cụ bổ trợ nhau.
