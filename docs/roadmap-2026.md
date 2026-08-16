@@ -6,10 +6,10 @@
 
 ## Trạng thái tổng quan
 
-- **23 npm workspaces** (CommonJS, không build step) + **1 Python package** (`vn-stock-indicators`, uv workspace)
+- **25 npm workspaces** (CommonJS, không build step) + **1 Python package** (`vn-stock-indicators`, uv workspace)
 - **885 tests green** trên toàn bộ workspaces; **CI mới** (`.github/workflows/ci.yml`) test mọi PR/push
-- **24 package** trong root README (bao gồm `@andy-toolforge/messaging`, `db-mongo`, `cli`, `reporting` mới)
-- **MCP**: 50+ tools auto-discover từ 15+ domain packages; `ecosystem-catalog` 23 entries
+- **25 package** trong root README (bao gồm `@andy-toolforge/messaging`, `db-mongo`, `cli`, `reporting`, `sprint-retro` mới)
+- **MCP**: 50+ tools auto-discover từ 15+ domain packages; `ecosystem-catalog` 24 entries
 - Không có dependency vòng giữa domain packages; domain → core một chiều
 
 ## 5 ưu tiên hàng đầu (từ review)
@@ -87,8 +87,9 @@
 | `db-mongo` | MongoDB wrapper dùng chung (connection, collections, migrations) — cho vn-stock + content ops | ✅ DONE v0.1.0 |
 | `messaging` | Messenger facade: Telegram/Discord/Console, zero deps | ✅ DONE v0.1.0 |
 | `cli` | CLI toolkit dùng chung (arg parse, spinner, config loading) | ✅ DONE v0.1.0 |
-| `knowledge-base` | Quản lý knowledge base / memory cho AI agent | ⏸️ Hoãn — content-research đang đủ |
+| `knowledge-base` | Quản lý knowledge base / memory cho AI agent | ⏸️ Hoãn → ưu tiên tiếp theo (plan agent-infra-next Phase 2: filesystem-first facade) |
 | `reporting` | Reporting chung (markdown/HTML/PDF export) cho nhiều package | ✅ DONE v0.1.0 |
+| `sprint-retro` | Sprint retrospective: mine agent sessions, synthesize lessons, persist patterns | ✅ DONE v0.1.0 |
 
 > Quy tắc tạo package mới (AGENTS.md): chỉ tạo khi ≥2 dự án cần cùng logic, logic đó không thuộc core,
 > và có skill files kèm theo. Trước khi build package mới, cập nhật roadmap này.
@@ -118,9 +119,25 @@ Phản biện độc lập (Hermes agent) đã xem xét roadmap; các điểm đ
 - **Skills** — `vn-stock-hub` + `vn-stock-trading-workflow` (+ postinstall), `llm-gateway-pipeline-guide` (+ hub update), `hermes-dispatch` (+ postinstall).
 - Kết quả: **12/12 acceptance criteria ticked**, **885 tests green** (fail 0), root README 24 packages, ecosystem-catalog 23 entries.
 
+## Ghi nhận 2026-08-16 (plan agent-infra-next)
+
+- **sprint-retro v0.1.0** — package standalone: mine Hermes task cache + opencode.db + other agent
+  sessions → report retro; skill `sprint-retro` (postinstall). Quyết định: **giữ standalone +
+  cross-link** trong sdlc-workflows (skill retro trên SDLC docs; package retro trên agent
+  sessions — bổ trợ nhau, không merge).
+- **hermes-task-server 0.1.2 → 0.1.6** — surface tool_calls; digest-by-default +
+  `hermes_task_detail` (on-demand detail cache); deepseek-v4-flash-free default cho
+  provider=opencode-zen; `hermes_models` (provider/model catalog runtime); TTL auto-forgive
+  cho stale provider exhaustion.
+- **hermes-opencode-mcp-bridge 0.1.5** — surface tool_calls trong opencode_run/opencode_task.
+- **Ưu tiên tiếp theo** — plan `2026-08-16-agent-infra-next.md`: (1) đóng loop git/npm +
+  roadmap, (2) package `knowledge-base` (memory facade filesystem-first), (3) skill cho
+  hermes-opencode-mcp-bridge, (4) agent run telemetry (hermes-task-server + sprint-retro).
+
 ## Skills cần bổ sung (đề xuất)
 
-- `messaging-send-notification` — gửi thông báo qua Messenger facade (đã có trong package messaging)
+- `messaging-send-notification` — gửi thông báo qua Messenger facade ✅ (`skills/messaging-dispatch.md`)
+- `knowledge-base-*` — quản lý memory agent (kèm package knowledge-base, đề xuất Phase 2)
 - `vn-stock-*` — workflow phân tích cổ phiếu ✅ (vn-stock-hub.md + vn-stock-trading-workflow.md)
 - `llm-gateway-*` — hướng dẫn xây stage/pipeline ✅ (llm-gateway-pipeline-guide.md)
 - `hermes-*` — dispatch tác vụ agent qua Hermes CLI ✅ (hermes-dispatch.md)
@@ -137,4 +154,4 @@ Phản biện độc lập (Hermes agent) đã xem xét roadmap; các điểm đ
 
 ---
 
-*Cập nhật: 2026-08-13 (lần 3 — thực thi plan 2026-08-13-roadmap-execution). Nguồn: codebase review + plan `ci-messaging-hygiene-roadmap` + plan `2026-08-13-roadmap-execution` + phản biện Hermes.*
+*Cập nhật: 2026-08-16 (lần 4 — plan `agent-infra-next`: sprint-retro v0.1.0, hermes-task-server 0.1.6, hermes bridge 0.1.5 tool_calls, cross-link decision). Nguồn: codebase review + plan `ci-messaging-hygiene-roadmap` + plan `2026-08-13-roadmap-execution` + plan `2026-08-16-agent-infra-next` + phản biện Hermes.*
