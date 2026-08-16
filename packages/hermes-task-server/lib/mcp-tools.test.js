@@ -23,7 +23,7 @@ function fakeChild({ stdoutData = '', exitCode = 0 } = {}) {
 
 test('mcp-tools factory: returns [{definition, handler}] with FR-2 schema', () => {
   const tools = mcpToolsFactory({});
-  assert.equal(tools.length, 3);
+  assert.equal(tools.length, 4);
   const { definition, handler } = tools[0];
   assert.equal(typeof handler, 'function');
   assert.equal(definition.name, 'hermes_task');
@@ -43,6 +43,12 @@ test('mcp-tools factory: returns [{definition, handler}] with FR-2 schema', () =
   assert.equal(typeof models.handler, 'function');
   for (const k of ['provider', 'input_type', 'limit', 'models_cache_path']) {
     assert.ok(models.definition.inputSchema.properties[k], `missing param ${k}`);
+  }
+  const telemetry = tools[3];
+  assert.equal(telemetry.definition.name, 'hermes_telemetry');
+  assert.equal(typeof telemetry.handler, 'function');
+  for (const k of ['since', 'until']) {
+    assert.ok(telemetry.definition.inputSchema.properties[k], `missing param ${k}`);
   }
 });
 
@@ -66,4 +72,26 @@ test('mcp-tools handler: dispatches to runHermesTask and returns FR-5 JSON', asy
   } finally {
     mock.mock.restore();
   }
+});
+
+test('hermes_telemetry handler: aggregates records from cacheDir with window', async () => {
+  const fs = require('fs');
+  const os = require('os');
+  const path = require('path');
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'hermes-telemetry-'));
+  const records = [
+    { task_id: 'a', provider: 'gemini', model: 'gemini-3.1-flash-lite', created_at: '2026-08-10T00:00:00.000Z', exit_code: 0, duration_ms: 500, digest: { api_call_count: 100 } },
+    { task_id: 'b', provider: 'gemini', model: 'gemini-3.1-flash-lite', created_at: '2026-08-12T00:00:00.000Z', exit_code: 1, duration_ms: 1500, digest: null },
+  ];
+  for (const r of records) {
+    fs.writeFileSync(path.join(dir, `${r.task_id}.json`), JSON.stringify(r));
+  }
+  const [, , , telemetry] = mcpToolsFactory({ cacheDir: dir });
+  const all = await telemetry.handler({}, {});
+  assert.equal(all.runs, 2);
+  assert.equal(all.success_rate, 0.5);
+  assert.equal(all.duration_ms.total, 2000);
+  const windowed = await telemetry.handler({}, { since: '2026-08-11T00:00:00.000Z' });
+  assert.equal(windowed.runs, 1);
+  assert.equal(windowed.estimated_cost_usd, 0);
 });

@@ -1,7 +1,7 @@
 {
   "name": "@andy-toolforge/sprint-retro",
-  "version": "0.1.0",
-  "description": "Scrum-style sprint retrospective: mine agent sessions (Hermes cache, OpenCode, Claude/Codex/etc.), synthesize lessons, and persist reusable patterns to Supermemory or Serena memory.",
+  "version": "0.1.1",
+  "description": "Scrum-style sprint retrospective: mine agent sessions (Hermes cache, OpenCode, Claude/Codex/etc.), synthesize lessons, persist reusable patterns to Supermemory or Serena memory — with run telemetry (success rate, duration, rough cost)",
   "main": "lib/index.js",
   "scripts": {
     "postinstall": "node skills/postinstall.js",

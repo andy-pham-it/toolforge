@@ -131,6 +131,22 @@ Each model is tagged with its `capabilities` (reasoning/coding/vision/multimodal
 planning/image-gen/voice/chat), its supported `input_types` (attached-file inputs),
 and an `is_default` flag:
 
+### Run telemetry (FR-6)
+
+```
+hermes_telemetry(since="2026-08-01T00:00:00Z", until="2026-08-15T23:59:59Z")
+```
+
+Aggregates the cached run history into operational stats: `runs`, `success_rate`,
+`exit_code_breakdown` / `provider_breakdown` / `model_breakdown`, `tool_usage`
+(tool/api call totals + per-tool counts from digests), `duration_ms`
+(`total` / `avg` / `p95`) and `estimated_cost_usd`.
+
+Both `since` / `until` are optional ISO-8601 window filters over `created_at`.
+The cost estimate is **rough** (`estimate: true` in the payload): the task cache
+stores no token counts, so costs are blended per-model USD/1k-call estimates —
+directional, never billing-grade.
+
 | Capability | input_types |
 |------------|-------------|
 | vision     | text, image, pdf |

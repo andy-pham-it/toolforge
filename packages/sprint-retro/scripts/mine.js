@@ -4,7 +4,8 @@
  *
  * Mines the Hermes task cache (~/.hermes/hermes-task-cache/*.json) and
  * produces a structured retrospective report: task counts by provider/model,
- * tool/api call totals from digests, and a per-task listing (prompt + result)
+ * tool/api call totals from digests, operational telemetry (success rate,
+ * duration, rough cost estimate) and a per-task listing (prompt + result)
  * so the agent can synthesize lessons and candidate patterns.
  *
  * Usage:
@@ -95,19 +96,61 @@ function summarize(tasks) {
     let apiCalls = 0;
     let withDigest = 0;
     let failed = 0;
+    let success = 0;
+    let totalDurationMs = 0;
+    let durCount = 0;
+    let estimatedCostUsd = 0;
     for (const t of tasks) {
         const p = t.provider || 'unknown';
         const m = t.model || 'unknown';
         byProvider[p] = (byProvider[p] || 0) + 1;
         byModel[m] = (byModel[m] || 0) + 1;
         if (t.exit_code && t.exit_code !== 0) failed++;
+        else success++;
+        if (typeof t.duration_ms === 'number' && t.duration_ms >= 0) {
+            totalDurationMs += t.duration_ms;
+            durCount++;
+        }
+        estimatedCostUsd += estimateCost(t);
         if (t.digest) {
             withDigest++;
             toolCalls += t.digest.tool_call_count || 0;
             apiCalls += t.digest.api_call_count || 0;
         }
     }
-    return { total: tasks.length, byProvider, byModel, toolCalls, apiCalls, withDigest, failed };
+    return {
+        total: tasks.length, byProvider, byModel, toolCalls, apiCalls, withDigest, failed,
+        successRate: tasks.length ? Math.round((success / tasks.length) * 1000) / 1000 : 0,
+        totalDurationMs, avgDurationMs: durCount ? Math.round((totalDurationMs / durCount) * 10) / 10 : 0,
+        estimatedCostUsd,
+    };
+}
+
+// Rough USD per 1k API calls (blended input+output; cache has no token counts).
+// Order-of-magnitude only — flagged in the report, never treated as billing.
+const MODEL_RATES = {
+    'gemini-3.1-flash-lite': 0.05,
+    'gemini-2.5-flash-lite': 0.05,
+    'gemini-2.5-flash': 0.08,
+    'gemini-2.5-pro': 0.6,
+    'gemini-2.0-flash': 0.08,
+};
+const PROVIDER_RATES = { gemini: 0.1, opencode: 0.02, openai: 0.3, anthropic: 0.6, default: 0.05 };
+
+function estimateCost(t) {
+    const calls = (t.digest && t.digest.api_call_count) || 0;
+    if (!calls) return 0;
+    const model = String(t.model || '').toLowerCase();
+    const provider = String(t.provider || '').toLowerCase();
+    const rate = MODEL_RATES[model] ?? PROVIDER_RATES[provider] ?? PROVIDER_RATES.default;
+    return Math.round((calls / 1000) * rate * 1e4) / 1e4;
+}
+
+function fmtDuration(ms) {
+    if (!ms) return '0s';
+    if (ms < 1000) return `${ms}ms`;
+    if (ms < 60000) return `${(ms / 1000).toFixed(1)}s`;
+    return `${(ms / 60000).toFixed(1)}m`;
 }
 
 function humanReport(tasks, opts, stats) {
@@ -128,6 +171,13 @@ function humanReport(tasks, opts, stats) {
     }
     lines.push('');
     lines.push(`Digest tool_calls: ${stats.toolCalls}  api_calls: ${stats.apiCalls}  (${stats.withDigest} tasks with digest)`);
+    lines.push('');
+    lines.push('## Telemetry');
+    lines.push(`- Runs: ${stats.total}  (success: ${Math.round(stats.successRate * 100)}%)`);
+    lines.push(`- Duration: ${fmtDuration(stats.totalDurationMs)} total  (avg ${fmtDuration(stats.avgDurationMs)})`);
+    lines.push(`- Estimated cost: $${stats.estimatedCostUsd.toFixed(4)}  (ROUGH — no token counts in cache; per-model rate table)`);
+    const topModels = Object.entries(stats.byModel).sort((a, b) => b[1] - a[1]).slice(0, 3);
+    lines.push(`- Top models: ${topModels.map(([m, n]) => `${m} (${n})`).join(', ') || 'none'}`);
     lines.push('');
     lines.push('## Tasks');
     for (const t of tasks) {

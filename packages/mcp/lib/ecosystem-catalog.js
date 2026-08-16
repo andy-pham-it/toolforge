@@ -320,17 +320,19 @@ const CATALOG = [
     },
     {
         name: '@andy-toolforge/hermes-task-server',
-        version: '0.1.6',
+        version: '0.1.7',
         description: 'One-shot agentic task dispatch to the local Hermes Agent CLI using alive free-tier providers',
         useCases: [
             'Dispatch one-shot agentic tasks to Hermes Agent CLI with provider fallback',
             'Look up valid providers/models known to Hermes at runtime',
             'Fetch full detail (uncapped result, tool_calls) of a prior task run from disk cache',
+            'Aggregate run telemetry (success rate, duration, rough cost) from the task cache',
         ],
         keyExports: [
             { name: 'hermesTask', description: 'Dispatch one-shot agentic task to Hermes Agent CLI' },
             { name: 'hermesModels', description: 'Look up valid providers/models known to Hermes at runtime' },
             { name: 'hermesTaskDetail', description: 'Fetch full detail of a prior task run from disk cache' },
+            { name: 'hermesTelemetry', description: 'Aggregate run telemetry (success rate, duration, rough cost) from the task cache' },
         ],
         dependencies: [],
         skillFiles: false,
@@ -443,7 +445,7 @@ const CATALOG = [
     },
     {
         name: '@andy-toolforge/sprint-retro',
-        version: '0.1.0',
+        version: '0.1.1',
         description: 'Sprint retrospective: mine agent sessions, synthesize lessons, persist patterns',
         useCases: [
             'Run Scrum-style sprint retrospectives by mining agent session logs',

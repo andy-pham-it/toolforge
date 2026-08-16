@@ -4,6 +4,8 @@
 // Exports function(config) => [{definition, handler}].
 
 const { runHermesTask, runHermesTaskDetail, runHermesModels } = require('./lib/server');
+const { loadAllRuns } = require('./lib/task-cache');
+const { aggregate } = require('./lib/telemetry');
 
 const definition = {
   name: 'hermes_task',
@@ -78,6 +80,27 @@ async function modelsHandler(llm, args, context = {}) {
   return result;
 }
 
+const telemetryDefinition = {
+  name: 'hermes_telemetry',
+  description:
+    'Aggregate run telemetry from the Hermes task cache: success rate, exit-code/provider/model ' +
+    'breakdowns, tool/api call totals, duration stats (total/avg/p95) and a ROUGH cost estimate ' +
+    '(estimate flag set — cache has no token counts, so costs are directional, not billing).',
+  inputSchema: {
+    type: 'object',
+    properties: {
+      since: { type: 'string', description: 'ISO-8601 lower bound on created_at (e.g. 2026-08-01T00:00:00Z)' },
+      until: { type: 'string', description: 'ISO-8601 upper bound on created_at' },
+    },
+  },
+};
+
+async function telemetryHandler(llm, args, context = {}) {
+  const cfg = (module.exports._pluginConfig || {});
+  const records = loadAllRuns(cfg);
+  return aggregate(records, { since: args && args.since, until: args && args.until });
+}
+
 // ---------------------------------------------------------------------------
 // Exports — factory pattern for MCP auto-discovery
 // ---------------------------------------------------------------------------
@@ -87,5 +110,6 @@ module.exports = function (config = {}) {
     { definition, handler },
     { definition: detailDefinition, handler: detailHandler },
     { definition: modelsDefinition, handler: modelsHandler },
+    { definition: telemetryDefinition, handler: telemetryHandler },
   ];
 };

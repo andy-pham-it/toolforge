@@ -80,4 +80,21 @@ function listRuns(cfg = {}) {
   return out;
 }
 
-module.exports = { cacheDirFor, cacheRun, readRun, findBySession, listRuns };
+/** Load ALL cached run records in full (digest/tool_calls included) for telemetry. */
+function loadAllRuns(cfg = {}) {
+  let entries;
+  try {
+    entries = fs.readdirSync(cacheDirFor(cfg), { withFileTypes: true });
+  } catch {
+    return [];
+  }
+  const out = [];
+  for (const ent of entries) {
+    if (!ent.isFile() || !ent.name.endsWith('.json')) continue;
+    const rec = readRun(cfg, ent.name.slice(0, -'.json'.length));
+    if (rec) out.push(rec);
+  }
+  return out;
+}
+
+module.exports = { cacheDirFor, cacheRun, readRun, findBySession, listRuns, loadAllRuns };
