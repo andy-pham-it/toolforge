@@ -14,6 +14,7 @@ class Analyst {
         this._screener = config.screener || null;
         this._scorer = config.scorer || null;
         this._detector = config.detector || null;
+        this._db = config.db || null;
     }
 
     /**
@@ -41,13 +42,21 @@ class Analyst {
     }
 
     /**
+     * Get or create a StockDB instance.
+     * @returns {import('./db')|object}
+     */
+    _getDb() {
+        return this._db || new StockDB();
+    }
+
+    /**
      * Analyze a single stock symbol.
      * @param {string} symbol
      * @param {string} [timeframe='1D'] - Timeframe for analysis ('1D', '1h', '15m')
      * @returns {Promise<object>} { symbol, signals, score, recommendation, analysis, risks }
      */
     async analyzeSymbol(symbol, timeframe = '1D') {
-        const db = new StockDB();
+        const db = this._getDb();
         try {
             await db.connect();
             const screener = this._getScreener();
@@ -153,7 +162,7 @@ class Analyst {
      * @returns {Promise<object>} { marketSummary, topGainers, recommendations }
      */
     async analyzeMarket() {
-        const db = new StockDB();
+        const db = this._getDb();
         try {
             await db.connect();
             const scorer = this._getScorer();
@@ -199,7 +208,7 @@ class Analyst {
      * @returns {Promise<object>} { strategy, entry, stopLoss, support, resistance, reasoning }
      */
     async deepDiveStrategy(symbol, timeframe = '1D') {
-        const db = new StockDB();
+        const db = this._getDb();
         try {
             await db.connect();
             const screener = this._getScreener();

@@ -95,7 +95,7 @@ const { Analyst } = require('./analyst');
 
 describe('Analyst', () => {
     it('should construct', () => {
-        const analyst = new Analyst({ llm: new FakeStockLLM() });
+        const analyst = new Analyst({ llm: new FakeStockLLM(), db: new MockStockDB() });
         assert.ok(analyst);
         assert.ok(analyst.llm);
     });
@@ -104,6 +104,7 @@ describe('Analyst', () => {
         const fake = new FakeStockLLM();
         const analyst = new Analyst({
             llm: fake,
+            db: new MockStockDB(),
             screener: mockScreener,
             scorer: mockScorer,
             detector: mockDetector,
@@ -120,6 +121,7 @@ describe('Analyst', () => {
     it('compareSymbols should compare and pick top', async () => {
         const analyst = new Analyst({
             llm: new FakeStockLLM(),
+            db: new MockStockDB(),
             screener: mockScreener,
             scorer: mockScorer,
             detector: mockDetector,
@@ -132,6 +134,7 @@ describe('Analyst', () => {
     it('analyzeMarket should return market overview', async () => {
         const analyst = new Analyst({
             llm: new FakeStockLLM(),
+            db: new MockStockDB(),
             scorer: mockScorer,
         });
         const result = await analyst.analyzeMarket();
@@ -143,6 +146,7 @@ describe('Analyst', () => {
     it('deepDiveStrategy should return entry/exit plan', async () => {
         const analyst = new Analyst({
             llm: new FakeStockLLM(),
+            db: new MockStockDB(),
             screener: mockScreener,
         });
         const result = await analyst.deepDiveStrategy('FPT', '1D');
@@ -154,6 +158,7 @@ describe('Analyst', () => {
     it('portfolioReview should return holdings review', async () => {
         const analyst = new Analyst({
             llm: new FakeStockLLM(),
+            db: new MockStockDB(),
             screener: mockScreener,
             scorer: mockScorer,
             detector: mockDetector,
@@ -172,6 +177,7 @@ describe('Analyst', () => {
         };
         const analyst = new Analyst({
             llm: new FakeStockLLM(),
+            db: new MockStockDB(),
             screener: noopScreener,
         });
         const result = await analyst.analyzeSymbol('ZZ_NONEXISTENT');
