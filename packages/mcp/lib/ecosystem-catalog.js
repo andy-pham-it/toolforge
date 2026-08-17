@@ -462,7 +462,7 @@ const CATALOG = [
     },
     {
         name: '@andy-toolforge/knowledge-base',
-        version: '0.1.0',
+        version: '0.1.1',
         description: 'Filesystem-first knowledge base facade: JSON store, CRUD/search, Supermemory/Serena adapters',
         useCases: [
             'Persist facts, decisions, patterns and error-solutions as durable structured memory',

@@ -1,6 +1,6 @@
 {
   "name": "@andy-toolforge/knowledge-base",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Filesystem-first knowledge base facade for AI agents: JSON store with CRUD/search, optional best-effort Supermemory/Serena adapters, and a management skill installed into client projects.",
   "main": "lib/index.js",
   "scripts": {
@@ -18,7 +18,7 @@
   ],
   "license": "MIT",
   "files": [
-    "lib/",
+    "lib/index.js",
     "mcp-tools.js",
     "skills/",
     "README.md"
