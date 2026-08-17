@@ -9,7 +9,7 @@
 const CATALOG = [
     {
         name: '@andy-toolforge/core',
-        version: '1.2.1',
+        version: '1.3.0',
         description: 'Toolforge foundation: browser manager, LLM client, logger, job queue',
         useCases: [
             'Any project that needs an LLM client with multi-provider failover (Gemini → Groq)',

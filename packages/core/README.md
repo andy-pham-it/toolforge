@@ -278,6 +278,40 @@ queue.update(job1.id, { state: 'done', completedSteps: ['scrape'] });
 
 ---
 
+### MCPErrorTracker
+
+Centralized error tracking cho MCP tool handlers — wrap handler để bắt lỗi, ghi log, và expose stats. Dùng trong `@andy-toolforge/mcp` server.
+
+**Constructor:** `new MCPErrorTracker({ logPath, onCritical, maxBuffer })`
+
+| Param | Type | Mô tả |
+|-------|------|-------|
+| `logPath` | `string` | Đường dẫn file log (optional) |
+| `onCritical` | `function` | Callback khi lỗi critical (optional) |
+| `maxBuffer` | `number` | Giới hạn buffer lỗi (default `DEFAULT_MAX_BUFFER`) |
+
+**Phương thức:**
+
+| Method | Returns | Mô tả |
+|--------|---------|-------|
+| `wrap(toolName, handler)` | `function` | Wrap handler — bắt lỗi, ghi log, trả về lỗi chuẩn hóa |
+| `wrapHandle(handleFn)` | `function` | Wrap handle function tương tự |
+| `getStats()` | `object` | Thống kê lỗi (counts, breakdown) |
+| `reset()` | `void` | Reset buffer/stats |
+
+**Ví dụ:**
+
+```javascript
+const { MCPErrorTracker } = require('@andy-toolforge/core');
+
+const tracker = new MCPErrorTracker({ logPath: '/tmp/mcp-errors.log' });
+const safeHandler = tracker.wrap('my_tool', async (args) => {
+  // handler logic
+});
+```
+
+---
+
 ### MockLLMClient
 
 Test helper — fake LLM client cho domain tests. Không gọi API thật; trả về response cấu hình sẵn và ghi lại mọi cuộc gọi.
