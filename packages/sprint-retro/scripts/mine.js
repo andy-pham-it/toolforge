@@ -227,12 +227,15 @@ function opencodeMine(opts) {
     const sinceMs = opts.since ? new Date(opts.since).getTime() : 0;
     const untilMs = opts.until ? new Date(opts.until).getTime() : Number.MAX_SAFE_INTEGER;
 
+    if (!fs.existsSync(OPENCODE_DB)) {
+        return { sessions: [], total: 0, toolCalls: 0, error: `opencode.db not found (${OPENCODE_DB}) — OpenCode session mining skipped` };
+    }
+
     let db;
     try {
         db = new (require('node:sqlite').DatabaseSync)(OPENCODE_DB, { readOnly: true });
     } catch (e) {
-        throw new Error(`Cannot open opencode.db (${OPENCODE_DB}): ${e.message}. ` +
-            'OpenCode session mining requires Node 22.5+ (node:sqlite).');
+        return { sessions: [], total: 0, toolCalls: 0, error: `Cannot open opencode.db (${OPENCODE_DB}): ${e.message}. OpenCode session mining requires Node 22.5+ (node:sqlite).` };
     }
 
     try {
@@ -295,6 +298,9 @@ function opencodeMine(opts) {
 }
 
 function opencodeHumanReport(oc, opts) {
+    if (oc.error) {
+        return `# Sprint Retro — OpenCode session mining\n\nSkipped: ${oc.error}`;
+    }
     const lines = [];
     lines.push('# Sprint Retro — OpenCode session mining');
     lines.push('');
@@ -320,8 +326,7 @@ function opencodeHumanReport(oc, opts) {
  */
 function agentsMine(opts) {
     if (!fs.existsSync(AGENTS_FINDER)) {
-        throw new Error(`coding-agent-sessions finder not found: ${AGENTS_FINDER}. ` +
-            'Install oh-my-opencode or set AGENTS_FINDER to find-agent-sessions.py.');
+        return { sessions: [], total: 0, platforms: {}, error: `coding-agent-sessions finder not found (${AGENTS_FINDER}) — other-agent mining skipped. Install oh-my-opencode or set AGENTS_FINDER.` };
     }
     const args = ['list', '--limit', '500'];
     if (opts.since) args.push('--from', opts.since.slice(0, 10));
@@ -330,13 +335,13 @@ function agentsMine(opts) {
     try {
         raw = execFileSync('python3', [AGENTS_FINDER, ...args], { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
     } catch (e) {
-        throw new Error(`find-agent-sessions.py failed: ${e.message}`);
+        return { sessions: [], total: 0, platforms: {}, error: `find-agent-sessions.py failed: ${e.message}` };
     }
     let parsed;
     try {
         parsed = JSON.parse(raw);
     } catch (e) {
-        throw new Error(`find-agent-sessions.py returned non-JSON output: ${e.message}`);
+        return { sessions: [], total: 0, platforms: {}, error: `find-agent-sessions.py returned non-JSON output: ${e.message}` };
     }
     const results = (parsed && parsed.results) || [];
     const platforms = {};
@@ -345,6 +350,9 @@ function agentsMine(opts) {
 }
 
 function agentsHumanReport(ag, opts) {
+    if (ag.error) {
+        return `# Sprint Retro — Other agent session mining\n\nSkipped: ${ag.error}`;
+    }
     const lines = [];
     lines.push('# Sprint Retro — Other agent session mining');
     lines.push('');
