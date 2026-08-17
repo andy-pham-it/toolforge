@@ -6,6 +6,7 @@
   "files": [
     "lib/",
     "mcp-tools.js",
+    "skills/",
     "postinstall.js"
   ],
   "scripts": {
