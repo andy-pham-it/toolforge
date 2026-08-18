@@ -20,6 +20,7 @@ coverage/
 
 # LSP/Symbol indexes (regenerated on demand)
 .serena/cache/
+.serena/memories/
 .serena/project.local.yml
 
 # Tool runtime state

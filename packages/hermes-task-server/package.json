@@ -1,11 +1,13 @@
 {
   "name": "@andy-toolforge/hermes-task-server",
-  "version": "0.1.7",
+  "version": "0.1.8",
   "description": "MCP tools hermes_task / hermes_task_detail / hermes_models / hermes_telemetry — dispatch one-shot agentic tasks to the local Hermes Agent CLI on alive free-tier providers and aggregate run telemetry",
   "main": "lib/index.js",
+  "bin": { "hermes-task-server": "./mcp-server.js" },
   "files": [
     "lib/",
     "mcp-tools.js",
+    "mcp-server.js",
     "skills/",
     "postinstall.js"
   ],
