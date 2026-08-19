@@ -56,6 +56,17 @@ async function runHermesTask(args = {}, overrides = {}) {
   if (!prompt) {
     return { ok: false, error: 'invalid_args', error_detail: 'prompt is required' };
   }
+  // 1b. Prompt-length guard (provider-side limit; fail fast before spawning hermes).
+  const maxPromptLength = Number.isFinite(Number(cfg.maxPromptLength)) && Number(cfg.maxPromptLength) > 0 ? Math.round(Number(cfg.maxPromptLength)) : 4000;
+  if (prompt.length > maxPromptLength) {
+    return {
+      ok: false,
+      error: 'prompt_too_long',
+      error_detail: `prompt is ${prompt.length} chars, max is ${maxPromptLength} chars (provider-side limit). Shorten the prompt or split it into smaller tasks.`,
+      prompt_len: prompt.length,
+      max_prompt_len: maxPromptLength,
+    };
+  }
   const timeoutSeconds = clampTimeoutSeconds(args.timeout_seconds);
   const maxTurns = Number.isFinite(Number(args.max_turns)) && Number(args.max_turns) > 0 ? Math.round(Number(args.max_turns)) : 500;
 

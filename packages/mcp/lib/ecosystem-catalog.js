@@ -320,7 +320,7 @@ const CATALOG = [
     },
     {
         name: '@andy-toolforge/hermes-task-server',
-        version: '0.1.8',
+        version: '0.1.9',
         description: 'One-shot agentic task dispatch to the local Hermes Agent CLI using alive free-tier providers',
         useCases: [
             'Dispatch one-shot agentic tasks to Hermes Agent CLI with provider fallback',

@@ -17,6 +17,7 @@ const DEFAULTS = Object.freeze({
   cacheDir: path.join(os.homedir(), '.hermes', 'hermes-task-cache'),
   modelsCachePath: path.join(os.homedir(), '.hermes', 'provider_models_cache.json'), // maintained by `hermes model` (runtime model list)
   maxErrorDetailBytes: 500,
+  maxPromptLength: 4000, // provider-side prompt cap guard (HERMES_MAX_PROMPT_LENGTH override)
   // tool_calls extraction caps (additive success-payload field)
   maxToolCallArgsBytes: 2 * 1024,
   maxToolCallResultBytes: 8 * 1024,
@@ -34,6 +35,10 @@ function loadConfig(overrides = {}) {
   const cfg = { ...DEFAULTS };
   if (process.env.HERMES_AUTH_PATH) cfg.authPath = process.env.HERMES_AUTH_PATH;
   if (process.env.HERMES_BIN) cfg.hermesBin = process.env.HERMES_BIN;
+  if (process.env.HERMES_MAX_PROMPT_LENGTH) {
+    const n = Number(process.env.HERMES_MAX_PROMPT_LENGTH);
+    if (Number.isFinite(n) && n > 0) cfg.maxPromptLength = Math.round(n);
+  }
   if (overrides && typeof overrides === 'object') {
     for (const [k, v] of Object.entries(overrides)) {
       if (v !== undefined) cfg[k] = v;

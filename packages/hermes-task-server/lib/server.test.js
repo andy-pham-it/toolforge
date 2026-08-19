@@ -95,6 +95,41 @@ test('runHermesTask: happy path JSON shape (FR-5) + tool_calls (FR-5b)', async (
   }
 });
 
+test('runHermesTask: prompt over maxPromptLength -> prompt_too_long, no spawn', async () => {
+  const mock = spawnMock(() => {
+    throw new Error('spawn should not be called for over-length prompt');
+  });
+  try {
+    const res = await runHermesTask(
+      { prompt: 'x'.repeat(5000), provider: 'gemini', model: 'gemini-3.1-flash-lite' },
+      { authPath: aliveGeminiAuth() }
+    );
+    assert.equal(res.ok, false);
+    assert.equal(res.error, 'prompt_too_long');
+    assert.equal(res.prompt_len, 5000);
+    assert.equal(res.max_prompt_len, 4000);
+    assert.match(res.error_detail, /max is 4000 chars/);
+  } finally {
+    mock.mock.restore();
+  }
+});
+
+test('runHermesTask: prompt within limit -> spawns (no prompt_too_long)', async () => {
+  const mock = spawnMock((bin, args) => {
+    if (args[0] === 'sessions') return fakeChild({ stdoutData: '', exitCode: 1 });
+    return fakeChild({ stdoutData: 'ok', exitCode: 0 });
+  });
+  try {
+    const res = await runHermesTask(
+      { prompt: 'short prompt', provider: 'gemini', model: 'gemini-3.1-flash-lite' },
+      { authPath: aliveGeminiAuth() }
+    );
+    assert.equal(res.ok, true);
+  } finally {
+    mock.mock.restore();
+  }
+});
+
 test('runHermesTask: export failure -> task still ok, tool_calls omitted, stderr logged', async () => {
   const mock = spawnMock((bin, args) => {
     if (args[0] === 'sessions') {

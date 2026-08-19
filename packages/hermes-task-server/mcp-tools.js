@@ -15,7 +15,7 @@ const definition = {
   inputSchema: {
     type: 'object',
     properties: {
-      prompt: { type: 'string', description: 'Task prompt to send to Hermes (required)' },
+      prompt: { type: 'string', description: 'Task prompt to send to Hermes (required; max ~4000 chars — longer prompts are rejected with prompt_too_long, so keep it concise or split into smaller tasks)' },
       provider: { type: 'string', description: 'Provider: "auto" (default) or explicit name', default: 'auto' },
       model: { type: 'string', description: 'Explicit model id (defaults to capability map)', default: '' },
       timeout_seconds: { type: 'number', description: 'Timeout in seconds (10-1800)', default: 300 },

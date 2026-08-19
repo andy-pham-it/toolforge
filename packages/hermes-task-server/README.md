@@ -189,6 +189,16 @@ list is; refresh with `hermes model` in a terminal when models change.
 Errors: `busy`, `no_credential`, `provider_not_found`, `cwd_not_allowed`,
 `timeout`, `rate_limited`, `spawn_failed`, `unknown`.
 
+### Prompt length
+
+The `prompt` is validated **before** dispatch to Hermes. If it exceeds
+`maxPromptLength` (default **4000** chars), the tool returns
+`{ok:false, error:"prompt_too_long", error_detail:"prompt is N chars, max is M chars (provider-side limit). Shorten the prompt or split it into smaller tasks.", prompt_len, max_prompt_len}`
+without spawning Hermes — the provider gateways reject over-length prompts, so this
+guard fails fast with a clear message instead of a cryptic provider error. Keep
+prompts concise or split large tasks into smaller ones. Override the cap with the
+`HERMES_MAX_PROMPT_LENGTH` env var.
+
 ### Timeouts
 
 - `timeout_seconds` defaults to **300** (5 min) and is clamped to 10–1800. To override,
@@ -203,7 +213,7 @@ Errors: `busy`, `no_credential`, `provider_not_found`, `cwd_not_allowed`,
 ## Configuration
 
 Env overrides: `HERMES_AUTH_PATH` (default `~/.hermes/auth.json`), `HERMES_BIN`
-(default `hermes`).
+(default `hermes`), `HERMES_MAX_PROMPT_LENGTH` (default 4000).
 
 `lib/config.js` defaults: `resetWindowMs` 24h, `exhaustedForgiveTtlMs` 6h, `maxResultBytes` 200KB (full mode cap),
 `maxDigestResultBytes` 8KB (digest mode cap), `defaultOutputMode` `"digest"`,
