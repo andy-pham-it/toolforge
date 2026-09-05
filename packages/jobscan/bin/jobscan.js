@@ -6,63 +6,95 @@ const { program } = require('commander');
 program
   .name('jobscan')
   .description('Freemium job-scan CLI for resume analysis and job matching')
-  .version('0.3.1');
+  .version('0.3.2');
 
 program
   .command('scan')
-  .description('scan jobs and match against resume')
+  .description('scan jobs and match against resume (no args: uses jobscan.yml, else RemoteOK board)')
   .option('--provider <name>', 'provider: greenhouse|lever|ashby|smartrecruiters|workable|recruitee|pinpoint|personio|remoteok')
   .option('--company <slug>', 'company slug')
+  .option('--url <careersUrl>', 'careers page URL — provider + slug inferred (e.g. https://boards.greenhouse.io/datadog)')
   .option('--resume <path>', 'path to resume file (json/yaml/md)')
-  .option('--pro', 'enable pro features (requires valid license)')
+  .option('--pro', 'enable pro features (requires valid license, single company only)')
   .action(async (opts) => {
     const { scanWithProvider, scan } = require('../lib/scanner');
     const { parseResume } = require('../lib/resume');
     const { tierCheck } = require('../lib/tier');
     const { loadCache } = require('../lib/license');
+    const { parseCompaniesUrl, loadConfig, resolveEntry } = require('../lib/companies');
     const path = require('node:path');
     const fs = require('node:fs');
+    function loadResume() {
+      if (opts.resume) return parseResume(opts.resume);
+      const defaults = ['resume.json', 'resume.yaml', 'resume.yml', 'resume.md'];
+      for (const f of defaults) if (fs.existsSync(f)) return parseResume(f);
+      throw new Error('No resume found. Use --resume <path>');
+    }
     try {
-      // remoteok is board-wide: --company optional, defaults to 'all' (newest jobs)
-      if (!opts.provider) throw new Error('--provider is required (try --provider remoteok --company all)');
-      if (!opts.company) {
-        if (String(opts.provider).toLowerCase() === 'remoteok') opts.company = 'all';
-        else throw new Error('--company is required (e.g. --provider greenhouse --company datadog; for RemoteOK use --provider remoteok --company all)');
+      // Build target list: explicit args win, else jobscan.yml, else RemoteOK board.
+      let targets = [];
+      if (opts.url) {
+        const hit = parseCompaniesUrl(opts.url);
+        targets = [{ ...hit, label: opts.url }];
+      } else if (opts.provider) {
+        // remoteok is board-wide: --company optional, defaults to 'all' (newest jobs)
+        if (!opts.company) {
+          if (String(opts.provider).toLowerCase() === 'remoteok') opts.company = 'all';
+          else throw new Error('--company is required (e.g. --provider greenhouse --company datadog; for RemoteOK use --provider remoteok --company all; or paste a careers URL with --url)');
+        }
+        if (String(opts.company).toLowerCase() === 'all' && String(opts.provider).toLowerCase() !== 'remoteok') {
+          throw new Error("--company all chỉ áp dụng cho --provider remoteok (board tổng, không lọc theo công ty). Các provider khác cần slug công ty cụ thể, ví dụ: --provider greenhouse --company datadog hoặc --provider lever --company lever");
+        }
+        targets = [{ provider: opts.provider, companySlug: opts.company, label: `${opts.provider}:${opts.company}` }];
+      } else {
+        const cfg = loadConfig();
+        const entries = (cfg && cfg.companies) || [];
+        for (const e of entries) {
+          const r = resolveEntry(e);
+          if (r) targets.push(r);
+          else console.error(`[skip] không nhận ra ATS, bỏ qua: ${e && e.url ? e.url : JSON.stringify(e)}`);
+        }
+        if (targets.length === 0) {
+          console.error('[info] chưa có jobscan.yml — quét board tổng RemoteOK. Chạy `jobscan init` rồi thêm công ty để quét theo danh sách riêng.');
+          targets = [{ provider: 'remoteok', companySlug: 'all', label: 'remoteok:all' }];
+        }
       }
-      if (String(opts.company).toLowerCase() === 'all' && String(opts.provider).toLowerCase() !== 'remoteok') {
-        throw new Error("--company all chỉ áp dụng cho --provider remoteok (board tổng, không lọc theo công ty). Các provider khác cần slug công ty cụ thể, ví dụ: --provider greenhouse --company datadog hoặc --provider lever --company lever");
-      }
-      let resume = null;
-      if (opts.resume) resume = parseResume(opts.resume);
-      else {
-        // try default locations
-        const defaults = ['resume.json', 'resume.yaml', 'resume.yml', 'resume.md'];
-        for (const f of defaults) if (fs.existsSync(f)) { resume = parseResume(f); break; }
-        if (!resume) throw new Error('No resume found. Use --resume <path>');
-      }
+      const resume = loadResume();
       const lic = loadCache();
       const tier = tierCheck(lic);
       if (opts.pro && tier !== 'pro') {
         console.error('LICENSE_REQUIRED: pro license required. Run `jobscan license status` or set JOBSCAN_LICENSE_PUBLIC_KEY.');
         process.exit(1);
       }
+      if (opts.pro && targets.length > 1) {
+        throw new Error('--pro chỉ hỗ trợ 1 công ty/lần — dùng --url hoặc --provider/--company để quét riêng.');
+      }
       let result;
       if (opts.pro && tier === 'pro') {
-        // Pro: enrich with LLM tailored bullets per job
+        // Pro: enrich with LLM tailored bullets per job (single target only)
         const LLMClient = require('../lib/llm');
         const client = new LLMClient({ provider: process.env.JOBSCAN_LLM_PROVIDER || 'groq', apiKey: process.env.GROQ_API_KEY || process.env.GEMINI_API_KEY || 'test' });
         const { getProvider } = require('../lib/providers');
-        const mod = getProvider(opts.provider);
-        const jobs = await mod.fetchJobs({ companySlug: opts.company, limit: 5 });
+        const mod = getProvider(targets[0].provider);
+        const jobs = await mod.fetchJobs({ companySlug: targets[0].companySlug, limit: 5 });
         result = [];
         for (const job of jobs) {
           const jd = job.description || job.title || '';
           let proData = null;
           try { proData = await client.tailorResume(resume, jd); } catch (_) { proData = null; }
-          result.push(scan({ resume, jobDescription: jd, license: lic, provider: opts.provider, url: job.url, jobTitle: job.title, jobId: job.id, proData }));
+          result.push({ ...scan({ resume, jobDescription: jd, license: lic, provider: targets[0].provider, url: job.url, jobTitle: job.title, jobId: job.id, proData }), company: targets[0].label });
         }
       } else {
-        result = await scanWithProvider({ provider: opts.provider, company: opts.company, resume, license: lic, limit: 5 });
+        result = [];
+        for (const t of targets) {
+          // One dead board must not kill the whole scan (career-ops: skipped_error + continue).
+          try {
+            const rows = await scanWithProvider({ provider: t.provider, company: t.companySlug, resume, license: lic, limit: 5 });
+            for (const r of rows) result.push({ ...r, company: t.label });
+          } catch (e) {
+            console.error(`[error] ${t.label}: ${e.message} — bỏ qua, tiếp tục quét.`);
+          }
+        }
       }
       // persist last scan for dashboard
       try {
@@ -73,6 +105,49 @@ program
       } catch (_) {}
       console.log(JSON.stringify(result, null, 2));
       if (tier !== 'pro' && !opts.pro) console.log('\n[Pro: run with --pro to see tailored bullets]');
+    } catch (e) {
+      console.error(e.message);
+      process.exit(1);
+    }
+  });
+
+program
+  .command('init')
+  .description('create jobscan.yml with your company list (bare `jobscan scan` uses it)')
+  .action(() => {
+    const { initConfig } = require('../lib/companies');
+    try {
+      const p = initConfig();
+      console.log(`Đã tạo ${p} — sửa danh sách companies rồi chạy \`jobscan scan\`. Thêm URL: \`jobscan companies --add <careers-url>\`.`);
+    } catch (e) {
+      console.error(e.message);
+      process.exit(1);
+    }
+  });
+
+program
+  .command('companies')
+  .description('manage company list in jobscan.yml')
+  .option('--add <careersUrl>', 'add a company by careers page URL (provider inferred)')
+  .option('--list', 'list saved companies')
+  .action((opts) => {
+    const comp = require('../lib/companies');
+    try {
+      if (opts.add) {
+        const { inferred } = comp.addCompany(opts.add);
+        if (inferred) console.log(`Đã thêm: ${opts.add} → ${inferred.provider}:${inferred.companySlug}`);
+        else console.log(`Đã thêm: ${opts.add} (chưa nhận ra ATS — scan sẽ bỏ qua, hãy kiểm tra lại URL)`);
+      } else {
+        const cfg = comp.loadConfig();
+        if (!cfg || cfg.companies.length === 0) {
+          console.log('Chưa có công ty nào. Chạy `jobscan init` hoặc `jobscan companies --add <careers-url>`.');
+          return;
+        }
+        for (const e of cfg.companies) {
+          const r = comp.resolveEntry(e);
+          console.log(`- ${e.url || JSON.stringify(e)}${r ? ` → ${r.provider}:${r.companySlug}` : ' (chưa nhận ra ATS)'}`);
+        }
+      }
     } catch (e) {
       console.error(e.message);
       process.exit(1);

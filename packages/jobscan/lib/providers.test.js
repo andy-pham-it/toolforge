@@ -153,6 +153,24 @@ describe('fetchJobs with mocked fetch', () => {
     assert.equal(jobs[0].title, 'Eng');
   });
 
+  it('lever falls back to EU base on US 404', async () => {
+    const seen = [];
+    const mock = async (url) => {
+      seen.push(url);
+      if (url.includes('api.eu.lever.co')) return { ok: true, status: 200, headers: { get: () => null }, json: async () => ([{ id: '9', text: 'EU Eng', hostedUrl: 'https://eu', description: 'd', categories: { location: 'Berlin' } }]) };
+      return { ok: false, status: 404, statusText: 'Not Found', headers: { get: () => null } };
+    };
+    const jobs = await lever.fetchJobs({ companySlug: 'euco', limit: 1, fetchFn: mock });
+    assert.equal(jobs[0].title, 'EU Eng');
+    assert.ok(seen.some((u) => u.includes('api.lever.co/v0')));
+    assert.ok(seen.some((u) => u.includes('api.eu.lever.co')));
+  });
+
+  it('lever 404 on both bases throws', async () => {
+    const mock = async () => ({ ok: false, status: 404, statusText: 'Not Found', headers: { get: () => null } });
+    await assert.rejects(() => lever.fetchJobs({ companySlug: 'nope', fetchFn: mock }), /not found/i);
+  });
+
   it('ashby happy jobs wrapper', async () => {
     const mock = async () => ({ ok: true, status: 200, headers: { get: () => null }, json: async () => ({ jobs: [{ id: '1', title: 'PM', jobUrl: 'https://z', descriptionHtml: 'hi' }] }) });
     const jobs = await ashby.fetchJobs({ companySlug: 'ashbyco', limit: 1, fetchFn: mock });

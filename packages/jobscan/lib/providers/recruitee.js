@@ -7,7 +7,7 @@
 //           location (string), department, employment_type, ... }]
 // {company} is the Recruitee subdomain (careers-site slug).
 
-const USER_AGENT = 'jobscan/0.3.1';
+const USER_AGENT = 'jobscan/0.3.2';
 
 let lastRequestAt = 0;
 

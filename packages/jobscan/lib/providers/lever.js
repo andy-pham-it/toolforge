@@ -1,7 +1,8 @@
 'use strict';
 
-const USER_AGENT = 'jobscan/0.3.1';
-const BASE = 'https://api.lever.co/v0/postings';
+const USER_AGENT = 'jobscan/0.3.2';
+// EU tenants live on api.eu.lever.co — try US first, fall back to EU on 404.
+const BASES = ['https://api.lever.co/v0/postings', 'https://api.eu.lever.co/v0/postings'];
 
 let lastRequestAt = 0;
 async function rateLimitWait() {
@@ -24,17 +25,22 @@ async function fetchJobs({ companySlug, limit = 10, fetchFn = global.fetch }) {
   if (!companySlug) throw new Error('companySlug is required');
   if (!fetchFn) throw new Error('fetch is not available');
   await rateLimitWait();
-  const url = `${BASE}/${encodeURIComponent(companySlug)}?mode=json`;
   let res;
-  for (let attempt = 0; attempt < 3; attempt++) {
-    lastRequestAt = Date.now();
-    res = await fetchFn(url, { headers: { 'User-Agent': USER_AGENT, Accept: 'application/json' } });
-    if (res.status === 429) {
-      const retryAfter = parseInt(res.headers.get('Retry-After') || '2', 10) * 1000;
-      await new Promise(r => setTimeout(r, Number.isFinite(retryAfter) ? retryAfter : 2000 * (attempt + 1)));
-      continue;
+  for (const base of BASES) {
+    const url = `${base}/${encodeURIComponent(companySlug)}?mode=json`;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      lastRequestAt = Date.now();
+      res = await fetchFn(url, { headers: { 'User-Agent': USER_AGENT, Accept: 'application/json' } });
+      if (res.status === 429) {
+        const retryAfter = parseInt(res.headers.get('Retry-After') || '2', 10) * 1000;
+        await new Promise(r => setTimeout(r, Number.isFinite(retryAfter) ? retryAfter : 2000 * (attempt + 1)));
+        continue;
+      }
+      break;
     }
-    break;
+    if (res.ok) break;
+    if (res.status !== 404) throw new Error(`Lever fetch failed: ${res.status} ${res.statusText}`);
+    // 404 on US base → try EU base; 404 on EU base → board truly missing.
   }
   if (!res.ok) {
     if (res.status === 404) throw new Error(`Lever board not found: ${companySlug}`);

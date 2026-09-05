@@ -14,7 +14,7 @@
 | Personio | `{company}.jobs.personio.de/xml?language=en` | Official XML feed; regex-parsed, zero new deps; apply URL `/job/{id}?display=en` (verified `personio`, 2026-09-06) |
 | RemoteOK | `remoteok.com/api` | Board-wide (no company slug); element [0] is legal notice, skipped; `--company` = client-side company-name filter (`all` = newest). Public display requires dofollow backlink attribution |
 
-All: `User-Agent: jobscan/0.3.1`, ≥2s gap, 429 → `Retry-After` (3 retries).
+All: `User-Agent: jobscan/0.3.2`, ≥2s gap, 429 → `Retry-After` (3 retries).
 
 ## Deferred providers
 

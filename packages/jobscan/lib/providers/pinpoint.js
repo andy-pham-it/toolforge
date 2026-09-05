@@ -7,7 +7,7 @@
 //                  compensation_*, ... }] }  (bare array tolerated)
 // {slug} is the Pinpoint career-site subdomain, e.g. `workwithus`.
 
-const USER_AGENT = 'jobscan/0.3.1';
+const USER_AGENT = 'jobscan/0.3.2';
 
 let lastRequestAt = 0;
 

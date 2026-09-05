@@ -10,23 +10,30 @@ npm i -g @andy-toolforge/jobscan
 npm install
 ```
 
-## Quick start
+## Quick start (no slug needed)
 
 ```bash
 # example resume
 cp packages/jobscan/templates/resume.example.json ./resume.json
 
-# free scan (no LLM, zero cost)
+# 1. save your companies once (paste careers page URLs — provider inferred)
+jobscan init
+jobscan companies --add https://boards.greenhouse.io/datadog
+jobscan companies --list
+
+# 2. scan everything with no args (uses jobscan.yml; no file → RemoteOK board)
+jobscan scan --resume ./resume.json
+
+# one-off scan from a URL, no config needed
+jobscan scan --url https://jobs.lever.co/lever --resume ./resume.json
+
+# power users: explicit provider + slug still works
 jobscan scan --provider greenhouse --company datadog --resume ./resume.json
 
-# free -> pro placeholder
-# [Pro: run with --pro to see tailored bullets]
-
-# with license
+# pro (single company, valid license)
 export JOBSCAN_LICENSE_PUBLIC_KEY="your-server-hmac-secret"
 jobscan license verify <key> --sig <hmac> --tier pro --expires 2026-12-31T00:00:00.000Z
-jobscan license status
-jobscan scan --provider greenhouse --company datadog --resume ./resume.json --pro
+jobscan scan --url https://boards.greenhouse.io/datadog --resume ./resume.json --pro
 ```
 
 ## Free vs Pro
@@ -52,7 +59,7 @@ Pro uses Groq/Gemini via `@andy-toolforge/core` `LLMClient` adapter chain. Cost 
 - Personio (`{company}.jobs.personio.de/xml` — official XML feed, regex-parsed with zero new deps)
 - RemoteOK (`remoteok.com/api` — board-wide feed, no company slug; `--company` acts as optional company-name filter, use `all` for newest)
 
-Each honors `User-Agent: jobscan/0.3.1`, ≥2s gap + `Retry-After` / exponential backoff (3 retries). Greenhouse additionally checks `robots.txt` (best-effort). Research notes for the remaining ATS platforms live in `ROADMAP.md` — no stub files shipped. Workday and Jobvite are deferred (see ROADMAP).
+Each honors `User-Agent: jobscan/0.3.2`, ≥2s gap + `Retry-After` / exponential backoff (3 retries). Greenhouse additionally checks `robots.txt` (best-effort). Research notes for the remaining ATS platforms live in `ROADMAP.md` — no stub files shipped. Workday and Jobvite are deferred (see ROADMAP).
 
 ## Data attribution
 
@@ -61,7 +68,12 @@ RemoteOK data requires a dofollow backlink attribution when displayed publicly. 
 ## Commands
 
 ```
-jobscan scan --provider <greenhouse|lever|ashby|smartrecruiters|workable|recruitee|pinpoint|personio|remoteok> --company <slug> [--resume <path>] [--pro]
+jobscan init                                        # create jobscan.yml
+jobscan companies --add <careers-url>               # add company (provider inferred)
+jobscan companies --list                            # list saved companies
+jobscan scan [--resume <path>]                      # no args: jobscan.yml or RemoteOK board
+jobscan scan --url <careers-url> [--resume <path>]  # one-off URL scan
+jobscan scan --provider <name> --company <slug> [--resume <path>] [--pro]
 jobscan license verify <key> [--sig <sig>] [--tier pro|free] [--expires <iso>]
 jobscan license status
 jobscan dashboard [--last]
