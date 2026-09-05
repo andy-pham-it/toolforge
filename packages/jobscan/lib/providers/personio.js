@@ -13,7 +13,7 @@
 // Parsed with regex on purpose: zero new dependencies (XML shape is stable
 // and Personio-owned). If Personio changes the schema, tests catch it.
 
-const USER_AGENT = 'jobscan/0.3.2';
+const USER_AGENT = 'jobscan/0.3.3';
 
 let lastRequestAt = 0;
 

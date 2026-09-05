@@ -1,6 +1,6 @@
 'use strict';
 
-const USER_AGENT = 'jobscan/0.3.2';
+const USER_AGENT = 'jobscan/0.3.3';
 
 let lastRequestAt = 0;
 async function rateLimitWait() {

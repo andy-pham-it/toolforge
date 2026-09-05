@@ -6,7 +6,7 @@ const { program } = require('commander');
 program
   .name('jobscan')
   .description('Freemium job-scan CLI for resume analysis and job matching')
-  .version('0.3.2');
+  .version('0.3.3');
 
 program
   .command('scan')
