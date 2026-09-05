@@ -3,11 +3,17 @@
 const greenhouse = require('./greenhouse');
 const lever = require('./lever');
 const ashby = require('./ashby');
+const smartrecruiters = require('./smartrecruiters');
+const workable = require('./workable');
+const recruitee = require('./recruitee');
 
 const REGISTRY = {
   greenhouse,
   lever,
   ashby,
+  smartrecruiters,
+  workable,
+  recruitee,
 };
 
 function getProvider(name) {

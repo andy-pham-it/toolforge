@@ -11,7 +11,7 @@ program
 program
   .command('scan')
   .description('scan jobs and match against resume')
-  .option('--provider <name>', 'provider: greenhouse|lever|ashby')
+  .option('--provider <name>', 'provider: greenhouse|lever|ashby|smartrecruiters|workable|recruitee')
   .option('--company <slug>', 'company slug')
   .option('--resume <path>', 'path to resume file (json/yaml/md)')
   .option('--pro', 'enable pro features (requires valid license)')
