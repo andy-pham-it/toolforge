@@ -1,6 +1,6 @@
 'use strict';
 
-const USER_AGENT = 'jobscan/0.3.0';
+const USER_AGENT = 'jobscan/0.3.1';
 const BASE = 'https://boards-api.greenhouse.io/v1/boards';
 
 let lastRequestAt = 0;

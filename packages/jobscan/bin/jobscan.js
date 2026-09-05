@@ -6,7 +6,7 @@ const { program } = require('commander');
 program
   .name('jobscan')
   .description('Freemium job-scan CLI for resume analysis and job matching')
-  .version('0.3.0');
+  .version('0.3.1');
 
 program
   .command('scan')
@@ -23,7 +23,15 @@ program
     const path = require('node:path');
     const fs = require('node:fs');
     try {
-      if (!opts.provider || !opts.company) throw new Error('--provider and --company are required');
+      // remoteok is board-wide: --company optional, defaults to 'all' (newest jobs)
+      if (!opts.provider) throw new Error('--provider is required (try --provider remoteok --company all)');
+      if (!opts.company) {
+        if (String(opts.provider).toLowerCase() === 'remoteok') opts.company = 'all';
+        else throw new Error('--company is required (e.g. --provider greenhouse --company datadog; for RemoteOK use --provider remoteok --company all)');
+      }
+      if (String(opts.company).toLowerCase() === 'all' && String(opts.provider).toLowerCase() !== 'remoteok') {
+        throw new Error("--company all chỉ áp dụng cho --provider remoteok (board tổng, không lọc theo công ty). Các provider khác cần slug công ty cụ thể, ví dụ: --provider greenhouse --company datadog hoặc --provider lever --company lever");
+      }
       let resume = null;
       if (opts.resume) resume = parseResume(opts.resume);
       else {

@@ -10,7 +10,7 @@ const LLMClient = require('./llm');
 const dataContract = require('../schemas/data-contract.v1.json');
 
 module.exports = {
-  version: '0.3.0',
+  version: '0.3.1',
   ...resume,
   ...matcher,
   ...tier,

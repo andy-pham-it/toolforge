@@ -52,7 +52,7 @@ Pro uses Groq/Gemini via `@andy-toolforge/core` `LLMClient` adapter chain. Cost 
 - Personio (`{company}.jobs.personio.de/xml` — official XML feed, regex-parsed with zero new deps)
 - RemoteOK (`remoteok.com/api` — board-wide feed, no company slug; `--company` acts as optional company-name filter, use `all` for newest)
 
-Each honors `User-Agent: jobscan/0.3.0`, ≥2s gap + `Retry-After` / exponential backoff (3 retries). Greenhouse additionally checks `robots.txt` (best-effort). Research notes for the remaining ATS platforms live in `ROADMAP.md` — no stub files shipped. Workday and Jobvite are deferred (see ROADMAP).
+Each honors `User-Agent: jobscan/0.3.1`, ≥2s gap + `Retry-After` / exponential backoff (3 retries). Greenhouse additionally checks `robots.txt` (best-effort). Research notes for the remaining ATS platforms live in `ROADMAP.md` — no stub files shipped. Workday and Jobvite are deferred (see ROADMAP).
 
 ## Data attribution
 
