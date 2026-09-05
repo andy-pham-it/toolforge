@@ -41,3 +41,10 @@ tmp-tts-output/
 test-debug*.cjs
 test-tts*.mjs
 test-live*.cjs
+
+# jobscan license cache (never commit)
+packages/jobscan/license.json
+**/license.json
+**/resume.base.json
+**/*.merge-conflict
+**/*.merge-conflict.json

@@ -1,0 +1,52 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "jobscan-resume-v1",
+  "title": "Jobscan Resume v1",
+  "type": "object",
+  "required": ["name", "skills"],
+  "properties": {
+    "name": { "type": "string", "minLength": 1 },
+    "contact": {
+      "type": "object",
+      "properties": {
+        "email": { "type": "string", "format": "email" },
+        "phone": { "type": "string" },
+        "links": { "type": "array", "items": { "type": "string", "format": "uri" } }
+      },
+      "required": ["email"],
+      "additionalProperties": true
+    },
+    "summary": { "type": "string" },
+    "experience": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["company"],
+        "properties": {
+          "role": { "type": "string" },
+          "title": { "type": "string" },
+          "company": { "type": "string" },
+          "dates": { "type": "string" },
+          "startDate": { "type": "string", "pattern": "^\\d{4}-\\d{2}$" },
+          "endDate": { "type": "string", "pattern": "^(\\d{4}-\\d{2}|present)$" },
+          "bullets": { "type": "array", "items": { "type": "string" } }
+        },
+        "additionalProperties": true
+      }
+    },
+    "education": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "degree": { "type": "string" },
+          "school": { "type": "string" },
+          "dates": { "type": "string" }
+        }
+      }
+    },
+    "skills": { "type": "array", "items": { "type": "string" }, "minItems": 1 },
+    "custom": { "type": "object" }
+  },
+  "additionalProperties": true
+}

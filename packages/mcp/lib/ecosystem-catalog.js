@@ -477,6 +477,27 @@ const CATALOG = [
         skillFiles: true,
         skillPrefix: 'knowledge-base',
     },
+    {
+        name: '@andy-toolforge/jobscan',
+        version: '0.1.0',
+        description: 'Freemium job-scan CLI: ATS match (Greenhouse/Lever/Ashby), tier gating, signed license',
+        useCases: [
+            'Scan ATS job boards (Greenhouse, Lever, Ashby) against a local resume',
+            'Report keyword gaps with local heuristic matcher (free, zero LLM cost)',
+            'Gate pro fields (tailored bullets, cover hints) behind signed license check',
+            'Batch-scan multiple companies and export tier-gated reports',
+        ],
+        keyExports: [
+            { name: 'heuristicMatch', description: 'Free-tier keyword-overlap matcher: score, matched/missing keywords, suggestions' },
+            { name: 'scan/scanWithProvider', description: 'Orchestrate provider fetch + matcher + tier gating' },
+            { name: 'tierCheck/serialize', description: 'Freemium gate: resolve tier, strip pro fields when free' },
+            { name: 'verify/isGraceValid', description: 'HMAC-SHA256 license verification + 7-day offline grace' },
+            { name: 'LLMClient', description: 'Pro LLM matcher extending core LLMClient (tailorResume via skill file)' },
+        ],
+        dependencies: ['@andy-toolforge/core', 'commander', 'js-yaml'],
+        skillFiles: true,
+        skillPrefix: 'jobscan',
+    },
 ];
 
 /**

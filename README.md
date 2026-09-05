@@ -110,6 +110,7 @@ Toolforge không chỉ là "thư viện LLM" — nó là **hệ sinh thái autom
 | `@andy-toolforge/db-mongo` | [![npm](https://img.shields.io/npm/v/@andy-toolforge/db-mongo)](https://npmjs.com/package/@andy-toolforge/db-mongo) | MongoDB wrapper: connection, collections, migrations | Data-heavy projects |
 | `@andy-toolforge/cli` | [![npm](https://img.shields.io/npm/v/@andy-toolforge/cli)](https://npmjs.com/package/@andy-toolforge/cli) | CLI toolkit: arg parse, spinner, config loading | CLI tools |
 | `@andy-toolforge/reporting` | [![npm](https://img.shields.io/npm/v/@andy-toolforge/reporting)](https://npmjs.com/package/@andy-toolforge/reporting) | Markdown/HTML/PDF export | Reports |
+| `@andy-toolforge/jobscan` | [![npm](https://img.shields.io/npm/v/@andy-toolforge/jobscan)](https://npmjs.com/package/@andy-toolforge/jobscan) | Freemium job-scan CLI: ATS match, tier gating, signed license | Job seekers |
 
 ---
 

@@ -1,0 +1,37 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "jobscan-data-contract-v1",
+  "title": "Jobscan DATA_CONTRACT v1",
+  "description": "Split core (always exported) vs pro (gated by tierCheck) fields",
+  "type": "object",
+  "properties": {
+    "core": {
+      "type": "object",
+      "description": "Fields exported for all tiers",
+      "properties": {
+        "score": { "type": "number", "minimum": 0, "maximum": 100 },
+        "matchedKeywords": { "type": "array", "items": { "type": "string" } },
+        "missingKeywords": { "type": "array", "items": { "type": "string" } },
+        "suggestions": { "type": "array", "items": { "type": "string" } },
+        "provider": { "type": "string" },
+        "url": { "type": "string" },
+        "fetchedAt": { "type": "string", "format": "date-time" },
+        "jobTitle": { "type": "string" },
+        "jobId": { "type": "string" }
+      },
+      "required": ["score", "matchedKeywords", "missingKeywords"]
+    },
+    "pro": {
+      "type": "object",
+      "description": "Fields gated behind pro tier",
+      "properties": {
+        "llmSuggestions": { "type": "array", "items": { "type": "string" } },
+        "tailoredBullets": { "type": "array", "items": { "type": "string" } },
+        "coverLetterHint": { "type": "string" }
+      }
+    }
+  },
+  "required": ["core", "pro"],
+  "x-core-fields": ["score", "matchedKeywords", "missingKeywords", "suggestions", "provider", "url", "fetchedAt", "jobTitle", "jobId"],
+  "x-pro-fields": ["llmSuggestions", "tailoredBullets", "coverLetterHint"]
+}

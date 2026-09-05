@@ -1,0 +1,35 @@
+{
+  "name": "John Doe",
+  "contact": {
+    "email": "john.doe@example.com"
+  },
+  "summary": "Results-driven professional with 5+ years of experience in software development and project management, specializing in full-stack applications and team leadership.",
+  "experience": [
+    {
+      "title": "Senior Software Engineer",
+      "company": "Tech Corp",
+      "startDate": "2021-01",
+      "endDate": "2023-12",
+      "bullets": [
+        "Led a team of 4 developers to build a microservices-based platform handling 10K+ daily requests",
+        "Reduced API response time by 40% through optimization and caching strategies",
+        "Implemented CI/CD pipeline that decreased deployment time from 4 hours to 15 minutes"
+      ]
+    },
+    {
+      "title": "Software Engineer",
+      "company": "Startup XYZ",
+      "startDate": "2019-06",
+      "endDate": "2020-12",
+      "bullets": [
+        "Developed RESTful APIs using Node.js and Express",
+        "Wrote unit tests that increased code coverage from 65% to 85%",
+        "Collaborated with design team to improve UI responsiveness by 30%"
+      ]
+    }
+  ],
+  "skills": [
+    "JavaScript", "TypeScript", "Node.js", "Express", "React", "SQL", "MongoDB", "Git", "CI/CD", "Agile"
+  ],
+  "custom": {}
+}

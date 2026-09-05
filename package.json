@@ -8,6 +8,7 @@
     "packages/genai-tools",
     "packages/hermes-opencode-mcp-bridge",
     "packages/hermes-task-server",
+    "packages/jobscan",
     "packages/seo-generation",
     "packages/book-writing",
     "packages/pm-support",

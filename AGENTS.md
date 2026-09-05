@@ -155,6 +155,7 @@ npm install <dep> -w @andy-toolforge/<pkg>
 | Write/outline/review books | `packages/book-writing/lib/` |
 | Competitor/SWOT/market research | `packages/ba-support/lib/` |
 | MCP server tools (media, SEO, Gemini) | `packages/mcp/lib/` |
+| Scan ATS job boards vs local resume (freemium CLI) | `packages/jobscan/lib/` |
 | Add MCP tools to a package | `mcp-tools.js` at package root (auto-discovered by `mcp`) |
 | Screen/filter/score VN stocks, detect signals | `packages/vn-stock/lib/` |
 | Voice assistant (Gemini Live API, multi-voice) | `packages/voice-assistant/lib/` |
@@ -240,6 +241,11 @@ Exports by package (key symbols from Serena analysis):
 | `hermes-opencode-mcp-bridge` | `createServer` | `lib/server.js` | MCP server bridging opencode CLI |
 | `hermes-opencode-mcp-bridge` | `startServer` | `lib/server.js` | Boot server from config |
 | `knowledge-base` | `KnowledgeBase` | `lib/index.js` | Zero-dep filesystem-first knowledge store (JSON, CRUD, search, adapters) |
+| `jobscan` | `heuristicMatch` | `lib/matcher.js` | Free-tier keyword-overlap matcher (score, matched/missing, suggestions) |
+| `jobscan` | `tierCheck`/`serialize` | `lib/tier.js` | Freemium gate: tier resolve + strip pro fields when free |
+| `jobscan` | `scan`/`scanWithProvider` | `lib/scanner.js` | Orchestrates provider fetch + matcher + tier gating |
+| `jobscan` | `verify`/`isGraceValid` | `lib/license.js` | HMAC-SHA256 license verify + 7-day offline grace |
+| `jobscan` | `LLMClient` | `lib/llm.js` | Extends core LLMClient; pro `tailorResume` via skill file |
 | `py-packages/vn-stock-indicators` | 29 indicators | `vn_stock_indicators/` | Pure numpy: trend/momentum/volatility/volume/price_action |
 
 ## 11. AI decision checklist

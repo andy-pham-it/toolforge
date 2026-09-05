@@ -1,0 +1,22 @@
+{
+  "name": "@andy-toolforge/jobscan",
+  "version": "0.1.0",
+  "description": "Toolforge domain: freemium job-scan CLI",
+  "main": "lib/index.js",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/andy-pham-it/toolforge.git"
+  },
+  "bin": {
+    "jobscan": "bin/jobscan.js"
+  },
+  "scripts": {
+    "test": "node --test lib/*.test.js",
+    "postinstall": "node skills/postinstall.js"
+  },
+  "dependencies": {
+    "@andy-toolforge/core": "^1.3.0",
+    "commander": "^12.0.0",
+    "js-yaml": "^5.4.1"
+  }
+}
