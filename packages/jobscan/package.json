@@ -1,6 +1,6 @@
 {
   "name": "@andy-toolforge/jobscan",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Toolforge domain: freemium job-scan CLI",
   "main": "lib/index.js",
   "repository": {

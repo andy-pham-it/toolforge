@@ -6,6 +6,9 @@ const ashby = require('./ashby');
 const smartrecruiters = require('./smartrecruiters');
 const workable = require('./workable');
 const recruitee = require('./recruitee');
+const pinpoint = require('./pinpoint');
+const personio = require('./personio');
+const remoteok = require('./remoteok');
 
 const REGISTRY = {
   greenhouse,
@@ -14,6 +17,9 @@ const REGISTRY = {
   smartrecruiters,
   workable,
   recruitee,
+  pinpoint,
+  personio,
+  remoteok,
 };
 
 function getProvider(name) {

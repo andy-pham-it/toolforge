@@ -6,12 +6,12 @@ const { program } = require('commander');
 program
   .name('jobscan')
   .description('Freemium job-scan CLI for resume analysis and job matching')
-  .version('0.2.0');
+  .version('0.3.0');
 
 program
   .command('scan')
   .description('scan jobs and match against resume')
-  .option('--provider <name>', 'provider: greenhouse|lever|ashby|smartrecruiters|workable|recruitee')
+  .option('--provider <name>', 'provider: greenhouse|lever|ashby|smartrecruiters|workable|recruitee|pinpoint|personio|remoteok')
   .option('--company <slug>', 'company slug')
   .option('--resume <path>', 'path to resume file (json/yaml/md)')
   .option('--pro', 'enable pro features (requires valid license)')

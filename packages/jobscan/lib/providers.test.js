@@ -9,6 +9,9 @@ const ashby = require('./providers/ashby');
 const smartrecruiters = require('./providers/smartrecruiters');
 const workable = require('./providers/workable');
 const recruitee = require('./providers/recruitee');
+const pinpoint = require('./providers/pinpoint');
+const personio = require('./providers/personio');
+const remoteok = require('./providers/remoteok');
 const { getProvider, listProviders } = require('./providers');
 const { scanWithProvider } = require('./scanner');
 
@@ -20,8 +23,8 @@ function robotsOkMock() {
 }
 
 describe('providers registry', () => {
-  it('lists 6 providers', () => {
-    assert.deepEqual(listProviders().sort(), ['ashby','greenhouse','lever','recruitee','smartrecruiters','workable']);
+  it('lists 9 providers', () => {
+    assert.deepEqual(listProviders().sort(), ['ashby','greenhouse','lever','personio','pinpoint','recruitee','remoteok','smartrecruiters','workable']);
   });
   it('getProvider throws on unknown', () => {
     assert.throws(() => getProvider('unknown'), /Unknown provider/);
@@ -66,6 +69,38 @@ describe('recruitee parseJob', () => {
   });
 });
 
+describe('pinpoint parseJob', () => {
+  it('maps data fields, builds url from path', () => {
+    const j = pinpoint.parseJob({ id: 101, title: 'Backend', url: '', path: '/en/postings/101', description: '<p>JS</p>', location: 'London (Hybrid)', _host: 'workwithus' });
+    assert.equal(j.id, '101'); assert.equal(j.title, 'Backend');
+    assert.equal(j.url, 'https://workwithus.pinpointhq.com/en/postings/101');
+    assert.equal(j.location, 'London (Hybrid)');
+  });
+});
+
+describe('personio parseFeed', () => {
+  const XML = `<workzag-jobs><position><id>1822573</id><office>Berlin</office><department>Engineering</department><subcompany>X GmbH</subcompany><employmentType>full-time</employmentType><name><![CDATA[Backend Engineer]]></name><jobDescriptions><jobDescription><name><![CDATA[Your tasks]]></name><value><![CDATA[<p>Build APIs</p>]]></value></jobDescription><jobDescription><name><![CDATA[Your profile]]></name><value><![CDATA[<p>3y Node</p>]]></value></jobDescription></jobDescriptions></position></workzag-jobs>`;
+  it('parses positions with sections', () => {
+    const jobs = personio.parseFeed(XML, 'demo');
+    assert.equal(jobs.length, 1);
+    assert.equal(jobs[0].id, '1822573');
+    assert.equal(jobs[0].title, 'Backend Engineer');
+    assert.equal(jobs[0].url, 'https://demo.jobs.personio.de/job/1822573?display=en');
+    assert.ok(jobs[0].description.includes('Build APIs') && jobs[0].description.includes('3y Node'));
+    assert.equal(jobs[0].location, 'Berlin — Engineering');
+  });
+  it('skips empty positions', () => {
+    assert.deepEqual(personio.parseFeed('<workzag-jobs></workzag-jobs>', 'demo'), []);
+  });
+});
+
+describe('remoteok parseJob', () => {
+  it('maps position title to normalized job', async () => {
+    const j = remoteok.parseJob({ id: 'r1', company: 'Acme', position: 'Go Dev', url: 'https://remoteok.com/x', description: '<p>Go</p>', location: 'Remote' });
+    assert.equal(j.id, 'r1'); assert.equal(j.title, 'Go Dev'); assert.equal(j.location, 'Remote');
+  });
+});
+
 describe('lever parseJob', () => {
   it('maps', () => {
     const j = lever.parseJob({ id: 'a', text: 'Designer', hostedUrl: 'https://y', description: 'hi', categories: { location: 'SF' } });
@@ -81,7 +116,7 @@ describe('ashby parseJob', () => {
 });
 
 describe('fetchJobs with mocked fetch', () => {
-  beforeEach(() => { greenhouse.resetRateLimit(); lever.resetRateLimit(); ashby.resetRateLimit(); smartrecruiters.resetRateLimit(); workable.resetRateLimit(); recruitee.resetRateLimit(); });
+  beforeEach(() => { greenhouse.resetRateLimit(); lever.resetRateLimit(); ashby.resetRateLimit(); smartrecruiters.resetRateLimit(); workable.resetRateLimit(); recruitee.resetRateLimit(); pinpoint.resetRateLimit(); personio.resetRateLimit(); remoteok.resetRateLimit(); });
 
   it('greenhouse happy', async () => {
     const mock = async (url) => {
@@ -172,6 +207,52 @@ describe('fetchJobs with mocked fetch', () => {
     const mock = async () => ({ ok: true, status: 200, headers: { get: () => null }, json: async () => ({ offers: [{ id: 8, title: 'Dev', careers_url: 'https://d', description: 'x', location: '' }] }) });
     const jobs = await recruitee.fetchJobs({ companySlug: 'x', limit: 1, fetchFn: mock });
     assert.equal(jobs.length, 1);
+  });
+
+  it('pinpoint happy data wrapper', async () => {
+    const mock = async (url) => {
+      assert.ok(url.includes('.pinpointhq.com/postings.json'));
+      return { ok: true, status: 200, headers: { get: () => null }, json: async () => ({ data: [{ id: 101, title: 'Backend', url: 'https://w/x', description: 'Need JS', location: 'London' }] }) };
+    };
+    const jobs = await pinpoint.fetchJobs({ companySlug: 'workwithus', limit: 1, fetchFn: mock });
+    assert.equal(jobs.length, 1); assert.equal(jobs[0].title, 'Backend'); assert.equal(jobs[0].id, '101');
+  });
+
+  it('pinpoint 404 throws', async () => {
+    const mock = async () => ({ ok: false, status: 404, statusText: 'Not Found', headers: { get: () => null } });
+    await assert.rejects(() => pinpoint.fetchJobs({ companySlug: 'nope', fetchFn: mock }), /not found/i);
+  });
+
+  it('personio happy xml', async () => {
+    const XML = '<workzag-jobs><position><id>9</id><office>Berlin</office><department>Eng</department><name><![CDATA[Dev]]></name><jobDescriptions><jobDescription><name><![CDATA[Tasks]]></name><value><![CDATA[<p>Code</p>]]></value></jobDescription></jobDescriptions></position></workzag-jobs>';
+    const mock = async (url) => {
+      assert.ok(url.includes('.jobs.personio.de/xml'));
+      return { ok: true, status: 200, headers: { get: () => null }, text: async () => XML };
+    };
+    const jobs = await personio.fetchJobs({ companySlug: 'demo', limit: 1, fetchFn: mock });
+    assert.equal(jobs.length, 1); assert.equal(jobs[0].title, 'Dev');
+    assert.ok(jobs[0].description.includes('Code'));
+  });
+
+  it('personio 404 throws', async () => {
+    const mock = async () => ({ ok: false, status: 404, statusText: 'Not Found', headers: { get: () => null } });
+    await assert.rejects(() => personio.fetchJobs({ companySlug: 'nope', fetchFn: mock }), /not found/i);
+  });
+
+  it('remoteok skips legal header + filters by company', async () => {
+    const mock = async (url) => {
+      assert.equal(url, 'https://remoteok.com/api');
+      return { ok: true, status: 200, headers: { get: () => null }, json: async () => ([
+        { legal: 'notice' },
+        { id: 'a1', company: 'Acme', position: 'Go Dev', url: 'https://u1', description: 'Need Go', location: 'Remote' },
+        { id: 'b2', company: 'Other', position: 'Designer', url: 'https://u2', description: 'Figma', location: 'Remote' },
+      ]) };
+    };
+    const filtered = await remoteok.fetchJobs({ companySlug: 'acme', limit: 5, fetchFn: mock });
+    assert.equal(filtered.length, 1); assert.equal(filtered[0].title, 'Go Dev');
+    remoteok.resetRateLimit();
+    const all = await remoteok.fetchJobs({ companySlug: 'all', limit: 5, fetchFn: mock });
+    assert.equal(all.length, 2);
   });
 
   it('scanWithProvider orchestrates fetch -> matcher (greenhouse)', async () => {

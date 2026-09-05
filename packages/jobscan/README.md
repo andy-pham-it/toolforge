@@ -1,6 +1,6 @@
 # @andy-toolforge/jobscan
 
-Freemium job-scan CLI — scan ATS boards (Greenhouse / Lever / Ashby / SmartRecruiters / Workable / Recruitee) against a local resume, report keyword gaps. Local heuristic in free, LLM-tuned bullets in pro.
+Freemium job-scan CLI — scan ATS boards (Greenhouse / Lever / Ashby / SmartRecruiters / Workable / Recruitee / Pinpoint / Personio / RemoteOK) against a local resume, report keyword gaps. Local heuristic in free, LLM-tuned bullets in pro.
 
 ## Install
 
@@ -40,7 +40,7 @@ jobscan scan --provider greenhouse --company datadog --resume ./resume.json --pr
 
 Pro uses Groq/Gemini via `@andy-toolforge/core` `LLMClient` adapter chain. Cost ~$0.01–0.03 per scan (depends on provider/model). Free never calls LLM — verified by `lib/llm.test.js` spy.
 
-## Providers (6 real, verified live — no stubs)
+## Providers (9 real, verified live — no stubs)
 
 - Greenhouse (`boards-api.greenhouse.io`)
 - Lever (`api.lever.co`)
@@ -48,13 +48,20 @@ Pro uses Groq/Gemini via `@andy-toolforge/core` `LLMClient` adapter chain. Cost 
 - SmartRecruiters (`api.smartrecruiters.com` — list + N+1 detail fetch; IDs case-sensitive, e.g. `BoschGroup`)
 - Workable (`apply.workable.com` widget API, `?details=true` for inline descriptions)
 - Recruitee (`{company}.recruitee.com/api/offers/` — no-auth Careers Site API)
+- Pinpoint (`{slug}.pinpointhq.com/postings.json` — e.g. `workwithus`)
+- Personio (`{company}.jobs.personio.de/xml` — official XML feed, regex-parsed with zero new deps)
+- RemoteOK (`remoteok.com/api` — board-wide feed, no company slug; `--company` acts as optional company-name filter, use `all` for newest)
 
-Each honors `User-Agent: jobscan/0.2.0`, ≥2s gap + `Retry-After` / exponential backoff (3 retries). Greenhouse additionally checks `robots.txt` (best-effort). Research notes for the remaining ATS platforms live in `ROADMAP.md` — no stub files shipped. Workday and Jobvite are deferred (see ROADMAP).
+Each honors `User-Agent: jobscan/0.3.0`, ≥2s gap + `Retry-After` / exponential backoff (3 retries). Greenhouse additionally checks `robots.txt` (best-effort). Research notes for the remaining ATS platforms live in `ROADMAP.md` — no stub files shipped. Workday and Jobvite are deferred (see ROADMAP).
+
+## Data attribution
+
+RemoteOK data requires a dofollow backlink attribution when displayed publicly. CLI matching and local reports are fine, but any public rendering of RemoteOK job descriptions (exported dashboard, website) must credit RemoteOK with a link.
 
 ## Commands
 
 ```
-jobscan scan --provider <greenhouse|lever|ashby|smartrecruiters|workable|recruitee> --company <slug> [--resume <path>] [--pro]
+jobscan scan --provider <greenhouse|lever|ashby|smartrecruiters|workable|recruitee|pinpoint|personio|remoteok> --company <slug> [--resume <path>] [--pro]
 jobscan license verify <key> [--sig <sig>] [--tier pro|free] [--expires <iso>]
 jobscan license status
 jobscan dashboard [--last]
