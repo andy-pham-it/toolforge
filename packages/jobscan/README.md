@@ -49,7 +49,7 @@ Pro uses Groq/Gemini via `@andy-toolforge/core` `LLMClient` adapter chain. Cost 
 - Workable (`apply.workable.com` widget API, `?details=true` for inline descriptions)
 - Recruitee (`{company}.recruitee.com/api/offers/` — no-auth Careers Site API)
 
-Each honors `User-Agent: jobscan/0.1.0`, ≥2s gap + `Retry-After` / exponential backoff (3 retries). Greenhouse additionally checks `robots.txt` (best-effort). Research notes for the remaining ATS platforms live in `ROADMAP.md` — no stub files shipped. Workday and Jobvite are deferred (see ROADMAP).
+Each honors `User-Agent: jobscan/0.2.0`, ≥2s gap + `Retry-After` / exponential backoff (3 retries). Greenhouse additionally checks `robots.txt` (best-effort). Research notes for the remaining ATS platforms live in `ROADMAP.md` — no stub files shipped. Workday and Jobvite are deferred (see ROADMAP).
 
 ## Commands
 

@@ -1,6 +1,6 @@
 'use strict';
 
-const USER_AGENT = 'jobscan/0.1.0';
+const USER_AGENT = 'jobscan/0.2.0';
 const BASE = 'https://api.lever.co/v0/postings';
 
 let lastRequestAt = 0;

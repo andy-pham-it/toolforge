@@ -11,7 +11,7 @@
 | Workable | `apply.workable.com/api/v1/widget/accounts/{slug}?details=true` | `details=true` required for inline description |
 | Recruitee | `{company}.recruitee.com/api/offers/` | No-auth Careers Site API (per official docs); bare array or `{offers}` |
 
-All: `User-Agent: jobscan/0.1.0`, ≥2s gap, 429 → `Retry-After` (3 retries).
+All: `User-Agent: jobscan/0.2.0`, ≥2s gap, 429 → `Retry-After` (3 retries).
 
 ## Deferred providers
 

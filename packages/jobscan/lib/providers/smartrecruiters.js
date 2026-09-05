@@ -9,7 +9,7 @@
 //                 additionalInformation } (HTML), postingUrl }, location, ... }
 // Company IDs are case-sensitive (e.g. BoschGroup, Equinox).
 
-const USER_AGENT = 'jobscan/0.1.0';
+const USER_AGENT = 'jobscan/0.2.0';
 const BASE = 'https://api.smartrecruiters.com/v1/companies';
 
 let lastRequestAt = 0;
