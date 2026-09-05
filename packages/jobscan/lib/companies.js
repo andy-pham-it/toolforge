@@ -63,9 +63,15 @@ function inferProvider(rawUrl) {
     return { provider: 'smartrecruiters', companySlug: segs[0] };
   }
 
-  // Workable: {slug}.workable.com
+  // Workable: {slug}.workable.com, or apply.workable.com/{slug} (widget links users paste).
   m = host.match(/^([a-z0-9-]+)\.workable\.com$/);
-  if (m) return { provider: 'workable', companySlug: m[1] };
+  if (m) {
+    if (m[1] === 'apply') {
+      if (!segs[0]) return null;
+      return { provider: 'workable', companySlug: segs[0] };
+    }
+    return { provider: 'workable', companySlug: m[1] };
+  }
 
   // Recruitee: {company}.recruitee.com
   m = host.match(/^([a-z0-9-]+)\.recruitee\.com$/);

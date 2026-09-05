@@ -6,7 +6,7 @@
 //          department, employment_type, published_on, ... }] }
 // `details=true` is required — without it jobs carry no description.
 
-const USER_AGENT = 'jobscan/0.3.3';
+const USER_AGENT = 'jobscan/0.3.4';
 const BASE = 'https://apply.workable.com/api/v1/widget/accounts';
 
 let lastRequestAt = 0;

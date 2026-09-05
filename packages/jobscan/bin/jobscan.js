@@ -6,7 +6,7 @@ const { program } = require('commander');
 program
   .name('jobscan')
   .description('Freemium job-scan CLI for resume analysis and job matching')
-  .version('0.3.3');
+  .version('0.3.4');
 
 program
   .command('scan')
@@ -233,12 +233,17 @@ program
     const data = JSON.parse(fs.readFileSync(p, 'utf8'));
     const lic = loadCache();
     const tier = tierCheck(lic);
-    const out = serialize(data, tier);
+    const items = Array.isArray(data) ? data : [data];
+    const outs = items.map((r) => serialize(r, tier));
     if (opts.format === 'md') {
-      let md = `# Jobscan Report\n\nScore: ${out.score}\n\nMatched: ${out.matchedKeywords?.join(', ')}\n\nMissing: ${out.missingKeywords?.join(', ')}\n`;
-      if (out.suggestions) md += `\nSuggestions:\n${out.suggestions.map(s=>`- ${s}`).join('\n')}\n`;
-      console.log(md);
-    } else console.log(JSON.stringify(out, null, 2));
+      const section = (out) => {
+        let md = `## ${out.jobTitle || out.jobId || 'Job'} (${out.provider || ''}${out.company ? ` — ${out.company}` : ''})\n\nScore: ${out.score}\n\nMatched: ${out.matchedKeywords?.join(', ')}\n\nMissing: ${out.missingKeywords?.join(', ')}\n`;
+        if (out.url) md += `\nURL: ${out.url}\n`;
+        if (out.suggestions) md += `\nSuggestions:\n${out.suggestions.map(s=>`- ${s}`).join('\n')}\n`;
+        return md;
+      };
+      console.log(`# Jobscan Report\n\n${outs.map(section).join('\n')}`);
+    } else console.log(JSON.stringify(Array.isArray(data) ? outs : outs[0], null, 2));
   });
 
 program.parse();

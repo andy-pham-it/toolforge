@@ -15,7 +15,7 @@
 // these descriptions (dashboard export, website) must credit RemoteOK with a
 // link — see README "Data attribution".
 
-const USER_AGENT = 'jobscan/0.3.3';
+const USER_AGENT = 'jobscan/0.3.4';
 
 let lastRequestAt = 0;
 

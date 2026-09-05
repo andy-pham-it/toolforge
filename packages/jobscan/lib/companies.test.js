@@ -20,6 +20,8 @@ describe('inferProvider', () => {
     ['https://jobs.ashbyhq.com/ashby', 'ashby', 'ashby'],
     ['https://careers.smartrecruiters.com/BoschGroup/x', 'smartrecruiters', 'BoschGroup'],
     ['https://huggingface.workable.com/', 'workable', 'huggingface'],
+    ['https://apply.workable.com/huggingface', 'workable', 'huggingface'],
+    ['https://apply.workable.com/huggingface/j/abc123', 'workable', 'huggingface'],
     ['https://vandebron.recruitee.com/', 'recruitee', 'vandebron'],
     ['https://workwithus.pinpointhq.com/', 'pinpoint', 'workwithus'],
     ['https://personio.jobs.personio.de/', 'personio', 'personio'],
